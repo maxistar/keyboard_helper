@@ -10,9 +10,16 @@
     "withGlobalTauri": true,
     "windows": [
       {
+        "label": "overlay",
         "title": "tauri-app",
+        "transparent": true,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "resizable": false,
+        "fullscreen": false,
         "width": 800,
-        "height": 600
+        "height": 300,
+        "skipTaskbar": true
       }
     ],
     "security": {
