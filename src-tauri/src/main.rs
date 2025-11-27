@@ -65,7 +65,11 @@ fn convert_event(ev: Event) -> Option<KeyEventPayload> {
             key: key_to_string(key),
             event_type: "up".into(),
         }),
-        _ => None,
+        other => {
+            // Helpful to see which events are not being handled (e.g., mouse or media keys)
+            eprintln!("Ignoring non-key event: {:?}", other);
+            None
+        }
     }
 }
 
@@ -119,7 +123,11 @@ fn key_to_string(key: Key) -> String {
         Key::Alt | Key::AltGr => "Alt",
         Key::CapsLock => "CapsLock",
 
-        _ => "Unknown",
+        other => {
+            // Helpful when debugging unmapped keys/platform differences
+            eprintln!("Unmapped key from rdev: {:?}", other);
+            "Unknown"
+        }
     }
     .to_string()
 }
