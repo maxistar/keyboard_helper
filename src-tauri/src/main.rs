@@ -126,8 +126,7 @@ fn key_to_string(key: Key) -> String {
 
 
 fn main() {
-    //tauri_app_lib::run()
-        tauri::Builder::default()
+    tauri::Builder::default()
         .manage(KeyboardListenerState::default())
         .invoke_handler(tauri::generate_handler![
             start_keyboard_listener,
