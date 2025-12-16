@@ -10,7 +10,6 @@
       --key-w: 64px;
       --key-h: 64px;
       --gap: 10px;
-      --bg: #0c1021;
       --key-bg: #1b2035;
       --key-face: #e4e7ef;
       --accent: #3cc9c7;
@@ -27,7 +26,6 @@
       align-items: center;
       justify-content: center;
       font-family: "Trebuchet MS", "Segoe UI", Tahoma, sans-serif;
-      background: radial-gradient(circle at 30% 20%, #18203a, #0b0f1f 55%);
       color: #e4e7ef;
     }
 
@@ -69,22 +67,7 @@
       position: relative;
       padding: 22px;
       border-radius: 18px;
-      background: linear-gradient(145deg, #0f1427, #0c1021);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
       overflow: hidden;
-    }
-
-    .title {
-      position: absolute;
-      top: -12px;
-      left: 18px;
-      padding: 6px 12px;
-      border-radius: 10px;
-      background: linear-gradient(135deg, var(--accent), #5de4c7);
-      color: #081018;
-      font-weight: 700;
-      letter-spacing: 0.08em;
     }
 
     .key {
@@ -140,7 +123,7 @@
     </div>
 
     <div class="layout" id="layoutRoot">
-      <div class="title" id="layoutTitle">Keyboard</div>
+      
     </div>
   </div>
 
@@ -296,7 +279,6 @@
     };
 
     const layoutRoot = document.getElementById("layoutRoot");
-    const layoutTitle = document.getElementById("layoutTitle");
     const layoutSelect = document.getElementById("layoutSelect");
 
     Object.entries(layouts).forEach(([key, value]) => {
@@ -326,8 +308,7 @@
 
     function renderKeyboard(layout) {
       layoutRoot.innerHTML = "";
-      layoutRoot.appendChild(layoutTitle);
-      layoutTitle.textContent = layout.name;
+
 
       applyKeySizes(layout.keySize);
 

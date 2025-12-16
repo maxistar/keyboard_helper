@@ -14,13 +14,13 @@
         "label": "overlay",
         "title": "tauri-app",
         "transparent": true,
-        "decorations": false,
+        "decorations": true,
         "alwaysOnTop": true,
         "resizable": false,
         "fullscreen": false,
         "width": 1300,
         "height": 490,
-        "skipTaskbar": true
+        "skipTaskbar": false
       }
     ],
     "security": {
