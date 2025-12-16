@@ -86,6 +86,7 @@
           { label: "Win", code: "MetaLeft", row: 4, col: 1.5, w: 1.2, cls: "action" },
           { label: "Alt", code: "AltLeft", row: 4, col: 2.7, w: 1.3, cls: "action" },
           { label: "Space", code: "Space", row: 4, col: 4, w: 6, cls: "action space" },
+          
           { label: "Alt", code: "AltRight", row: 4, col: 10, w: 1.3, cls: "action" },
           { label: "Fn", code: "Fn", row: 4, col: 11.3, w: 1.1, cls: "action" },
           { label: "Menu", code: "ContextMenu", row: 4, col: 12.4, w: 1.3, cls: "action" },
@@ -98,14 +99,14 @@
         keys: (() => {
           const keys = [];
           const left = [
-            ["Q", "KeyQ"], ["W", "KeyW"], ["E", "KeyE"], ["R", "KeyR"], ["T", "KeyT"], ["Y", "KeyY"],
-            ["A", "KeyA"], ["S", "KeyS"], ["D", "KeyD"], ["F", "KeyF"], ["G", "KeyG"], ["H", "KeyH"],
-            ["Z", "KeyZ"], ["X", "KeyX"], ["C", "KeyC"], ["V", "KeyV"], ["B", "KeyB"], ["N", "KeyN"],
+            ["Tab", "Tab"],["Q", "KeyQ"],["W", "KeyW"], ["E", "KeyE"], ["R", "KeyR"], ["T", "KeyT"],
+            ["Ctrl", "ControlLeft"], ["A", "KeyA"], ["S", "KeyS"], ["D", "KeyD"], ["F", "KeyF"], ["G", "KeyG"],
+            ["Shift", "ShiftLeft"], ["Y", "KeyY"], ["X", "KeyX"], ["C", "KeyC"], ["V", "KeyV"], ["B", "KeyB"], ["N", "KeyN"],
           ];
           const right = [
-            ["U", "KeyU"], ["I", "KeyI"], ["O", "KeyO"], ["P", "KeyP"], ["[", "BracketLeft"], ["]", "BracketRight"],
-            ["J", "KeyJ"], ["K", "KeyK"], ["L", "KeyL"], [";", "Semicolon"], ["'", "Quote"], ["\\", "Backslash"],
-            ["M", "KeyM"], [",", "Comma"], [".", "Period"], ["/", "Slash"], ["-", "Minus"], ["=", "Equal"],
+            ["Y", "KeyY"], ["U", "KeyU"], ["I", "KeyI"], ["O", "KeyO"], ["P", "KeyP"], ["BSPC", "BSPC"],
+            ["J", "KeyJ"], ["K", "KeyK"], ["L", "KeyL"], [";", "Semicolon"], ["'", "Quote"], ["/", "Slash"],
+            ["M", "KeyM"], [",", "Comma"], [".", "Period"], ["/", "Slash"], ["-", "Minus"], ["ESC", "ESC"],
           ];
 
           // three rows, 6 cols each side
@@ -117,16 +118,23 @@
           }
           for (let i = 0; i < 18; i++) {
             const row = Math.floor(i / 6);
-            const col = 8 + (i % 6); // gap between halves
+            const col = 9 + (i % 6); // gap between halves
             const [label, code] = right[i];
             keys.push({ label, code, row, col });
           }
 
           // thumb keys (two per side)
-          keys.push({ label: "Space", code: "Space", row: 3.2, col: 2, w: 1.6, cls: "action" });
-          keys.push({ label: "Enter", code: "Enter", row: 3.2, col: 4, w: 1.6, cls: "action" });
-          keys.push({ label: "Space", code: "Space", row: 3.2, col: 8, w: 1.6, cls: "action" });
-          keys.push({ label: "Bksp", code: "Backspace", row: 3.2, col: 10, w: 1.6, cls: "action" });
+          keys.push({ label: "GUI", code: "Space", row: 3.2, col: 4, w: 1, cls: "action" });
+
+          keys.push({ label: "Low", code: "Space", row: 3.2, col: 5, w: 1, cls: "action" });
+          
+          keys.push({ label: "SPACE", code: "Enter", row: 3.2, col: 6, w: 1, cls: "action" });
+          
+          keys.push({ label: "ENTER", code: "Space", row: 3.2, col: 8, w: 1, cls: "action" });
+
+          keys.push({ label: "Up", code: "Space", row: 3.2, col: 9, w: 1, cls: "action" });
+          
+          keys.push({ label: "ALT", code: "Backspace", row: 3.2, col: 10, w: 1, cls: "action" });
           return keys;
         })(),
       },
@@ -256,8 +264,8 @@
         console.warn("Tauri global API (window.__TAURI__) is not available");
       }
 
-      renderKeyboard(layouts.qwerty);
-      layoutSelect.value = "qwerty";
+      layoutSelect.value = "corne";
+      renderKeyboard(layouts.corne);
     });
   </script>
 </body>
