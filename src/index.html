@@ -5,115 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Keyboard Layout</title>
-  <style>
-    :root {
-      --key-w: 64px;
-      --key-h: 64px;
-      --gap: 10px;
-      --key-bg: #1b2035;
-      --key-face: #e4e7ef;
-      --accent: #3cc9c7;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: "Trebuchet MS", "Segoe UI", Tahoma, sans-serif;
-      color: #e4e7ef;
-    }
-
-    .shell {
-      width: min(1200px, 95vw);
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-    }
-
-    .toolbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 14px;
-      background: rgba(26, 33, 54, 0.8);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 12px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-      backdrop-filter: blur(6px);
-    }
-
-    .toolbar label {
-      font-weight: 600;
-      letter-spacing: 0.04em;
-    }
-
-    select {
-      background: #111628;
-      color: #e4e7ef;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 8px;
-      padding: 8px 10px;
-      font-size: 14px;
-      min-width: 180px;
-    }
-
-    .layout {
-      position: relative;
-      padding: 22px;
-      border-radius: 18px;
-      overflow: hidden;
-    }
-
-    .key {
-      position: absolute;
-      width: calc(var(--key-w) * var(--w, 1) + var(--gap) * (var(--w, 1) - 1));
-      height: var(--key-h);
-      left: calc(var(--col) * (var(--key-w) + var(--gap)));
-      top: calc(var(--row) * (var(--key-h) + var(--gap)));
-      border-radius: 10px;
-      background: linear-gradient(155deg, #20263b, #0f1325);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: 0 10px 18px rgba(0, 0, 0, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.08);
-      color: var(--key-face);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-transform: uppercase;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
-      transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
-    }
-
-    .key.function {
-      color: #cfd5ee;
-      background: linear-gradient(160deg, #1e273a, #0f1527);
-    }
-
-    .key.action {
-      background: linear-gradient(160deg, #234443, #132929);
-      color: #e8fffb;
-    }
-
-    .key.space {
-      justify-content: flex-start;
-      padding-left: 20px;
-    }
-
-    .key.pressed {
-      background: linear-gradient(160deg, #3cc9c7, #5de4c7);
-      color: #081018;
-      transform: translateY(2px) scale(0.99);
-      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(0, 0, 0, 0.15);
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="shell">
@@ -333,6 +225,7 @@
 
     function handleKey(code, type) {
       const el = document.querySelector(`.key[data-key="${code}"]`);
+      console.log(`Key ${code} ${type}`);
       if (!el) return;
       if (type === "down") {
         el.classList.add("pressed");
