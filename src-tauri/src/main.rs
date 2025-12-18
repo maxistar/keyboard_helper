@@ -185,7 +185,7 @@ fn main() {
                         .build(app)?,
                 )
                 .item(
-                    &CheckMenuItemBuilder::with_id("layout-datil", "Datil Manyfold")
+                    &CheckMenuItemBuilder::with_id("layout-dactyl", "Dactyl Manuform")
                         .checked(false)
                         .build(app)?,
                 )
@@ -209,7 +209,7 @@ fn main() {
                 match event.id().as_ref() {
                     "layout-qwerty" => set_active_layout(app, "qwerty"),
                     "layout-corne" => set_active_layout(app, "corne"),
-                    "layout-datil" => set_active_layout(app, "datil"),
+                    "layout-dactyl" => set_active_layout(app, "dactyl"),
                     _ => {}
                 }
             }
@@ -226,7 +226,7 @@ fn set_active_layout(app: &AppHandle, layout: &str) {
         for (id, key) in [
             ("layout-qwerty", "qwerty"),
             ("layout-corne", "corne"),
-            ("layout-datil", "datil"),
+            ("layout-dactyl", "dactyl"),
         ] {
             let _ = menu.get(id).and_then(|item| {
                 if let tauri::menu::MenuItemKind::Check(check) = item {
