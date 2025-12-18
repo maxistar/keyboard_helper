@@ -154,9 +154,12 @@ fn key_to_string(key: Key) -> String {
         Key::Tab => "Tab",
         Key::Backspace => "Backspace",
         Key::Escape => "Escape",
-        Key::ShiftLeft | Key::ShiftRight => "Shift",
-        Key::ControlLeft | Key::ControlRight => "Control",
-        Key::Alt | Key::AltGr => "Alt",
+        Key::ShiftLeft => "ShiftLeft",
+        Key::ShiftRight => "ShiftRight",
+        Key::ControlLeft => "ControlLeft",
+        Key::ControlRight => "ControlRight",
+        Key::Alt => "Alt",
+        Key::AltGr => "AltGr",
         Key::CapsLock => "CapsLock",
 
         _ => "Unknown",
@@ -220,27 +223,19 @@ fn main() {
 
 fn set_active_layout(app: &AppHandle, layout: &str) {
     if let Some(menu) = app.menu() {
-        let _ = menu.get("layout-qwerty").and_then(|item| {
-            if let tauri::menu::MenuItemKind::Check(check) = item {
-                check.set_checked(layout == "qwerty").ok()
-            } else {
-                None
-            }
-        });
-        let _ = menu.get("layout-corne").and_then(|item| {
-            if let tauri::menu::MenuItemKind::Check(check) = item {
-                check.set_checked(layout == "corne").ok()
-            } else {
-                None
-            }
-        });
-        let _ = menu.get("layout-datil").and_then(|item| {
-            if let tauri::menu::MenuItemKind::Check(check) = item {
-                check.set_checked(layout == "datil").ok()
-            } else {
-                None
-            }
-        });
+        for (id, key) in [
+            ("layout-qwerty", "qwerty"),
+            ("layout-corne", "corne"),
+            ("layout-datil", "datil"),
+        ] {
+            let _ = menu.get(id).and_then(|item| {
+                if let tauri::menu::MenuItemKind::Check(check) = item {
+                    check.set_checked(layout == key).ok()
+                } else {
+                    None
+                }
+            });
+        }
     }
 
     let _ = app.emit(
