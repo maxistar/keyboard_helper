@@ -3,7 +3,10 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tauri::{Emitter, State};
+use tauri::{
+    menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder},
+    Emitter, Manager, State,
+};
 use rdev::{listen, Event, EventType, Key};
 use serde::Serialize;
 
@@ -160,6 +163,22 @@ fn key_to_string(key: Key) -> String {
 fn main() {
     tauri::Builder::default()
         .manage(KeyboardListenerState::default())
+        .menu(|app| {
+            let about_item = MenuItemBuilder::with_id("about", "About").build(app)?;
+            let help_menu = SubmenuBuilder::new(app, "Help")
+                .item(&about_item)
+                .build()?;
+            MenuBuilder::new(app).item(&help_menu).build()
+        })
+        .on_menu_event(|app, event| {
+            if event.id() == "about" {
+                if let Some(window) = app.get_webview_window("overlay") {
+                    let _ = window.eval(
+                        "alert('Keyboard listener capturing global keys (including F13–F24).');",
+                    );
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             start_keyboard_listener,
         ])
