@@ -4,11 +4,16 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tauri::{
-    menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder},
-    Emitter, Manager, State,
+    menu::{CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder, SubmenuBuilder},
+    AppHandle, Emitter, Manager, State,
 };
 use rdev::{listen, Event, EventType, Key};
 use serde::Serialize;
+
+#[derive(Serialize, Debug, Clone)]
+struct LayoutSelectPayload {
+    layout: String,
+}
 
 #[derive(Default)]
 struct KeyboardListenerState {
@@ -165,10 +170,30 @@ fn main() {
         .manage(KeyboardListenerState::default())
         .menu(|app| {
             let about_item = MenuItemBuilder::with_id("about", "About").build(app)?;
+            let view_menu = SubmenuBuilder::new(app, "View")
+                .item(
+                    &CheckMenuItemBuilder::with_id("layout-qwerty", "Qwerty")
+                        .checked(false)
+                        .build(app)?,
+                )
+                .item(
+                    &CheckMenuItemBuilder::with_id("layout-corne", "Corney")
+                        .checked(true)
+                        .build(app)?,
+                )
+                .item(
+                    &CheckMenuItemBuilder::with_id("layout-datil", "Datil Manyfold")
+                        .checked(false)
+                        .build(app)?,
+                )
+                .build()?;
             let help_menu = SubmenuBuilder::new(app, "Help")
                 .item(&about_item)
                 .build()?;
-            MenuBuilder::new(app).item(&help_menu).build()
+            MenuBuilder::new(app)
+                .item(&view_menu)
+                .item(&help_menu)
+                .build()
         })
         .on_menu_event(|app, event| {
             if event.id() == "about" {
@@ -177,6 +202,13 @@ fn main() {
                         "alert('Keyboard listener capturing global keys (including F13–F24).');",
                     );
                 }
+            } else {
+                match event.id().as_ref() {
+                    "layout-qwerty" => set_active_layout(app, "qwerty"),
+                    "layout-corne" => set_active_layout(app, "corne"),
+                    "layout-datil" => set_active_layout(app, "datil"),
+                    _ => {}
+                }
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -184,4 +216,37 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+fn set_active_layout(app: &AppHandle, layout: &str) {
+    if let Some(menu) = app.menu() {
+        let _ = menu.get("layout-qwerty").and_then(|item| {
+            if let tauri::menu::MenuItemKind::Check(check) = item {
+                check.set_checked(layout == "qwerty").ok()
+            } else {
+                None
+            }
+        });
+        let _ = menu.get("layout-corne").and_then(|item| {
+            if let tauri::menu::MenuItemKind::Check(check) = item {
+                check.set_checked(layout == "corne").ok()
+            } else {
+                None
+            }
+        });
+        let _ = menu.get("layout-datil").and_then(|item| {
+            if let tauri::menu::MenuItemKind::Check(check) = item {
+                check.set_checked(layout == "datil").ok()
+            } else {
+                None
+            }
+        });
+    }
+
+    let _ = app.emit(
+        "layout_selected",
+        LayoutSelectPayload {
+            layout: layout.to_string(),
+        },
+    );
 }

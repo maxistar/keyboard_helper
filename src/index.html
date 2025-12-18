@@ -9,11 +9,6 @@
 </head>
 <body>
   <div class="shell">
-    <div class="toolbar">
-      <label for="layoutSelect">Keyboard layout</label>
-      <select id="layoutSelect"></select>
-    </div>
-
     <div class="layout" id="layoutRoot">
       
     </div>
@@ -179,14 +174,7 @@
     };
 
     const layoutRoot = document.getElementById("layoutRoot");
-    const layoutSelect = document.getElementById("layoutSelect");
-
-    Object.entries(layouts).forEach(([key, value]) => {
-      const opt = document.createElement("option");
-      opt.value = key;
-      opt.textContent = value.name;
-      layoutSelect.appendChild(opt);
-    });
+    let currentLayoutKey = "corne";
 
     function applyKeySizes({ w, h, gap }) {
       const root = document.documentElement;
@@ -242,10 +230,12 @@
       }
     }
 
-    layoutSelect.addEventListener("change", () => {
-      const selected = layouts[layoutSelect.value];
-      if (selected) renderKeyboard(selected);
-    });
+    function setLayout(key) {
+      const layout = layouts[key];
+      if (!layout) return;
+      currentLayoutKey = key;
+      renderKeyboard(layout);
+    }
 
     window.addEventListener("DOMContentLoaded", () => {
       const tauri = window.__TAURI__;
@@ -260,12 +250,20 @@
             handleKey(key, event_type);
           })
           .catch((err) => console.error("Failed to listen key_event:", err));
+
+        tauri.event
+          .listen("layout_selected", (e) => {
+            const key = e.payload?.layout;
+            if (typeof key === "string") {
+              setLayout(key);
+            }
+          })
+          .catch((err) => console.error("Failed to listen layout_selected:", err));
       } else {
         console.warn("Tauri global API (window.__TAURI__) is not available");
       }
 
-      layoutSelect.value = "corne";
-      renderKeyboard(layouts.corne);
+      setLayout(currentLayoutKey);
     });
   </script>
 </body>
