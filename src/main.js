@@ -140,36 +140,36 @@ const getQwertyKeys = () => {
 
 const corneLayers = [[
     ["Tab", "Tab"],
-    ["Q", "KeyQ"],
-    ["W", "KeyW"],
-    ["E", "KeyE"],
-    ["R", "KeyR"],
-    ["T", "KeyT"],
-    ["Y", "KeyY"],
-    ["U", "KeyU"],
-    ["I", "KeyI"],
-    ["O", "KeyO"],
-    ["P", "KeyP"],
+    ["q", "KeyQ"],
+    ["w", "KeyW"],
+    ["e", "KeyE"],
+    ["r", "KeyR"],
+    ["t", "KeyT"],
+    ["z", "KeyY"],
+    ["u", "KeyU"],
+    ["i", "KeyI"],
+    ["o", "KeyO"],
+    ["p", "KeyP"],
     ["BSPC", "BSPC"],
     ["Ctrl", "ControlLeft"],
-    ["A", "KeyA"],
-    ["S", "KeyS"],
-    ["D", "KeyD"],
-    ["F", "KeyF"],
-    ["G", "KeyG"],
-    ["J", "KeyJ"],
-    ["K", "KeyK"],
-    ["L", "KeyL"],
-    [";", "Semicolon"],
-    ["'", "Quote"],
+    ["a", "KeyA"],
+    ["s", "KeyS"],
+    ["d", "KeyD"],
+    ["f", "KeyF"],
+    ["g", "KeyG"],
+    ["h", "KeyH"],
+    ["j", "KeyJ"],
+    ["k", "KeyK"],
+    ["l", "KeyL"],
+    ["ö", "Quote"],
     ["/", "Slash"],
     ["Shift", "ShiftLeft"],
-    ["Y", "KeyY"],
-    ["X", "KeyX"],
-    ["C", "KeyC"],
-    ["V", "KeyV"],
-    ["B", "KeyB"],
-    ["M", "KeyM"],
+    ["y", "KeyY"],
+    ["x", "KeyX"],
+    ["c", "KeyC"],
+    ["v", "KeyV"],
+    ["b", "KeyB"],
+    ["m", "KeyM"],
     [",", "Comma"],
     [".", "Period"],
     ["/", "Slash"],
@@ -181,7 +181,54 @@ const corneLayers = [[
     ["ENTER", "Space"],
     ["Up", "Space"],
     ["ALT", "Backspace"],
-]];
+],
+    [
+        null,
+        ["Q", "KeyQ"],
+        ["W", "KeyW"],
+        ["E", "KeyE"],
+        ["R", "KeyR"],
+        ["T", "KeyT"],
+        ["Z", "KeyY"],
+        ["U", "KeyU"],
+        ["I", "KeyI"],
+        ["O", "KeyO"],
+        ["P", "KeyP"],
+        null,
+        null,
+        ["A", "KeyA"],
+        ["S", "KeyS"],
+        ["D", "KeyD"],
+        ["F", "KeyF"],
+        ["G", "KeyG"],
+        ["H", "KeyH"],
+        ["J", "KeyJ"],
+        ["K", "KeyK"],
+        ["L", "KeyL"],
+        ["Ö", "KeyL"],
+        null,
+        null,
+        null,
+        ["Y", "KeyY"],
+        ["X", "KeyX"],
+        ["C", "KeyC"],
+        ["V", "KeyV"],
+        ["B", "KeyB"],
+        ["M", "KeyM"],
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+    ]
+
+];
 
 const getCorneKeys = () => {
     const keysLayout = [
@@ -373,11 +420,12 @@ function renderKeyboard(layout) {
     layoutRoot.style.width = `${widthPx + 44}px`;
     layoutRoot.style.height = `${heightPx + 44}px`;
 
-    layout.keys.forEach((k) => {
+    layout.keys.forEach((k, key) => {
         const el = document.createElement("div");
         el.className = `key ${k.cls || ""}`.trim();
         el.textContent = k.label;
         el.dataset.key = k.code;
+        el.dataset.index = key;
         el.style.setProperty("--row", k.row);
         el.style.setProperty("--col", k.col);
         if (k.w) el.style.setProperty("--w", k.w);
@@ -385,14 +433,49 @@ function renderKeyboard(layout) {
     });
 }
 
+function shiftCorne() {
+    const layout = layouts.corne;
+    const layers = corneLayers;
+    
+    layout.keys.forEach((k, index) => {
+        if (layers[1][index] === null ) return; 
+        const el = document.querySelector(`.key[data-index="${index}"]`);
+        const newKey = layers[1][index];
+        el.textContent = newKey[0];
+    })
+}
+
+function normalCorne() {
+    const layout = layouts.corne;
+    const layers = corneLayers;
+
+    layout.keys.forEach((k, index) => {
+
+        const el = document.querySelector(`.key[data-index="${index}"]`);
+        const newKey = layers[0][index];
+        el.textContent = newKey[0];
+    })    
+}
+
 function handleKey(code, type) {
     const el = document.querySelector(`.key[data-key="${code}"]`);
     console.log(`Key ${code} ${type}`);
     if (!el) return;
     if (type === "down") {
+        
+        if (currentLayoutKey === "corne" && code === 'ShiftLeft') {
+            // rerender labels and keycodes!!!
+            shiftCorne();
+        }
+        
         el.classList.add("pressed");
     } else if (type === "up") {
         el.classList.remove("pressed");
+
+        if (currentLayoutKey === "corne" && code === 'ShiftLeft') {
+            // rerender labels and keycodes!!!
+            normalCorne();
+        }
     }
 }
 

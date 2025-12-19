@@ -76,7 +76,6 @@ select {
   display: flex;
   align-items: center;
   justify-content: center;
-  text-transform: uppercase;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
