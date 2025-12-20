@@ -578,7 +578,8 @@ function setupWindowModeToggle(tauri) {
     const AUTO_HIDE_MS = 30_000;
 
     const updateLabel = () => {
-        toggleButton.textContent = decorationsEnabled ? "windowless" : "windowed";
+        toggleButton.dataset.state = decorationsEnabled ? "windowed" : "windowless";
+        toggleButton.title = decorationsEnabled ? "Windowed (click to hide chrome)" : "Windowless (click to show chrome)";
     };
 
     const clearHideTimer = () => {

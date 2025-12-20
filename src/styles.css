@@ -34,7 +34,28 @@ body {
   backdrop-filter: blur(6px);
   color: #e4e7ef;
   text-decoration: none;
-  font-size: 14px;
+  font-size: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.windowless::before {
+  --icon-size: 16px;
+  content: "";
+  width: var(--icon-size);
+  height: var(--icon-size);
+  display: inline-block;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.windowless[data-state="windowed"]::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23e4e7ef' stroke-width='2'%3E%3Cpath d='M5 7h14'/%3E%3Cpath d='M9 12h6'/%3E%3Cpath d='M7 17h10'/%3E%3C/svg%3E");
+}
+
+.windowless[data-state="windowless"]::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23e4e7ef' stroke-width='2'%3E%3Crect x='4' y='6' width='16' height='12' rx='2' ry='2'/%3E%3Cpath d='M9 10h6'/%3E%3C/svg%3E");  
 }
 
 .shell {
