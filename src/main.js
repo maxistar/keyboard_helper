@@ -574,22 +574,53 @@ function setupWindowModeToggle(tauri) {
     if (!toggleButton || !tauri) return;
 
     let decorationsEnabled = true;
+    let hideTimeoutId = null;
+    const AUTO_HIDE_MS = 30_000;
 
     const updateLabel = () => {
         toggleButton.textContent = decorationsEnabled ? "windowless" : "windowed";
     };
 
-    const toggleDecorations = async () => {
-        decorationsEnabled = !decorationsEnabled;
+    const clearHideTimer = () => {
+        if (hideTimeoutId) {
+            clearTimeout(hideTimeoutId);
+            hideTimeoutId = null;
+        }
+    };
+
+    const scheduleHideTimer = () => {
+        clearHideTimer();
+        hideTimeoutId = setTimeout(() => {
+            if (!decorationsEnabled) return;
+            setDecorations(false);
+        }, AUTO_HIDE_MS);
+    };
+
+    const setDecorations = async (nextState) => {
+        if (nextState === decorationsEnabled) {
+            if (nextState) scheduleHideTimer();
+            else clearHideTimer();
+            return;
+        }
+        decorationsEnabled = nextState;
         try {
             await tauri.core.invoke("set_window_decorations", {
                 decorations: decorationsEnabled,
             });
+            if (decorationsEnabled) {
+                scheduleHideTimer();
+            } else {
+                clearHideTimer();
+            }
             updateLabel();
         } catch (err) {
-            decorationsEnabled = !decorationsEnabled;
+            decorationsEnabled = !nextState;
             console.error("Failed to toggle window decorations:", err);
         }
+    };
+
+    const toggleDecorations = async () => {
+        setDecorations(!decorationsEnabled);
     };
 
     toggleButton.addEventListener("click", (event) => {
@@ -598,6 +629,7 @@ function setupWindowModeToggle(tauri) {
     });
 
     updateLabel();
+    scheduleHideTimer();
 }
 
 window.addEventListener("DOMContentLoaded", () => {
