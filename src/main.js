@@ -569,6 +569,37 @@ function setLayout(key) {
     renderKeyboard(layout);
 }
 
+function setupWindowModeToggle(tauri) {
+    const toggleButton = document.getElementById("windowless");
+    if (!toggleButton || !tauri) return;
+
+    let decorationsEnabled = true;
+
+    const updateLabel = () => {
+        toggleButton.textContent = decorationsEnabled ? "windowless" : "windowed";
+    };
+
+    const toggleDecorations = async () => {
+        decorationsEnabled = !decorationsEnabled;
+        try {
+            await tauri.core.invoke("set_window_decorations", {
+                decorations: decorationsEnabled,
+            });
+            updateLabel();
+        } catch (err) {
+            decorationsEnabled = !decorationsEnabled;
+            console.error("Failed to toggle window decorations:", err);
+        }
+    };
+
+    toggleButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        toggleDecorations();
+    });
+
+    updateLabel();
+}
+
 window.addEventListener("DOMContentLoaded", () => {
     const tauri = window.__TAURI__;
     if (tauri) {
@@ -591,6 +622,8 @@ window.addEventListener("DOMContentLoaded", () => {
                 }
             })
             .catch((err) => console.error("Failed to listen layout_selected:", err));
+
+        setupWindowModeToggle(tauri);
     } else {
         console.warn("Tauri global API (window.__TAURI__) is not available");
     }

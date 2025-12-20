@@ -27,6 +27,17 @@ struct KeyEventPayload {
 }
 
 #[tauri::command]
+fn set_window_decorations(app_handle: tauri::AppHandle, decorations: bool) -> Result<(), String> {
+    let window = app_handle
+        .get_webview_window("overlay")
+        .ok_or_else(|| "overlay window not found".to_string())?;
+
+    window
+        .set_decorations(decorations)
+        .map_err(|e| format!("failed to set decorations: {e}"))
+}
+
+#[tauri::command]
 fn start_keyboard_listener(app_handle: tauri::AppHandle, state: State<KeyboardListenerState>) {
     // Если уже запущен — второй раз не стартуем
     if state.is_running.swap(true, Ordering::SeqCst) {
@@ -216,6 +227,7 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             start_keyboard_listener,
+            set_window_decorations,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
