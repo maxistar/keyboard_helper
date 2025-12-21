@@ -1,66 +1,66 @@
 const qwertyLayers = [
     [
-        ["Esc", "Escape"], 
-        ["1", "Digit1"], 
-        ["2", "Digit2"], 
-        ["3", "Digit3"], 
-        ["4", "Digit4"], 
-        ["5", "Digit5"], 
-        ["6", "Digit6"], 
-        ["7", "Digit7"], 
-        ["8", "Digit8"], 
-        ["9", "Digit9"], 
-        ["0", "Digit0"], 
-        ["-", "Minus"], 
-        ["=", "Equal"], 
+        ["Esc", "Escape"],
+        ["1", "Digit1"],
+        ["2", "Digit2"],
+        ["3", "Digit3"],
+        ["4", "Digit4"],
+        ["5", "Digit5"],
+        ["6", "Digit6"],
+        ["7", "Digit7"],
+        ["8", "Digit8"],
+        ["9", "Digit9"],
+        ["0", "Digit0"],
+        ["-", "Minus"],
+        ["=", "Equal"],
         ["Backspace", "Backspace"],
 
-        ["Tab", "Tab"], 
-        ["q", "KeyQ"], 
-        ["w", "KeyW"], 
-        ["e", "KeyE"], 
-        ["r", "KeyR"], 
-        ["t", "KeyT"], 
-        ["z", "KeyY"], 
-        ["u", "KeyU"], 
-        ["i", "KeyI"], 
-        ["o", "KeyO"], 
-        ["p", "KeyP"], 
-        ["[", "BracketLeft"], 
-        ["]", "BracketRight"], 
+        ["Tab", "Tab"],
+        ["q", "KeyQ"],
+        ["w", "KeyW"],
+        ["e", "KeyE"],
+        ["r", "KeyR"],
+        ["t", "KeyT"],
+        ["z", "KeyY"],
+        ["u", "KeyU"],
+        ["i", "KeyI"],
+        ["o", "KeyO"],
+        ["p", "KeyP"],
+        ["[", "BracketLeft"],
+        ["]", "BracketRight"],
         ["\\", "Backslash"],
-        ["Caps", "CapsLock"], 
-        ["a", "KeyA"], 
-        ["s", "KeyS"], 
-        ["d", "KeyD"], 
-        ["f", "KeyF"], 
-        ["g", "KeyG"], 
-        ["h", "KeyH"], 
-        ["j", "KeyJ"], 
-        ["k", "KeyK"], 
-        ["l", "KeyL"], 
-        [";", "Semicolon"], 
-        ["'", "Quote"], 
+        ["Caps", "CapsLock"],
+        ["a", "KeyA"],
+        ["s", "KeyS"],
+        ["d", "KeyD"],
+        ["f", "KeyF"],
+        ["g", "KeyG"],
+        ["h", "KeyH"],
+        ["j", "KeyJ"],
+        ["k", "KeyK"],
+        ["l", "KeyL"],
+        [";", "Semicolon"],
+        ["'", "Quote"],
         ["Enter", "Enter"],
-        ["Shift", "ShiftLeft"], 
-        ["z", "KeyZ"], 
-        ["x", "KeyX"], 
-        ["c", "KeyC"], 
-        ["v", "KeyV"], 
-        ["b", "KeyB"], 
-        ["n", "KeyN"], 
-        ["m", "KeyM"], 
-        [",", "Comma"], 
-        [".", "Period"], 
-        ["/", "Slash"], 
+        ["Shift", "ShiftLeft"],
+        ["z", "KeyZ"],
+        ["x", "KeyX"],
+        ["c", "KeyC"],
+        ["v", "KeyV"],
+        ["b", "KeyB"],
+        ["n", "KeyN"],
+        ["m", "KeyM"],
+        [",", "Comma"],
+        [".", "Period"],
+        ["/", "Slash"],
         ["Shift", "ShiftRight"],
-        ["Ctrl", "ControlLeft"], 
-        ["Win", "MetaLeft"], 
-        ["Alt", "AltLeft"], 
-        ["Space", "Space"], 
-        ["Alt", "AltRight"], 
-        ["Fn", "Fn"], 
-        ["Menu", "ContextMenu"], 
+        ["Ctrl", "ControlLeft"],
+        ["Win", "MetaLeft"],
+        ["Alt", "AltLeft"],
+        ["Space", "Space"],
+        ["Alt", "AltRight"],
+        ["Fn", "Fn"],
+        ["Menu", "ContextMenu"],
         ["Ctrl", "ControlRight"],
     ]
 ];
@@ -68,72 +68,72 @@ const qwertyLayers = [
 
 const getQwertyKeys = () => {
     const keysLayout = [
-        { row: 0, col: 0, cls: "function"},
-        { row: 0, col: 1},
-        { row: 0, col: 2},
-        { row: 0, col: 3},
-        { row: 0, col: 4},
-        { row: 0, col: 5},
-        { row: 0, col: 6},
-        { row: 0, col: 7},
-        { row: 0, col: 8},
-        { row: 0, col: 9},
-        { row: 0, col: 10},
-        { row: 0, col: 11},
-        { row: 0, col: 12},
-        { row: 0, col: 13, w: 2, cls: "action"},
-        { row: 1, col: 0, w: 1.5, cls: "action"},
-        { row: 1, col: 1.5},
-        { row: 1, col: 2.5},
-        { row: 1, col: 3.5},
-        { row: 1, col: 4.5},
-        { row: 1, col: 5.5},
-        { row: 1, col: 6.5},
-        { row: 1, col: 7.5},
-        { row: 1, col: 8.5},
-        { row: 1, col: 9.5},
-        { row: 1, col: 10.5},
-        { row: 1, col: 11.5},
-        { row: 1, col: 12.5},
-        { row: 1, col: 13.5, w: 1.5, cls: "action"},
-        { row: 2, col: 0, w: 1.8, cls: "action"},
-        { row: 2, col: 1.8},
-        { row: 2, col: 2.8},
-        { row: 2, col: 3.8},
-        { row: 2, col: 4.8},
-        { row: 2, col: 5.8},
-        { row: 2, col: 6.8},
-        { row: 2, col: 7.8},
-        { row: 2, col: 8.8},
-        { row: 2, col: 9.8},
-        { row: 2, col: 10.8},
-        { row: 2, col: 11.8},
-        { row: 2, col: 12.8, w: 2.2, cls: "action"},
-        { row: 3, col: 0, w: 2.3, cls: "action"},
-        { row: 3, col: 2.3},
-        { row: 3, col: 3.3},
-        { row: 3, col: 4.3},
-        { row: 3, col: 5.3},
-        { row: 3, col: 6.3},
-        { row: 3, col: 7.3},
-        { row: 3, col: 8.3},
-        { row: 3, col: 9.3},
-        { row: 3, col: 10.3},
-        { row: 3, col: 11.3},
-        { row: 3, col: 12.3, w: 2.7, cls: "action"},
-        { row: 4, col: 0, w: 1.5, cls: "action"},
-        { row: 4, col: 1.5, w: 1.2, cls: "action"},
-        { row: 4, col: 2.7, w: 1.3, cls: "action"},
-        { row: 4, col: 4, w: 6, cls: "action space"},
-        { row: 4, col: 10, w: 1.3, cls: "action"},
-        { row: 4, col: 11.3, w: 1.1, cls: "action"},
-        { row: 4, col: 12.4, w: 1.3, cls: "action"},
-        { row: 4, col: 13.7, w: 1.5, cls: "action"},
+        { row: 0, col: 0, cls: "function" },
+        { row: 0, col: 1 },
+        { row: 0, col: 2 },
+        { row: 0, col: 3 },
+        { row: 0, col: 4 },
+        { row: 0, col: 5 },
+        { row: 0, col: 6 },
+        { row: 0, col: 7 },
+        { row: 0, col: 8 },
+        { row: 0, col: 9 },
+        { row: 0, col: 10 },
+        { row: 0, col: 11 },
+        { row: 0, col: 12 },
+        { row: 0, col: 13, w: 2, cls: "action" },
+        { row: 1, col: 0, w: 1.5, cls: "action" },
+        { row: 1, col: 1.5 },
+        { row: 1, col: 2.5 },
+        { row: 1, col: 3.5 },
+        { row: 1, col: 4.5 },
+        { row: 1, col: 5.5 },
+        { row: 1, col: 6.5 },
+        { row: 1, col: 7.5 },
+        { row: 1, col: 8.5 },
+        { row: 1, col: 9.5 },
+        { row: 1, col: 10.5 },
+        { row: 1, col: 11.5 },
+        { row: 1, col: 12.5 },
+        { row: 1, col: 13.5, w: 1.5, cls: "action" },
+        { row: 2, col: 0, w: 1.8, cls: "action" },
+        { row: 2, col: 1.8 },
+        { row: 2, col: 2.8 },
+        { row: 2, col: 3.8 },
+        { row: 2, col: 4.8 },
+        { row: 2, col: 5.8 },
+        { row: 2, col: 6.8 },
+        { row: 2, col: 7.8 },
+        { row: 2, col: 8.8 },
+        { row: 2, col: 9.8 },
+        { row: 2, col: 10.8 },
+        { row: 2, col: 11.8 },
+        { row: 2, col: 12.8, w: 2.2, cls: "action" },
+        { row: 3, col: 0, w: 2.3, cls: "action" },
+        { row: 3, col: 2.3 },
+        { row: 3, col: 3.3 },
+        { row: 3, col: 4.3 },
+        { row: 3, col: 5.3 },
+        { row: 3, col: 6.3 },
+        { row: 3, col: 7.3 },
+        { row: 3, col: 8.3 },
+        { row: 3, col: 9.3 },
+        { row: 3, col: 10.3 },
+        { row: 3, col: 11.3 },
+        { row: 3, col: 12.3, w: 2.7, cls: "action" },
+        { row: 4, col: 0, w: 1.5, cls: "action" },
+        { row: 4, col: 1.5, w: 1.2, cls: "action" },
+        { row: 4, col: 2.7, w: 1.3, cls: "action" },
+        { row: 4, col: 4, w: 6, cls: "action space" },
+        { row: 4, col: 10, w: 1.3, cls: "action" },
+        { row: 4, col: 11.3, w: 1.1, cls: "action" },
+        { row: 4, col: 12.4, w: 1.3, cls: "action" },
+        { row: 4, col: 13.7, w: 1.5, cls: "action" },
     ];
 
     const result = [];
     keysLayout.forEach((k, key) => {
-        result.push({...k, label: qwertyLayers[0][key][0], code: qwertyLayers[0][key][1]});
+        result.push({ ...k, label: qwertyLayers[0][key][0], code: qwertyLayers[0][key][1] });
     });
 
     return result;
@@ -172,12 +172,12 @@ const corneLayers = [[
     ["c", "KeyC"],
     ["v", "KeyV"],
     ["b", "KeyB"],
-    ["n", "KeyN"],    
+    ["n", "KeyN"],
     ["m", "KeyM"],
     [",", "Comma"],
     [".", "Period"],
     ["/", "Slash"],
-    
+
 
     ["ESC", "ESC"],
     ["GUI", "Space"],
@@ -187,106 +187,106 @@ const corneLayers = [[
     ["Up", "Space"],
     ["ALT", "Backspace"],
 ],
-    [
-        null,
-        ["Q", "KeyQ"],
-        ["W", "KeyW"],
-        ["E", "KeyE"],
-        ["R", "KeyR"],
-        ["T", "KeyT"],
-        ["Z", "KeyY"],
-        ["U", "KeyU"],
-        ["I", "KeyI"],
-        ["O", "KeyO"],
-        ["P", "KeyP"],
-        null,
-        null,
-        ["A", "KeyA"],
-        ["S", "KeyS"],
-        ["D", "KeyD"],
-        ["F", "KeyF"],
-        ["G", "KeyG"],
-        ["H", "KeyH"],
-        ["J", "KeyJ"],
-        ["K", "KeyK"],
-        ["L", "KeyL"],
-        ["Ö", "KeyL"],
-        null,
-        null,
-        ["Y", "KeyY"],
-        ["X", "KeyX"],
-        ["C", "KeyC"],
-        ["V", "KeyV"],
-        ["B", "KeyB"],
-        ["N", "KeyM"],
-        ["M", "KeyM"],        
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-    ]
+[
+    null,
+    ["Q", "KeyQ"],
+    ["W", "KeyW"],
+    ["E", "KeyE"],
+    ["R", "KeyR"],
+    ["T", "KeyT"],
+    ["Z", "KeyY"],
+    ["U", "KeyU"],
+    ["I", "KeyI"],
+    ["O", "KeyO"],
+    ["P", "KeyP"],
+    null,
+    null,
+    ["A", "KeyA"],
+    ["S", "KeyS"],
+    ["D", "KeyD"],
+    ["F", "KeyF"],
+    ["G", "KeyG"],
+    ["H", "KeyH"],
+    ["J", "KeyJ"],
+    ["K", "KeyK"],
+    ["L", "KeyL"],
+    ["Ö", "KeyL"],
+    null,
+    null,
+    ["Y", "KeyY"],
+    ["X", "KeyX"],
+    ["C", "KeyC"],
+    ["V", "KeyV"],
+    ["B", "KeyB"],
+    ["N", "KeyM"],
+    ["M", "KeyM"],
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+]
 
 ];
 
 const getCorneKeys = () => {
     const keysLayout = [
-        { row: 0, col: 1},
-        { row: 0, col: 2},
-        { row: 0, col: 3},
-        { row: 0, col: 4},
-        { row: 0, col: 5},
-        { row: 0, col: 6},
-        { row: 0, col: 10},
-        { row: 0, col: 11},
-        { row: 0, col: 12},
-        { row: 0, col: 13},
-        { row: 0, col: 14},
-        { row: 0, col: 15},
+        { row: 0, col: 1 },
+        { row: 0, col: 2 },
+        { row: 0, col: 3 },
+        { row: 0, col: 4 },
+        { row: 0, col: 5 },
+        { row: 0, col: 6 },
+        { row: 0, col: 10 },
+        { row: 0, col: 11 },
+        { row: 0, col: 12 },
+        { row: 0, col: 13 },
+        { row: 0, col: 14 },
+        { row: 0, col: 15 },
 
-        { row: 1, col: 1},
-        { row: 1, col: 2},
-        { row: 1, col: 3},
-        { row: 1, col: 4},
-        { row: 1, col: 5},
-        { row: 1, col: 6},
-        { row: 1, col: 10},
-        { row: 1, col: 11},
-        { row: 1, col: 12},
-        { row: 1, col: 13},
-        { row: 1, col: 14},
-        { row: 1, col: 15},
+        { row: 1, col: 1 },
+        { row: 1, col: 2 },
+        { row: 1, col: 3 },
+        { row: 1, col: 4 },
+        { row: 1, col: 5 },
+        { row: 1, col: 6 },
+        { row: 1, col: 10 },
+        { row: 1, col: 11 },
+        { row: 1, col: 12 },
+        { row: 1, col: 13 },
+        { row: 1, col: 14 },
+        { row: 1, col: 15 },
 
-        { row: 2, col: 1},
-        { row: 2, col: 2},
-        { row: 2, col: 3},
-        { row: 2, col: 4},
-        { row: 2, col: 5},
-        { row: 2, col: 6},
-        { row: 2, col: 10},
-        { row: 2, col: 11},
-        { row: 2, col: 12},
-        { row: 2, col: 13},
-        { row: 2, col: 14},
-        { row: 2, col: 15},
+        { row: 2, col: 1 },
+        { row: 2, col: 2 },
+        { row: 2, col: 3 },
+        { row: 2, col: 4 },
+        { row: 2, col: 5 },
+        { row: 2, col: 6 },
+        { row: 2, col: 10 },
+        { row: 2, col: 11 },
+        { row: 2, col: 12 },
+        { row: 2, col: 13 },
+        { row: 2, col: 14 },
+        { row: 2, col: 15 },
 
-        { row: 3.2, col: 5, cls: "action"},
-        { row: 3.2, col: 6, cls: "action"},
-        { row: 3.2, col: 7, cls: "action"},
-        { row: 3.2, col: 9, cls: "action"},
-        { row: 3.2, col: 10, cls: "action"},
-        { row: 3.2, col: 11, cls: "action"},
+        { row: 3.2, col: 5, cls: "action" },
+        { row: 3.2, col: 6, cls: "action" },
+        { row: 3.2, col: 7, cls: "action" },
+        { row: 3.2, col: 9, cls: "action" },
+        { row: 3.2, col: 10, cls: "action" },
+        { row: 3.2, col: 11, cls: "action" },
     ];
 
     const result = [];
     keysLayout.forEach((k, key) => {
-        result.push({...k, label: corneLayers[0][key][0], code: corneLayers[0][key][1]});
+        result.push({ ...k, label: corneLayers[0][key][0], code: corneLayers[0][key][1] });
     });
 
     return result;
@@ -295,16 +295,85 @@ const getCorneKeys = () => {
 
 const dactylLayers = [[
     ["ESC", "KeyQ"],
-    ["1", "KeyQ"],
-    ["2", "KeyW"],
-    ["3", "KeyE"],
-    ["4", "KeyR"],
-    ["5", "KeyT"],
-    ["6", "KeyY"],
-    ["7", "KeyU"],
-    ["8", "KeyI"],
-    ["9", "KeyO"],
-    ["0", "KeyP"],
+    ["1", "Digit1"],
+    ["2", "Digit2"],
+    ["3", "Digit3"],
+    ["4", "Digit4"],
+    ["5", "Digit5"],
+    ["6", "Digit6"],
+    ["7", "Digit7"],
+    ["8", "Digit8"],
+    ["9", "Digit9"],
+    ["0", "Digit0"],
+    ["^", "KeyA"],
+
+    ["TAB", "KeyQ"],
+    ["q", "KeyQ"],
+    ["w", "KeyW"],
+    ["e", "KeyE"],
+    ["r", "KeyR"],
+    ["t", "KeyT"],
+    ["y", "KeyY"],
+    ["u", "KeyU"],
+    ["i", "KeyI"],
+    ["o", "KeyO"],
+    ["p", "KeyP"],
+    ["ß", "KeyA"],
+
+    ["lang", "KeyA"],
+    ["a", "KeyA"],
+    ["s", "KeyS"],
+    ["d", "KeyD"],
+    ["f", "KeyF"],
+    ["g", "KeyG"],
+    ["h", "KeyH"],
+    ["j", "KeyJ"],
+    ["k", "KeyK"],
+    ["l", "KeyL"],
+    ["ö", "Semicolon"],
+    ["ä", "Semicolon"],
+
+    ["Shift", "KeyZ"],
+    ["z", "KeyZ"],
+    ["x", "KeyX"],
+    ["c", "KeyC"],
+    ["v", "KeyV"],
+    ["b", "KeyB"],
+    ["n", "KeyN"],
+    ["m", "KeyM"],
+    [",", "Comma"],
+    [".", "Period"],
+    ["/", "Slash"],
+    ["Shift", "Slash"],
+
+    ["[", "Space"],
+    ["Enter", "Enter"],
+    [" ", "Space"],
+    ["]", "Enter"],
+             
+    ["Space", "Space"],
+    ["Lower", "F18"],
+    ["Win", "AltLeft"],
+    ["Bksp", "Backspace"],
+    ["Magic", "F19"],
+    [" ", "Enter"],
+    ["Ctrl", "AltLeft"],
+    ["Alt", "Backspace"],
+    ["AltGr", "Backspace"],
+    ["Ctrl", "Backspace"],
+],
+[ // LOWER
+    ["BTCLR", "KeyQ"],
+    ["BT1", "Digit1"],
+    ["BT2", "Digit2"],
+    ["BT3", "Digit3"],
+    ["BT4", "Digit4"],
+    ["BT5", "Digit5"],
+    ["6", "Digit6"],
+    ["7", "Digit7"],
+    ["8", "Digit8"],
+    ["9", "Digit9"],
+    ["0", "Digit0"],
     ["^", "KeyA"],
 
     ["TAB", "KeyQ"],
@@ -351,99 +420,169 @@ const dactylLayers = [[
     ["Space", "Space"],
     ["Enter", "Enter"],
 
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+],
+[ // MAGIC
+    ["ESC", "KeyQ"],
+    ["F1", "Digit1"],
+    ["F2", "Digit2"],
+    ["F3", "Digit3"],
+    ["F4", "Digit4"],
+    ["F5", "Digit5"],
+    ["F6", "Digit6"],
+    ["F7", "Digit7"],
+    ["F8", "Digit8"],
+    ["F9", "Digit9"],
+    ["F10", "Digit0"],
+    ["F11", "KeyA"],
+
+    ["TAB", "KeyQ"],
+    ["q", "KeyQ"],
+    ["1", "KeyW"],
+    ["2", "KeyE"],
+    ["3", "KeyR"],
+    ["+", "KeyT"],
+    ["y", "KeyY"],
+    ["u", "KeyU"],
+    ["i", "KeyI"],
+    ["o", "KeyO"],
+    ["p", "KeyP"],
+    ["F12", "KeyA"],
+
+    ["lang", "KeyA"],
+    ["a", "KeyA"],
+    ["4", "KeyS"],
+    ["5", "KeyD"],
+    ["6", "KeyF"],
+    ["-", "KeyG"],
+    ["<-", "KeyH"],
+    ["V", "KeyJ"],
+    ["^", "KeyK"],
+    ["->", "KeyL"],
+    ["+", "Semicolon"],
+    ["ä", "Semicolon"],
+
+    ["Shift", "KeyZ"],
+    ["z", "KeyZ"],
+    ["7", "KeyX"],
+    ["8", "KeyC"],
+    ["9", "KeyV"],
+    ["b", "KeyB"],
+    ["n", "KeyN"],
+    ["m", "KeyM"],
+    [",", "Comma"],
+    [".", "Period"],
+    ["/", "Slash"],
+    ["Shift", "Slash"],
+
+    ["/", "Space"],
+    ["0", "Enter"],
     ["Space", "Space"],
     ["Enter", "Enter"],
-    ["Alt", "AltLeft"],
-    ["Bksp", "Backspace"],
-    ["Space", "Space"],
-    ["Enter", "Enter"],
-    ["Alt", "AltLeft"],
-    ["Bksp", "Backspace"],
-    ["Bksp", "Backspace"],
-    ["Bksp", "Backspace"],
-]];
+
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+]
+];
 
 const getDactylKeys = () => {
     const keysLayout = [
-        { row: 0.2, col: 0, w: 1.5, cls: "action"},
-        { row: 0.2, col: 1.5},
-        { row: 0, col: 2.5},
-        { row: 0, col: 3.5},
-        { row: 0, col: 4.5},
-        { row: 0, col: 5.5},
-        { row: 0, col: 10.5},
-        { row: 0, col: 11.5},
-        { row: 0, col: 12.5},
-        { row: 0, col: 13.5},
-        { row: 0.2, col: 14.5},
-        { row: 0.2, col: 15.5, w: 1.5, cls: "action"},
+        { row: 0.2, col: 0, w: 1.5, cls: "action" },
+        { row: 0.2, col: 1.5 },
+        { row: 0, col: 2.5 },
+        { row: 0, col: 3.5 },
+        { row: 0, col: 4.5 },
+        { row: 0, col: 5.5 },
+        { row: 0, col: 10.5 },
+        { row: 0, col: 11.5 },
+        { row: 0, col: 12.5 },
+        { row: 0, col: 13.5 },
+        { row: 0.2, col: 14.5 },
+        { row: 0.2, col: 15.5, w: 1.5, cls: "action" },
 
-        { row: 1.2, col: 0, w: 1.5, cls: "action"},
-        { row: 1.2, col: 1.5},
-        { row: 1, col: 2.5},
-        { row: 1, col: 3.5},
-        { row: 1, col: 4.5},
-        { row: 1, col: 5.5},
-        { row: 1, col: 10.5},
-        { row: 1, col: 11.5},
-        { row: 1, col: 12.5},
-        { row: 1, col: 13.5},
-        { row: 1.2, col: 14.5},
-        { row: 1.2, col: 15.5, w: 1.5, cls: "action"},
+        { row: 1.2, col: 0, w: 1.5, cls: "action" },
+        { row: 1.2, col: 1.5 },
+        { row: 1, col: 2.5 },
+        { row: 1, col: 3.5 },
+        { row: 1, col: 4.5 },
+        { row: 1, col: 5.5 },
+        { row: 1, col: 10.5 },
+        { row: 1, col: 11.5 },
+        { row: 1, col: 12.5 },
+        { row: 1, col: 13.5 },
+        { row: 1.2, col: 14.5 },
+        { row: 1.2, col: 15.5, w: 1.5, cls: "action" },
 
-        { row: 2.2, col: 0, w: 1.5, cls: "action"},
-        { row: 2.2, col: 1.5},
-        { row: 2, col: 2.5},
-        { row: 2, col: 3.5},
-        { row: 2, col: 4.5},
-        { row: 2, col: 5.5},
-        { row: 2, col: 10.5},
-        { row: 2, col: 11.5},
-        { row: 2, col: 12.5},
-        { row: 2, col: 13.5},
-        { row: 2.2, col: 14.5},
-        { row: 2.2, col: 15.5, w: 1.5, cls: "action"},
+        { row: 2.2, col: 0, w: 1.5, cls: "action" },
+        { row: 2.2, col: 1.5 },
+        { row: 2, col: 2.5 },
+        { row: 2, col: 3.5 },
+        { row: 2, col: 4.5 },
+        { row: 2, col: 5.5 },
+        { row: 2, col: 10.5 },
+        { row: 2, col: 11.5 },
+        { row: 2, col: 12.5 },
+        { row: 2, col: 13.5 },
+        { row: 2.2, col: 14.5 },
+        { row: 2.2, col: 15.5, w: 1.5, cls: "action" },
 
-        { row: 3.2, col: 0, w: 1.5, cls: "action"},
-        { row: 3.2, col: 1.5},
-        { row: 3, col: 2.5},
-        { row: 3, col: 3.5},
-        { row: 3, col: 4.5},
-        { row: 3, col: 5.5},
-        { row: 3, col: 10.5},
-        { row: 3, col: 11.5},
-        { row: 3, col: 12.5},
-        { row: 3, col: 13.5},
-        { row: 3.2, col: 14.5},
-        { row: 3.2, col: 15.5, w: 1.5, cls: "action"},
-
-
-        { row: 4, col: 2.5},
-        { row: 4, col: 3.5},
-
-        { row: 4, col: 12.5},
-        { row: 4, col: 13.5},
+        { row: 3.2, col: 0, w: 1.5, cls: "action" },
+        { row: 3.2, col: 1.5 },
+        { row: 3, col: 2.5 },
+        { row: 3, col: 3.5 },
+        { row: 3, col: 4.5 },
+        { row: 3, col: 5.5 },
+        { row: 3, col: 10.5 },
+        { row: 3, col: 11.5 },
+        { row: 3, col: 12.5 },
+        { row: 3, col: 13.5 },
+        { row: 3.2, col: 14.5 },
+        { row: 3.2, col: 15.5, w: 1.5, cls: "action" },
 
 
-        { row: 4.5, col: 5, cls: "action"},
-        { row: 4.5, col: 6, cls: "action"},
-        { row: 4.5, col: 7, cls: "action"},
+        { row: 4, col: 2.5 },
+        { row: 4, col: 3.5 },
 
-        { row: 4.5, col: 9, cls: "action"},
-        { row: 4.5, col: 10, cls: "action"},
-        { row: 4.5, col: 11, cls: "action"},
+        { row: 4, col: 12.5 },
+        { row: 4, col: 13.5 },
 
-        { row: 5.5, col: 6, cls: "action"},
-        { row: 5.5, col: 7, cls: "action"},
 
-        { row: 5.5, col: 9, cls: "action"},
-        { row: 5.5, col: 10, cls: "action"},
+        { row: 4.5, col: 5, cls: "action" },
+        { row: 4.5, col: 6, cls: "action" },
+        { row: 4.5, col: 7, cls: "action" },
+
+        { row: 4.5, col: 9, cls: "action" },
+        { row: 4.5, col: 10, cls: "action" },
+        { row: 4.5, col: 11, cls: "action" },
+
+        { row: 5.5, col: 6, cls: "action" },
+        { row: 5.5, col: 7, cls: "action" },
+
+        { row: 5.5, col: 9, cls: "action" },
+        { row: 5.5, col: 10, cls: "action" },
 
     ];
 
     const result = [];
     keysLayout.forEach((k, key) => {
-        result.push({...k, label: dactylLayers[0][key][0], code: dactylLayers[0][key][1]});
+        result.push({ ...k, label: dactylLayers[0][key][0], code: dactylLayers[0][key][1] });
     });
 
     return result;
@@ -453,27 +592,27 @@ const getDactylKeys = () => {
 const layouts = {
     qwerty: {
         name: "QWERTY",
-        keySize: {w: 60, h: 63, gap: 5},
+        keySize: { w: 60, h: 63, gap: 5 },
         keys: getQwertyKeys(),
     },
     corne: {
         name: "Corne (split)",
-        keySize: {w: 57, h: 45, gap: 10},
+        keySize: { w: 57, h: 45, gap: 10 },
         keys: getCorneKeys(),
     },
     dactyl: {
         name: "Dactyl Manuform (split)",
-        keySize: {w: 57, h: 45, gap: 10},
+        keySize: { w: 57, h: 45, gap: 10 },
         keys: getDactylKeys(),
     },
 };
 
 const layoutRoot = document.getElementById("layoutRoot");
 //let currentLayoutKey = "corne";
-//let currentLayoutKey = "dactyl";
-let currentLayoutKey = "qwerty";
+let currentLayoutKey = "dactyl";
+//let currentLayoutKey = "qwerty";
 
-function applyKeySizes({w, h, gap}) {
+function applyKeySizes({ w, h, gap }) {
     const root = document.documentElement;
     root.style.setProperty("--key-w", `${w}px`);
     root.style.setProperty("--key-h", `${h}px`);
@@ -488,7 +627,7 @@ function calcBounds(keys) {
         if (k.col + keyWidth > maxCol) maxCol = k.col + keyWidth;
         if (k.row + 1 > maxRow) maxRow = k.row + 1;
     });
-    return {maxCol, maxRow};
+    return { maxCol, maxRow };
 }
 
 function renderKeyboard(layout) {
@@ -496,8 +635,8 @@ function renderKeyboard(layout) {
 
     applyKeySizes(layout.keySize);
 
-    const {w, h, gap} = layout.keySize;
-    const {maxCol, maxRow} = calcBounds(layout.keys);
+    const { w, h, gap } = layout.keySize;
+    const { maxCol, maxRow } = calcBounds(layout.keys);
     const widthPx = maxCol * (w + gap) + w;
     const heightPx = maxRow * (h + gap) + h;
     layoutRoot.style.width = `${widthPx + 44}px`;
@@ -519,9 +658,9 @@ function renderKeyboard(layout) {
 function shiftCorne() {
     const layout = layouts.corne;
     const layers = corneLayers;
-    
+
     layout.keys.forEach((k, index) => {
-        if (layers[1][index] === null ) return; 
+        if (layers[1][index] === null) return;
         const el = document.querySelector(`.key[data-index="${index}"]`);
         const newKey = layers[1][index];
         el.textContent = newKey[0];
@@ -537,7 +676,45 @@ function normalCorne() {
         const el = document.querySelector(`.key[data-index="${index}"]`);
         const newKey = layers[0][index];
         el.textContent = newKey[0];
-    })    
+    })
+}
+
+function setDactylDefault() {
+    const layout = layouts.dactyl;
+    const layers = dactylLayers;
+
+    layout.keys.forEach((k, index) => {
+        if (layers[1][index] === null) return;
+        const el = document.querySelector(`.key[data-index="${index}"]`);
+        const newKey = layers[0][index];
+        el.textContent = newKey[0];
+    })
+}
+
+function setDactylLower() {
+    console.log("Setting Dactyl lower layer");
+    const layout = layouts.dactyl;
+    const layers = dactylLayers;
+
+    layout.keys.forEach((k, index) => {
+        if (layers[1][index] === null) return;
+        const el = document.querySelector(`.key[data-index="${index}"]`);
+        const newKey = layers[1][index];
+        el.textContent = newKey[0];
+    })
+}
+
+function setDactylMagic() {
+    console.log("Setting Dactyl lower layer");
+    const layout = layouts.dactyl;
+    const layers = dactylLayers;
+
+    layout.keys.forEach((k, index) => {
+        if (layers[1][index] === null) return;
+        const el = document.querySelector(`.key[data-index="${index}"]`);
+        const newKey = layers[2][index];
+        el.textContent = newKey[0];
+    })
 }
 
 function handleKey(code, type) {
@@ -545,12 +722,30 @@ function handleKey(code, type) {
     console.log(`Key ${code} ${type}`);
     if (!el) return;
     if (type === "down") {
-        
+
         if (currentLayoutKey === "corne" && code === 'ShiftLeft') {
             // rerender labels and keycodes!!!
             shiftCorne();
         }
-        
+
+        if (currentLayoutKey === "dactyl" && code === 'F18') {
+            // rerender labels and keycodes!!!
+            console.log("Setting Dactyl lower layer");
+            setDactylLower();
+            setTimeout(() => {
+                setDactylDefault();
+            }, 2000);
+        }
+
+        if (currentLayoutKey === "dactyl" && code === 'F19') {
+            // rerender labels and keycodes!!!
+            console.log("Setting Dactyl magic layer");
+            setDactylMagic();
+            setTimeout(() => {
+                setDactylDefault();
+            }, 2000);
+        }
+
         el.classList.add("pressed");
     } else if (type === "up") {
         el.classList.remove("pressed");
@@ -559,6 +754,16 @@ function handleKey(code, type) {
             // rerender labels and keycodes!!!
             normalCorne();
         }
+
+        //if (currentLayoutKey === "dactyl" && code === 'F18') {
+        // rerender labels and keycodes!!!
+        //    setDactylDefault();
+        //}
+
+        //if (currentLayoutKey === "dactyl" && code === 'F19') {
+        // rerender labels and keycodes!!!
+        //    console.log("Un Setting Dactyl magic layer");
+        //}
     }
 }
 
@@ -578,7 +783,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
         tauri.event
             .listen("key_event", (e) => {
-                const {key, event_type} = e.payload;
+                const { key, event_type } = e.payload;
                 handleKey(key, event_type);
             })
             .catch((err) => console.error("Failed to listen key_event:", err));
