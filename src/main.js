@@ -607,9 +607,17 @@ const layouts = {
     },
 };
 
+const layoutLayers = {
+    qwerty: qwertyLayers,
+    corne: corneLayers,
+    dactyl: dactylLayers,
+};
+
 const layoutRoot = document.getElementById("layoutRoot");
-//let currentLayoutKey = "corne";
-let currentLayoutKey = "dactyl";
+let currentLayoutKey = "corne";
+let currentLayerIndex = 0;
+let layerIndicatorEl = null;
+//let currentLayoutKey = "dactyl";
 //let currentLayoutKey = "qwerty";
 
 function applyKeySizes({ w, h, gap }) {
@@ -653,6 +661,35 @@ function renderKeyboard(layout) {
         if (k.w) el.style.setProperty("--w", k.w);
         layoutRoot.appendChild(el);
     });
+
+    renderLayerIndicator();
+}
+
+function ensureLayerIndicator() {
+    if (!layerIndicatorEl) {
+        layerIndicatorEl = document.createElement("div");
+        layerIndicatorEl.id = "layerIndicator";
+        layerIndicatorEl.className = "layers-indicator";
+    }
+
+    if (!layoutRoot.contains(layerIndicatorEl)) {
+        layoutRoot.appendChild(layerIndicatorEl);
+    }
+}
+
+function renderLayerIndicator() {
+    ensureLayerIndicator();
+    const totalLayers = layoutLayers[currentLayoutKey]?.length ?? 1;
+    layerIndicatorEl.innerHTML = "";
+
+    for (let i = 0; i < totalLayers; i++) {
+        const dot = document.createElement("span");
+        dot.className = "layer-dot";
+        if (i === currentLayerIndex) {
+            dot.classList.add("active");
+        }
+        layerIndicatorEl.appendChild(dot);
+    }
 }
 
 function shiftCorne() {
@@ -665,6 +702,9 @@ function shiftCorne() {
         const newKey = layers[1][index];
         el.textContent = newKey[0];
     })
+
+    currentLayerIndex = 1;
+    renderLayerIndicator();
 }
 
 function normalCorne() {
@@ -677,6 +717,9 @@ function normalCorne() {
         const newKey = layers[0][index];
         el.textContent = newKey[0];
     })
+
+    currentLayerIndex = 0;
+    renderLayerIndicator();
 }
 
 function setDactylDefault() {
@@ -689,6 +732,9 @@ function setDactylDefault() {
         const newKey = layers[0][index];
         el.textContent = newKey[0];
     })
+
+    currentLayerIndex = 0;
+    renderLayerIndicator();
 }
 
 function setDactylLower() {
@@ -702,6 +748,9 @@ function setDactylLower() {
         const newKey = layers[1][index];
         el.textContent = newKey[0];
     })
+
+    currentLayerIndex = 1;
+    renderLayerIndicator();
 }
 
 function setDactylMagic() {
@@ -715,6 +764,9 @@ function setDactylMagic() {
         const newKey = layers[2][index];
         el.textContent = newKey[0];
     })
+
+    currentLayerIndex = 2;
+    renderLayerIndicator();
 }
 
 function handleKey(code, type) {
@@ -722,7 +774,6 @@ function handleKey(code, type) {
     console.log(`Key ${code} ${type}`);
     if (!el) return;
     if (type === "down") {
-
         if (currentLayoutKey === "corne" && code === 'ShiftLeft') {
             // rerender labels and keycodes!!!
             shiftCorne();
@@ -771,6 +822,7 @@ function setLayout(key) {
     const layout = layouts[key];
     if (!layout) return;
     currentLayoutKey = key;
+    currentLayerIndex = 0;
     renderKeyboard(layout);
 }
 

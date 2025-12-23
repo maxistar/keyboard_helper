@@ -99,6 +99,37 @@ select {
   overflow: hidden;
 }
 
+.layers-indicator {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(10, 13, 26, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(6px);
+}
+
+.layer-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.layer-dot.active {
+  background: var(--accent);
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(60, 201, 199, 0.25);
+  transform: scale(1.08);
+}
+
 .key {
   position: absolute;
   width: calc(var(--key-w) * var(--w, 1) + var(--gap) * (var(--w, 1) - 1));
