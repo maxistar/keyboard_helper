@@ -39,6 +39,39 @@ function calcBounds(keys) {
     return { maxCol, maxRow };
 }
 
+function renderKeyLabel(el, label) {
+    el.innerHTML = "";
+    if (!label) return;
+
+    if (typeof label === "object" && label.image) {
+        const img = document.createElement("img");
+        img.src = label.image;
+        img.alt = label.alt ?? label.text ?? "";
+        img.className = "key-icon";
+        el.appendChild(img);
+        return;
+    }
+
+    if (typeof label === "object" && "text" in label) {
+        el.textContent = label.text ?? "";
+        return;
+    }
+
+    el.textContent = label;
+}
+
+function normalizeLabel(entry) {
+    if (!entry) return null;
+    if (Array.isArray(entry)) {
+        const [text, , image] = entry;
+        if (image) {
+            return { text, image };
+        }
+        return text;
+    }
+    return entry;
+}
+
 function renderKeyboard(layout) {
     layoutRoot.innerHTML = "";
 
@@ -54,7 +87,7 @@ function renderKeyboard(layout) {
     layout.keys.forEach((k, key) => {
         const el = document.createElement("div");
         el.className = `key ${k.cls || ""}`.trim();
-        el.textContent = k.label;
+        renderKeyLabel(el, k.label);
         el.dataset.key = k.code;
         el.dataset.index = key;
         el.style.setProperty("--row", k.row);
@@ -110,7 +143,7 @@ function applyLayer(index) {
         if (!targetKey) return;
         const el = document.querySelector(`.key[data-index="${keyIndex}"]`);
         if (!el) return;
-        el.textContent = targetKey[0];
+        renderKeyLabel(el, normalizeLabel(targetKey));
     });
 
     currentLayerIndex = safeIndex;

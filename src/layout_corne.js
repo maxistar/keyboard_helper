@@ -162,9 +162,9 @@ export const corneLayers = [[
     ["→", "KeyL"],
     null,
     ["BT Clr", "KeyY"],
-    ["BT1", "KeyY"],
-    ["BT2", "KeyX"],
-    ["BT3", "KeyC"],
+    ["BT1", "KeyY", "assets/images/linux-logo-penguin.png"],
+    ["BT2", "KeyX", "assets/images/apple_rainbow.png"],
+    ["BT3", "KeyC", "assets/images/android-logo.png"],
     ["BT4", "KeyV"],
     ["BT5", "KeyB"],
     ["Т", "KeyM"],
@@ -278,7 +278,9 @@ const corneKeysLayout = [
 const getCorneKeys = () => {
     const result = [];
     corneKeysLayout.forEach((k, key) => {
-        result.push({ ...k, label: corneLayers[0][key][0], code: corneLayers[0][key][1] });
+        const [label, code, image] = corneLayers[0][key];
+        const labelValue = image ? { text: label, image } : label;
+        result.push({ ...k, label: labelValue, code });
     });
 
     return result;
