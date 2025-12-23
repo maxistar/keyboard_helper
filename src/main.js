@@ -231,8 +231,52 @@ const corneLayers = [[
     null,
     null,
     null,
+],
+[
+    null,
+    ["Й", "KeyQ"],
+    ["Ц", "KeyW"],
+    ["У", "KeyE"],
+    ["К", "KeyR"],
+    ["Е", "KeyT"],
+    ["Н", "KeyY"],
+    ["Г", "KeyU"],
+    ["Ш", "KeyI"],
+    ["Щ", "KeyO"],
+    ["З", "KeyP"],
+    null,
+    null,
+    ["Ф", "KeyA"],
+    ["Ы", "KeyS"],
+    ["В", "KeyD"],
+    ["А", "KeyF"],
+    ["П", "KeyG"],
+    ["Р", "KeyH"],
+    ["О", "KeyJ"],
+    ["О", "KeyK"],
+    ["Л", "KeyL"],
+    ["Д", "KeyL"],
+    null,
+    null,
+    ["Я", "KeyY"],
+    ["Ч", "KeyX"],
+    ["С", "KeyC"],
+    ["М", "KeyV"],
+    ["И", "KeyB"],
+    ["Т", "KeyM"],
+    ["Ь", "KeyM"],
+    ["Б", "KeyM"],
+    ["Ю", "KeyM"],
+    [".", "KeyM"],
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
 ]
-
 ];
 
 const getCorneKeys = () => {
@@ -688,85 +732,54 @@ function renderLayerIndicator() {
         if (i === currentLayerIndex) {
             dot.classList.add("active");
         }
+        dot.dataset.index = i;
+        dot.title = `Layer ${i + 1}`;
+        dot.addEventListener("click", () => applyLayer(i));
         layerIndicatorEl.appendChild(dot);
     }
 }
 
-function shiftCorne() {
-    const layout = layouts.corne;
-    const layers = corneLayers;
+function applyLayer(index) {
+    const layers = layoutLayers[currentLayoutKey];
+    const layout = layouts[currentLayoutKey];
+    if (!layers || !layout) return;
 
-    layout.keys.forEach((k, index) => {
-        if (layers[1][index] === null) return;
-        const el = document.querySelector(`.key[data-index="${index}"]`);
-        const newKey = layers[1][index];
-        el.textContent = newKey[0];
-    })
+    const safeIndex = Math.max(0, Math.min(index, layers.length - 1));
+    const targetLayer = layers[safeIndex] ?? layers[0];
+    const baseLayer = layers[0];
 
-    currentLayerIndex = 1;
+    layout.keys.forEach((k, keyIndex) => {
+        const targetKey = targetLayer[keyIndex] ?? baseLayer[keyIndex];
+        if (!targetKey) return;
+        const el = document.querySelector(`.key[data-index="${keyIndex}"]`);
+        if (!el) return;
+        el.textContent = targetKey[0];
+    });
+
+    currentLayerIndex = safeIndex;
     renderLayerIndicator();
+}
+
+function shiftCorne() {
+    applyLayer(1);
 }
 
 function normalCorne() {
-    const layout = layouts.corne;
-    const layers = corneLayers;
-
-    layout.keys.forEach((k, index) => {
-
-        const el = document.querySelector(`.key[data-index="${index}"]`);
-        const newKey = layers[0][index];
-        el.textContent = newKey[0];
-    })
-
-    currentLayerIndex = 0;
-    renderLayerIndicator();
+    applyLayer(0);
 }
 
 function setDactylDefault() {
-    const layout = layouts.dactyl;
-    const layers = dactylLayers;
-
-    layout.keys.forEach((k, index) => {
-        if (layers[1][index] === null) return;
-        const el = document.querySelector(`.key[data-index="${index}"]`);
-        const newKey = layers[0][index];
-        el.textContent = newKey[0];
-    })
-
-    currentLayerIndex = 0;
-    renderLayerIndicator();
+    applyLayer(0);
 }
 
 function setDactylLower() {
     console.log("Setting Dactyl lower layer");
-    const layout = layouts.dactyl;
-    const layers = dactylLayers;
-
-    layout.keys.forEach((k, index) => {
-        if (layers[1][index] === null) return;
-        const el = document.querySelector(`.key[data-index="${index}"]`);
-        const newKey = layers[1][index];
-        el.textContent = newKey[0];
-    })
-
-    currentLayerIndex = 1;
-    renderLayerIndicator();
+    applyLayer(1);
 }
 
 function setDactylMagic() {
     console.log("Setting Dactyl lower layer");
-    const layout = layouts.dactyl;
-    const layers = dactylLayers;
-
-    layout.keys.forEach((k, index) => {
-        if (layers[1][index] === null) return;
-        const el = document.querySelector(`.key[data-index="${index}"]`);
-        const newKey = layers[2][index];
-        el.textContent = newKey[0];
-    })
-
-    currentLayerIndex = 2;
-    renderLayerIndicator();
+    applyLayer(2);
 }
 
 function handleKey(code, type) {
