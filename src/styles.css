@@ -138,7 +138,7 @@ select {
 .key {
   position: absolute;
   width: calc(var(--key-w) * var(--w, 1) + var(--gap) * (var(--w, 1) - 1));
-  height: var(--key-h);
+  height: calc(var(--key-h) * var(--h, 1) + var(--gap) * (var(--h, 1) - 1));
   left: calc(var(--col) * (var(--key-w) + var(--gap)));
   top: calc(var(--row) * (var(--key-h) + var(--gap)));
   border-radius: 10px;

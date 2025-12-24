@@ -33,8 +33,9 @@ function calcBounds(keys) {
     let maxRow = 0;
     keys.forEach((k) => {
         const keyWidth = k.w ?? 1;
+        const keyHeight = k.h ?? 1;
         if (k.col + keyWidth > maxCol) maxCol = k.col + keyWidth;
-        if (k.row + 1 > maxRow) maxRow = k.row + 1;
+        if (k.row + keyHeight > maxRow) maxRow = k.row + keyHeight;
     });
     return { maxCol, maxRow };
 }
