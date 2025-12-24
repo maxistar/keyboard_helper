@@ -18,12 +18,12 @@ const layoutLayers = {
 };
 
 const layoutRoot = document.getElementById("layoutRoot");
-//let currentLayoutKey = "corne";
 let currentLayerIndex = 0;
 let layerIndicatorEl = null;
+let currentLayoutKey = "corne";
 //let currentLayoutKey = "dactyl";
 //let currentLayoutKey = "qwerty";
-let currentLayoutKey = "magic";
+//let currentLayoutKey = "magic";
 
 function applyKeySizes({ w, h, gap }) {
   const root = document.documentElement;
