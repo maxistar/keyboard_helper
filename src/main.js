@@ -20,8 +20,8 @@ const layoutLayers = {
 const layoutRoot = document.getElementById("layoutRoot");
 let currentLayerIndex = 0;
 let layerIndicatorEl = null;
-let currentLayoutKey = "corne";
-//let currentLayoutKey = "dactyl";
+//let currentLayoutKey = "corne"; 
+let currentLayoutKey = "dactyl";
 //let currentLayoutKey = "qwerty";
 //let currentLayoutKey = "magic";
 

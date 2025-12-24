@@ -89,7 +89,7 @@ export const magicLayers = [
     ["6", "Kp6"],
     ["+", "Unknown(69)"],
 
-    ["⇧", "ShiftLeft"],
+    ["", "ShiftLeft"],
     ["<", "BackQuote"],
     ["y", "KeyZ"],
     ["x", "KeyX"],
