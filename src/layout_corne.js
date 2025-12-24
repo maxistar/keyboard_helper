@@ -268,10 +268,10 @@ const corneKeysLayout = [
     { row: 2, col: 15 },
 
     { row: 3.2, col: 5, cls: "action" },
-    { row: 3.2, col: 6, cls: "action" },
-    { row: 3.2, col: 7, cls: "action" },
-    { row: 3.2, col: 9, cls: "action" },
-    { row: 3.2, col: 10, cls: "action" },
+    { row: 3.2, col: 6, cls: "action", angle: 5 },
+    { row: 3.4, col: 7, cls: "action", angle: 10 },
+    { row: 3.4, col: 9, cls: "action", angle: -10 },
+    { row: 3.2, col: 10, cls: "action", angle: -5 },
     { row: 3.2, col: 11, cls: "action" },
 ];
 

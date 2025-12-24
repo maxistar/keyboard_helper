@@ -269,19 +269,19 @@ const dactylKeysLayout = [
     { row: 4, col: 13.5 },
 
 
-    { row: 4.5, col: 5, cls: "action" },
-    { row: 4.5, col: 6, cls: "action" },
-    { row: 4.5, col: 7, cls: "action" },
+    { row: 4.2, col: 4.8, cls: "action", angle:  3},
+    { row: 4.35, col: 5.8, cls: "action", angle: 8 },
+    { row: 4.6, col: 6.8, cls: "action", angle: 10 },
 
-    { row: 4.5, col: 9, cls: "action" },
-    { row: 4.5, col: 10, cls: "action" },
-    { row: 4.5, col: 11, cls: "action" },
+    { row: 4.6, col: 9.2, cls: "action", angle: -8 },
+    { row: 4.35, col: 10.2, cls: "action", angle: -8 }, 
+    { row: 4.2, col: 11.2, cls: "action", angle: -3 },
 
-    { row: 5.5, col: 6, cls: "action" },
-    { row: 5.5, col: 7, cls: "action" },
+    { row: 5.4, col: 5.6, cls: "action", angle: 9 },
+    { row: 5.6, col: 6.7, cls: "action", angle: 10 },
 
-    { row: 5.5, col: 9, cls: "action" },
-    { row: 5.5, col: 10, cls: "action" },
+    { row: 5.6, col: 9.3, cls: "action", angle: -10 },
+    { row: 5.4, col: 10.4, cls: "action", angle: -9 },
 
 ];
 

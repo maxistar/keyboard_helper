@@ -151,6 +151,8 @@ select {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+  transform: rotate(var(--angle, 0deg));
+  transform-origin: center;
   /*transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;*/
 }
 

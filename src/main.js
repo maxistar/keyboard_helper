@@ -99,6 +99,9 @@ function renderKeyboard(layout) {
     el.style.setProperty("--col", k.col);
     if (k.w) el.style.setProperty("--w", k.w);
     if (k.h) el.style.setProperty("--h", k.h);
+    if (typeof k.angle === "number") {
+      el.style.setProperty("--angle", `${k.angle}deg`);
+    }
     layoutRoot.appendChild(el);
   });
 
