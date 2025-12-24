@@ -59,10 +59,9 @@ body {
 }
 
 .shell {
-  width: min(1200px, 95vw);
+  /*width: min(1200px, 95vw);*/
   display: flex;
   flex-direction: column;
-  gap: 18px;
 }
 
 .toolbar {
@@ -94,13 +93,13 @@ select {
 
 .layout {
   position: relative;
-  padding: 22px;
-  border-radius: 18px;
+  padding: 10px 0px 0 0;
   overflow: hidden;
 }
 
 .layers-indicator {
-  position: absolute;
+  position: fixed;
+  z-index: 1000;
   right: 14px;
   bottom: 14px;
   display: flex;

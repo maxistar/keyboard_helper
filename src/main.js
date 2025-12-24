@@ -1,4 +1,4 @@
-import { qwertyLayout, qwertyLayers } from "./layout_qwert.js";
+import { qwertyLayout, qwertyLayers } from "./layout_qwertz.js";
 import { corneLayout, corneLayers } from "./layout_corne.js";
 import { dactylLayout, dactylLayers } from "./layout_dactyl.js";
 
@@ -15,11 +15,11 @@ const layoutLayers = {
 };
 
 const layoutRoot = document.getElementById("layoutRoot");
-let currentLayoutKey = "corne";
+//let currentLayoutKey = "corne";
 let currentLayerIndex = 0;
 let layerIndicatorEl = null;
 //let currentLayoutKey = "dactyl";
-//let currentLayoutKey = "qwerty";
+let currentLayoutKey = "qwerty";
 
 function applyKeySizes({ w, h, gap }) {
     const root = document.documentElement;
@@ -81,8 +81,8 @@ function renderKeyboard(layout) {
     const { maxCol, maxRow } = calcBounds(layout.keys);
     const widthPx = maxCol * (w + gap) + w;
     const heightPx = maxRow * (h + gap) + h;
-    layoutRoot.style.width = `${widthPx + 44}px`;
-    layoutRoot.style.height = `${heightPx + 44}px`;
+    layoutRoot.style.width = `${widthPx}px`;
+    layoutRoot.style.height = `${heightPx}px`;
 
     layout.keys.forEach((k, key) => {
         const el = document.createElement("div");
@@ -93,6 +93,7 @@ function renderKeyboard(layout) {
         el.style.setProperty("--row", k.row);
         el.style.setProperty("--col", k.col);
         if (k.w) el.style.setProperty("--w", k.w);
+        if (k.h) el.style.setProperty("--h", k.h);
         layoutRoot.appendChild(el);
     });
 
@@ -106,8 +107,8 @@ function ensureLayerIndicator() {
         layerIndicatorEl.className = "layers-indicator";
     }
 
-    if (!layoutRoot.contains(layerIndicatorEl)) {
-        layoutRoot.appendChild(layerIndicatorEl);
+    if (!document.body.contains(layerIndicatorEl)) {
+        document.body.appendChild(layerIndicatorEl);
     }
 }
 
