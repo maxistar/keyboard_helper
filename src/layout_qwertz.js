@@ -1,21 +1,21 @@
 export const qwertyLayers = [
     [
         ["Esc", "Escape"],
-        ["F1", "Digit1"],
-        ["F2", "Digit2"],
-        ["F3", "Digit3"],
-        ["F4", "Digit4"],
-        ["F5", "Digit5"],
-        ["F6", "Digit6"],
-        ["F7", "Digit7"],
-        ["F8", "Digit8"],
-        ["F9", "Digit9"],
-        ["F10", "Digit0"],
-        ["F11", "Minus"],
-        ["F12",  "Equal"],
-        ["Druck", "Backspace"],
-        ["Roll", "Backspace"],
-        ["Pause", "Backspace"],
+        ["F1", ""],
+        ["F2", ""],
+        ["F3", ""],
+        ["F4", ""],
+        ["F5", ""],
+        ["F6", ""],
+        ["F7", ""],
+        ["F8", ""],
+        ["F9", ""],
+        ["F10", ""],
+        ["F11", ""],
+        ["F12",  ""],
+        ["Druck", ""],
+        ["Roll", ""],
+        ["Pause", ""],
 
         ["Esc", "Escape"],
         ["1", "Digit1"],
@@ -54,7 +54,7 @@ export const qwertyLayers = [
         ["p", "KeyP"],
         ["ü", "BracketLeft"],
         ["+", "BracketRight"],
-        ["Enter", "Enter"],
+        ["⏎", "Enter"],
 
         ["Entf", "Equal"],
         ["Ende", "Equal"],
@@ -101,10 +101,10 @@ export const qwertyLayers = [
 
         ["↑", "Equal"], 
 
-        ["1", "Equal"],
-        ["2", "Equal"],
-        ["3", "Equal"],
-        ["4", "Equal"],
+        ["1", ""], 
+        ["2", ""],
+        ["3", ""],
+        ["⏎", ""],
 
         ["Ctrl", "ControlLeft"],
         ["Win", "MetaLeft"],
@@ -261,6 +261,6 @@ const getQwertyKeys = () => {
 
 export const qwertyLayout = {
     name: "QWERTY",
-    keySize: { w: 54, h: 50, gap: 2 },
+    keySize: { w: 53, h: 50, gap: 2 },
     keys: getQwertyKeys(),
 };
