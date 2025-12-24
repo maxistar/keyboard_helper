@@ -37,14 +37,14 @@ export const magicLayers = [
     ["´", "Equal"],
     ["⌫", "Backspace"],
 
-    ["Einfg", "Insert"],
-    ["Pos1", "Home"],
-    ["Bild↑", "PageUp"],
+    ["🌐", "Unknown(179)"],
+    ["⤒", "Unknown(115)"],
+    ["↑", "Unknown(116)"],
 
-    ["Num", "NumLock"],
-    ["/", "KpDivide"],
-    ["*", "KpMultiply"],
-    ["-", "KpMinus"],
+    ["Num", "Unknown(71)"],
+    ["=", "Unknown(81)"],
+    ["/", "Unknown(75)"],
+    ["*", "Unknown(67)"],
 
     ["Tab", "Tab"],
     ["q", "KeyQ"],
@@ -61,14 +61,14 @@ export const magicLayers = [
     ["+", "RightBracket"],
     ["⏎", "Return"],
 
-    ["Entf", "Delete"],
-    ["Ende", "End"],
-    ["Bild↓", "PageDown"],
+    ["⌦", "Unknown(117)"],
+    ["⤓", "Unknown(119)"],
+    ["↓", "Unknown(121)"],
 
     ["7", "Kp7"],
     ["8", "Kp8"],
     ["9", "Kp9"],
-    ["+", "KpPlus"],
+    ["-", "Unknown(78)"],
 
     ["Caps", "CapsLock"],
     ["a", "KeyA"],
@@ -87,10 +87,10 @@ export const magicLayers = [
     ["4", "Kp4"],
     ["5", "Kp5"],
     ["6", "Kp6"],
-    ["+", "Kp6"],
+    ["+", "Unknown(69)"],
 
-    ["Shift", "ShiftLeft"],
-    ["<", "IntlBackslash"],
+    ["⇧", "ShiftLeft"],
+    ["<", "BackQuote"],
     ["y", "KeyZ"],
     ["x", "KeyX"],
     ["c", "KeyC"],
@@ -101,7 +101,7 @@ export const magicLayers = [
     [",", "Comma"],
     [".", "Dot"],
     ["-", "Slash"],
-    ["Shift", "ShiftRight"],
+    ["⇧", "ShiftRight"],
 
     ["↑", "UpArrow"],
 
@@ -110,13 +110,13 @@ export const magicLayers = [
     ["3", "Kp3"],
     ["⏎", "KpReturn"],
 
-    ["Ctrl", "ControlLeft"],
-    ["Win", "MetaLeft"],
-    ["Alt", "Alt"],
+    ["⌃", "ControlLeft"],
+    ["⌥", "Alt"],
+    ["⌘", "MetaLeft"],
     ["Space", "Space"],
-    ["Alt", "AltGr"],
-    ["Menu", "Unknown135"],
-    ["Ctrl", "ControlRight"],
+    ["⌘", "MetaRight"],
+    ["⌥", "AltGr"],
+    ["⌃", "Unknown(62)"],
 
     ["←", "LeftArrow"],
     ["↓", "DownArrow"],
