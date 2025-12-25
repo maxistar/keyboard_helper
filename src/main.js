@@ -1,8 +1,3 @@
-import qwertyDefinition from "./layout_qwertz.js";
-import corneDefinition from "./layout_corne.js";
-import dactylDefinition from "./layout_dactyl.js";
-import magicDefinition from "./layout_magic.js";
-import macDefinition from "./layout_mac.js";
 import { createMenu } from "./menu.js";
 
 function buildKeysFromBase(keyPositions, layers) {
@@ -29,41 +24,55 @@ function normalizeLayers(layerSource) {
   return [defaultLayer, ...additionalLayers].filter(Boolean);
 }
 
-const layoutDefinitions = {
-  qwertz: qwertyDefinition,
-  corne: corneDefinition,
-  dactyl: dactylDefinition,
-  magic: magicDefinition,
-  mac: macDefinition,
-};
+const layoutKeys = ["qwertz", "corne", "dactyl", "magic", "mac"];
+let layoutDefinitions = {};
+let normalizedLayoutLayers = {};
+let layouts = {};
+let layoutLayers = {};
 
+async function loadLayoutDefinitions() {
+  const entries = [];
+  for (const key of layoutKeys) {
+    const fileName = `layout_${key}.json`;
+    try {
+      const resp = await fetch(fileName);
+      if (!resp.ok) {
+        console.warn(`Failed to load ${fileName}: ${resp.status}`);
+        continue;
+      }
+      const data = await resp.json();
+      entries.push([key, data]);
+    } catch (err) {
+      console.warn(`Failed to parse ${fileName}`, err);
+    }
+  }
+  layoutDefinitions = Object.fromEntries(entries);
+  rebuildLayoutData();
+}
 
+function rebuildLayoutData() {
+  normalizedLayoutLayers = Object.fromEntries(
+    Object.entries(layoutDefinitions).map(([key, def]) => [
+      key,
+      normalizeLayers(def.keyLayers),
+    ])
+  );
 
-const normalizedLayoutLayers = Object.fromEntries(
-  Object.entries(layoutDefinitions).map(([key, def]) => [
-    key,
-    normalizeLayers(def.keyLayers),
-  ])
-);
+  layouts = Object.fromEntries(
+    Object.entries(layoutDefinitions).map(([key, def]) => [
+      key,
+      buildLayout(def, normalizedLayoutLayers[key]),
+    ])
+  );
 
-const layouts = Object.fromEntries(
-  Object.entries(layoutDefinitions).map(([key, def]) => [
-    key,
-    buildLayout(def, normalizedLayoutLayers[key]),
-  ])
-);
-
-const layoutLayers = normalizedLayoutLayers;
+  layoutLayers = normalizedLayoutLayers;
+}
 
 const layoutRoot = document.getElementById("layoutRoot");
 let currentLayerIndex = 0;
 let layerIndicatorEl = null;
 let menuControls = null;
-//let currentLayoutKey = "corne"; 
-//let currentLayoutKey = "dactyl";
-let currentLayoutKey = "mac";
-//let currentLayoutKey = "qwerty";
-//let currentLayoutKey = "magic";
+let currentLayoutKey = "qwertz";
 
 function getAllowedLayoutKeys(config) {
   const availableKeys = Object.keys(layoutDefinitions);
@@ -320,9 +329,12 @@ function setLayout(key) {
 
 window.addEventListener("DOMContentLoaded", async () => {
   const tauri = window.__TAURI__;
+  await loadLayoutDefinitions();
+  if (Object.keys(layoutDefinitions).length === 0) {
+    console.error("No layouts loaded; cannot initialize UI");
+    return;
+  }
   const config = await loadConfig();
-  console.log("Tauri API:");
-  console.log("Loaded config:", config);  
   const allowedLayoutKeys = getAllowedLayoutKeys(config);
   const layoutMenuOptions = allowedLayoutKeys.map((key) => ({
     key,

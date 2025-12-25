@@ -1,0 +1,975 @@
+{
+  "name": "Dactyl Manuform (split)",
+  "keySize": {
+    "w": 57,
+    "h": 45,
+    "gap": 10
+  },
+  "keyPositions": [
+    {
+      "row": 0.2,
+      "col": 0,
+      "w": 1.5,
+      "cls": "action"
+    },
+    {
+      "row": 0.2,
+      "col": 1.5
+    },
+    {
+      "row": 0,
+      "col": 2.5
+    },
+    {
+      "row": 0,
+      "col": 3.5
+    },
+    {
+      "row": 0,
+      "col": 4.5
+    },
+    {
+      "row": 0,
+      "col": 5.5
+    },
+    {
+      "row": 0,
+      "col": 10.5
+    },
+    {
+      "row": 0,
+      "col": 11.5
+    },
+    {
+      "row": 0,
+      "col": 12.5
+    },
+    {
+      "row": 0,
+      "col": 13.5
+    },
+    {
+      "row": 0.2,
+      "col": 14.5
+    },
+    {
+      "row": 0.2,
+      "col": 15.5,
+      "w": 1.5,
+      "cls": "action"
+    },
+    {
+      "row": 1.2,
+      "col": 0,
+      "w": 1.5,
+      "cls": "action"
+    },
+    {
+      "row": 1.2,
+      "col": 1.5
+    },
+    {
+      "row": 1,
+      "col": 2.5
+    },
+    {
+      "row": 1,
+      "col": 3.5
+    },
+    {
+      "row": 1,
+      "col": 4.5
+    },
+    {
+      "row": 1,
+      "col": 5.5
+    },
+    {
+      "row": 1,
+      "col": 10.5
+    },
+    {
+      "row": 1,
+      "col": 11.5
+    },
+    {
+      "row": 1,
+      "col": 12.5
+    },
+    {
+      "row": 1,
+      "col": 13.5
+    },
+    {
+      "row": 1.2,
+      "col": 14.5
+    },
+    {
+      "row": 1.2,
+      "col": 15.5,
+      "w": 1.5,
+      "cls": "action"
+    },
+    {
+      "row": 2.2,
+      "col": 0,
+      "w": 1.5,
+      "cls": "action"
+    },
+    {
+      "row": 2.2,
+      "col": 1.5
+    },
+    {
+      "row": 2,
+      "col": 2.5
+    },
+    {
+      "row": 2,
+      "col": 3.5
+    },
+    {
+      "row": 2,
+      "col": 4.5
+    },
+    {
+      "row": 2,
+      "col": 5.5
+    },
+    {
+      "row": 2,
+      "col": 10.5
+    },
+    {
+      "row": 2,
+      "col": 11.5
+    },
+    {
+      "row": 2,
+      "col": 12.5
+    },
+    {
+      "row": 2,
+      "col": 13.5
+    },
+    {
+      "row": 2.2,
+      "col": 14.5
+    },
+    {
+      "row": 2.2,
+      "col": 15.5,
+      "w": 1.5,
+      "cls": "action"
+    },
+    {
+      "row": 3.2,
+      "col": 0,
+      "w": 1.5,
+      "cls": "action"
+    },
+    {
+      "row": 3.2,
+      "col": 1.5
+    },
+    {
+      "row": 3,
+      "col": 2.5
+    },
+    {
+      "row": 3,
+      "col": 3.5
+    },
+    {
+      "row": 3,
+      "col": 4.5
+    },
+    {
+      "row": 3,
+      "col": 5.5
+    },
+    {
+      "row": 3,
+      "col": 10.5
+    },
+    {
+      "row": 3,
+      "col": 11.5
+    },
+    {
+      "row": 3,
+      "col": 12.5
+    },
+    {
+      "row": 3,
+      "col": 13.5
+    },
+    {
+      "row": 3.2,
+      "col": 14.5
+    },
+    {
+      "row": 3.2,
+      "col": 15.5,
+      "w": 1.5,
+      "cls": "action"
+    },
+    {
+      "row": 4,
+      "col": 2.5
+    },
+    {
+      "row": 4,
+      "col": 3.5
+    },
+    {
+      "row": 4,
+      "col": 12.5
+    },
+    {
+      "row": 4,
+      "col": 13.5
+    },
+    {
+      "row": 4.2,
+      "col": 4.8,
+      "cls": "action",
+      "angle": 3
+    },
+    {
+      "row": 4.35,
+      "col": 5.8,
+      "cls": "action",
+      "angle": 8
+    },
+    {
+      "row": 4.6,
+      "col": 6.8,
+      "cls": "action",
+      "angle": 10
+    },
+    {
+      "row": 4.6,
+      "col": 9.2,
+      "cls": "action",
+      "angle": -8
+    },
+    {
+      "row": 4.35,
+      "col": 10.2,
+      "cls": "action",
+      "angle": -8
+    },
+    {
+      "row": 4.2,
+      "col": 11.2,
+      "cls": "action",
+      "angle": -3
+    },
+    {
+      "row": 5.4,
+      "col": 5.6,
+      "cls": "action",
+      "angle": 9
+    },
+    {
+      "row": 5.6,
+      "col": 6.7,
+      "cls": "action",
+      "angle": 10
+    },
+    {
+      "row": 5.6,
+      "col": 9.3,
+      "cls": "action",
+      "angle": -10
+    },
+    {
+      "row": 5.4,
+      "col": 10.4,
+      "cls": "action",
+      "angle": -9
+    }
+  ],
+  "keyLayers": {
+    "default": [
+      [
+        "ESC",
+        "KeyQ"
+      ],
+      [
+        "1",
+        "Digit1"
+      ],
+      [
+        "2",
+        "Digit2"
+      ],
+      [
+        "3",
+        "Digit3"
+      ],
+      [
+        "4",
+        "Digit4"
+      ],
+      [
+        "5",
+        "Digit5"
+      ],
+      [
+        "6",
+        "Digit6"
+      ],
+      [
+        "7",
+        "Digit7"
+      ],
+      [
+        "8",
+        "Digit8"
+      ],
+      [
+        "9",
+        "Digit9"
+      ],
+      [
+        "0",
+        "Digit0"
+      ],
+      [
+        "^",
+        "KeyA"
+      ],
+      [
+        "TAB",
+        "KeyQ"
+      ],
+      [
+        "q",
+        "KeyQ"
+      ],
+      [
+        "w",
+        "KeyW"
+      ],
+      [
+        "e",
+        "KeyE"
+      ],
+      [
+        "r",
+        "KeyR"
+      ],
+      [
+        "t",
+        "KeyT"
+      ],
+      [
+        "y",
+        "KeyY"
+      ],
+      [
+        "u",
+        "KeyU"
+      ],
+      [
+        "i",
+        "KeyI"
+      ],
+      [
+        "o",
+        "KeyO"
+      ],
+      [
+        "p",
+        "KeyP"
+      ],
+      [
+        "ß",
+        "KeyA"
+      ],
+      [
+        "🌐",
+        "KeyA"
+      ],
+      [
+        "a",
+        "KeyA"
+      ],
+      [
+        "s",
+        "KeyS"
+      ],
+      [
+        "d",
+        "KeyD"
+      ],
+      [
+        "f",
+        "KeyF"
+      ],
+      [
+        "g",
+        "KeyG"
+      ],
+      [
+        "h",
+        "KeyH"
+      ],
+      [
+        "j",
+        "KeyJ"
+      ],
+      [
+        "k",
+        "KeyK"
+      ],
+      [
+        "l",
+        "KeyL"
+      ],
+      [
+        "ö",
+        "Semicolon"
+      ],
+      [
+        "ä",
+        "Semicolon"
+      ],
+      [
+        "⇧",
+        "KeyZ"
+      ],
+      [
+        "z",
+        "KeyZ"
+      ],
+      [
+        "x",
+        "KeyX"
+      ],
+      [
+        "c",
+        "KeyC"
+      ],
+      [
+        "v",
+        "KeyV"
+      ],
+      [
+        "b",
+        "KeyB"
+      ],
+      [
+        "n",
+        "KeyN"
+      ],
+      [
+        "m",
+        "KeyM"
+      ],
+      [
+        ",",
+        "Comma"
+      ],
+      [
+        ".",
+        "Period"
+      ],
+      [
+        "/",
+        "Slash"
+      ],
+      [
+        "⇧",
+        "Slash"
+      ],
+      [
+        "[",
+        "Space"
+      ],
+      [
+        "Enter",
+        "Enter"
+      ],
+      [
+        " ",
+        "Space"
+      ],
+      [
+        "]",
+        "Enter"
+      ],
+      [
+        "Space",
+        "Space"
+      ],
+      [
+        "Lower",
+        "F18"
+      ],
+      [
+        "Win",
+        "AltLeft"
+      ],
+      [
+        "Win",
+        "AltLeft"
+      ],
+      [
+        "Bksp",
+        "Backspace"
+      ],
+      [
+        "Magic",
+        "F19"
+      ],
+      [
+        " ",
+        "Enter"
+      ],
+      [
+        "Ctrl",
+        "AltLeft"
+      ],
+      [
+        "Alt",
+        "Backspace"
+      ],
+      [
+        "AltGr",
+        "Backspace"
+      ],
+      [
+        "Ctrl",
+        "Backspace"
+      ]
+    ],
+    "lower": [
+      [
+        "BTCLR",
+        "KeyQ"
+      ],
+      [
+        "BT1",
+        "Digit1",
+        "assets/images/linux-logo-penguin.png"
+      ],
+      [
+        "BT2",
+        "Digit2",
+        "assets/images/apple_rainbow.png"
+      ],
+      [
+        "BT3",
+        "Digit3",
+        "assets/images/android-logo.png"
+      ],
+      [
+        "BT4",
+        "Digit4"
+      ],
+      [
+        "BT5",
+        "Digit5"
+      ],
+      [
+        "6",
+        "Digit6"
+      ],
+      [
+        "7",
+        "Digit7"
+      ],
+      [
+        "8",
+        "Digit8"
+      ],
+      [
+        "9",
+        "Digit9"
+      ],
+      [
+        "0",
+        "Digit0"
+      ],
+      [
+        "^",
+        "KeyA"
+      ],
+      [
+        "TAB",
+        "KeyQ"
+      ],
+      [
+        "q",
+        "KeyQ"
+      ],
+      [
+        "w",
+        "KeyW"
+      ],
+      [
+        "e",
+        "KeyE"
+      ],
+      [
+        "r",
+        "KeyR"
+      ],
+      [
+        "t",
+        "KeyT"
+      ],
+      [
+        "y",
+        "KeyY"
+      ],
+      [
+        "u",
+        "KeyU"
+      ],
+      [
+        "i",
+        "KeyI"
+      ],
+      [
+        "o",
+        "KeyO"
+      ],
+      [
+        "p",
+        "KeyP"
+      ],
+      [
+        "ß",
+        "KeyA"
+      ],
+      null,
+      [
+        "a",
+        "KeyA"
+      ],
+      [
+        "s",
+        "KeyS"
+      ],
+      [
+        "d",
+        "KeyD"
+      ],
+      [
+        "f",
+        "KeyF"
+      ],
+      [
+        "g",
+        "KeyG"
+      ],
+      [
+        "←",
+        "KeyH"
+      ],
+      [
+        "↓",
+        "KeyJ"
+      ],
+      [
+        "↑",
+        "KeyK"
+      ],
+      [
+        "→",
+        "KeyL"
+      ],
+      [
+        "ö",
+        "Semicolon"
+      ],
+      [
+        "ä",
+        "Semicolon"
+      ],
+      null,
+      [
+        "z",
+        "KeyZ"
+      ],
+      [
+        "x",
+        "KeyX"
+      ],
+      [
+        "c",
+        "KeyC"
+      ],
+      [
+        "v",
+        "KeyV"
+      ],
+      [
+        "b",
+        "KeyB"
+      ],
+      [
+        "n",
+        "KeyN"
+      ],
+      [
+        "m",
+        "KeyM"
+      ],
+      [
+        ",",
+        "Comma"
+      ],
+      [
+        ".",
+        "Period"
+      ],
+      [
+        "/",
+        "Slash"
+      ],
+      null,
+      [
+        "Space",
+        "Space"
+      ],
+      [
+        "Enter",
+        "Enter"
+      ],
+      [
+        "Space",
+        "Space"
+      ],
+      [
+        "Enter",
+        "Enter"
+      ],
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    "magic": [
+      [
+        "ESC",
+        "KeyQ"
+      ],
+      [
+        "F1",
+        "Digit1"
+      ],
+      [
+        "F2",
+        "Digit2"
+      ],
+      [
+        "F3",
+        "Digit3"
+      ],
+      [
+        "F4",
+        "Digit4"
+      ],
+      [
+        "F5",
+        "Digit5"
+      ],
+      [
+        "F6",
+        "Digit6"
+      ],
+      [
+        "F7",
+        "Digit7"
+      ],
+      [
+        "F8",
+        "Digit8"
+      ],
+      [
+        "F9",
+        "Digit9"
+      ],
+      [
+        "F10",
+        "Digit0"
+      ],
+      [
+        "F11",
+        "KeyA"
+      ],
+      [
+        "TAB",
+        "KeyQ"
+      ],
+      [
+        "q",
+        "KeyQ"
+      ],
+      [
+        "1",
+        "KeyW"
+      ],
+      [
+        "2",
+        "KeyE"
+      ],
+      [
+        "3",
+        "KeyR"
+      ],
+      [
+        "+",
+        "KeyT"
+      ],
+      [
+        "y",
+        "KeyY"
+      ],
+      [
+        "u",
+        "KeyU"
+      ],
+      [
+        "i",
+        "KeyI"
+      ],
+      [
+        "o",
+        "KeyO"
+      ],
+      [
+        "p",
+        "KeyP"
+      ],
+      [
+        "F12",
+        "KeyA"
+      ],
+      null,
+      [
+        "a",
+        "KeyA"
+      ],
+      [
+        "4",
+        "KeyS"
+      ],
+      [
+        "5",
+        "KeyD"
+      ],
+      [
+        "6",
+        "KeyF"
+      ],
+      [
+        "-",
+        "KeyG"
+      ],
+      [
+        "←",
+        "KeyH"
+      ],
+      [
+        "↓",
+        "KeyJ"
+      ],
+      [
+        "↑",
+        "KeyK"
+      ],
+      [
+        "→",
+        "KeyL"
+      ],
+      [
+        "+",
+        "Semicolon"
+      ],
+      [
+        "ä",
+        "Semicolon"
+      ],
+      null,
+      [
+        "z",
+        "KeyZ"
+      ],
+      [
+        "7",
+        "KeyX"
+      ],
+      [
+        "8",
+        "KeyC"
+      ],
+      [
+        "9",
+        "KeyV"
+      ],
+      [
+        "b",
+        "KeyB"
+      ],
+      [
+        "n",
+        "KeyN"
+      ],
+      [
+        "m",
+        "KeyM"
+      ],
+      [
+        ",",
+        "Comma"
+      ],
+      [
+        ".",
+        "Period"
+      ],
+      [
+        "/",
+        "Slash"
+      ],
+      null,
+      [
+        "/",
+        "Space"
+      ],
+      [
+        "0",
+        "Enter"
+      ],
+      [
+        "Space",
+        "Space"
+      ],
+      [
+        "Enter",
+        "Enter"
+      ],
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  }
+}
