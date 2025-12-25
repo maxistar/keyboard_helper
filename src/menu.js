@@ -1,8 +1,9 @@
 const layoutMenuOptions = [
   { key: "qwerty", label: "Qwerz" },
   { key: "magic", label: "Magic Keyboard" },
+  { key: "mac", label: "Mac Keyboard" },
   { key: "dactyl", label: "Dacty" },
-  { key: "corne", label: "Corney" },
+  { key: "corne", label: "Corney" },  
 ];
 
 export function createMenu({ onLayoutSelect, getCurrentLayoutKey }) {

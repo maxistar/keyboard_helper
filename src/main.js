@@ -2,6 +2,7 @@ import { qwertyLayout, qwertyLayers } from "./layout_qwertz.js";
 import { corneLayout, corneLayers } from "./layout_corne.js";
 import { dactylLayout, dactylLayers } from "./layout_dactyl.js";
 import { magicLayout, magicLayers } from "./layout_magic.js";
+import { macLayout, macLayers } from "./layout_mac.js";
 import { createMenu } from "./menu.js";
 
 const layouts = {
@@ -9,6 +10,7 @@ const layouts = {
   corne: corneLayout,
   dactyl: dactylLayout,
   magic: magicLayout,
+  mac: macLayout,
 };
 
 const layoutLayers = {
@@ -16,6 +18,7 @@ const layoutLayers = {
   corne: corneLayers,
   dactyl: dactylLayers,
   magic: magicLayers,
+  mac: macLayers,
 };
 
 const layoutRoot = document.getElementById("layoutRoot");
@@ -23,7 +26,8 @@ let currentLayerIndex = 0;
 let layerIndicatorEl = null;
 let menuControls = null;
 //let currentLayoutKey = "corne"; 
-let currentLayoutKey = "dactyl";
+//let currentLayoutKey = "dactyl";
+let currentLayoutKey = "mac";
 //let currentLayoutKey = "qwerty";
 //let currentLayoutKey = "magic";
 

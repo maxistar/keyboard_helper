@@ -1,4 +1,4 @@
-export const magicLayers = [
+export const macLayers = [
   [
     ["Esc", "Escape"],
     ["F1", "F1"],
@@ -13,14 +13,6 @@ export const magicLayers = [
     ["F10", "F10"],
     ["F11", "F11"],
     ["F12", "F12"],
-    ["F13", "F13"],
-    ["F14", "F14"],
-    ["F15", "F15"],
-
-    ["F16", "F16"],
-    ["F17", "F17"],
-    ["F18", "F18"],
-    ["F19", "F19"],
 
     ["^", "Unknown(10)"],
     ["1", "Num1"],
@@ -37,15 +29,6 @@ export const magicLayers = [
     ["´", "Equal"],
     ["⌫", "Backspace"],
 
-    ["🌐", "Unknown(179)"],
-    ["⤒", "Unknown(115)"],
-    ["↑", "Unknown(116)"],
-
-    ["Num", "Unknown(71)"],
-    ["=", "Unknown(81)"],
-    ["/", "Unknown(75)"],
-    ["*", "Unknown(67)"],
-
     ["Tab", "Tab"],
     ["q", "KeyQ"],
     ["w", "KeyW"],
@@ -61,14 +44,6 @@ export const magicLayers = [
     ["+", "RightBracket"],
     ["⏎", "Return"],
 
-    ["⌦", "Unknown(117)"],
-    ["⤓", "Unknown(119)"],
-    ["↓", "Unknown(121)"],
-
-    ["7", "Kp7"],
-    ["8", "Kp8"],
-    ["9", "Kp9"],
-    ["-", "Unknown(78)"],
 
     ["Caps", "CapsLock"],
     ["a", "KeyA"],
@@ -84,10 +59,6 @@ export const magicLayers = [
     ["ä", "Quote"],
     ["#", "BackSlash"],
 
-    ["4", "Kp4"],
-    ["5", "Kp5"],
-    ["6", "Kp6"],
-    ["+", "Unknown(69)"],
 
     ["⇧", "ShiftLeft"],
     ["<", "BackQuote"],
@@ -103,12 +74,8 @@ export const magicLayers = [
     ["-", "Slash"],
     ["⇧", "ShiftRight"],
 
-    ["↑", "UpArrow"],
 
-    ["1", "Kp1"],
-    ["2", "Kp2"],
-    ["3", "Kp3"],
-    ["⏎", "KpReturn"],
+    ["🌐", "Unknown(179)"],
 
     ["⌃", "ControlLeft"],
     ["⌥", "Alt"],
@@ -116,18 +83,17 @@ export const magicLayers = [
     ["Space", "Space"],
     ["⌘", "MetaRight"],
     ["⌥", "AltGr"],
-    ["⌃", "Unknown(62)"],
 
+    ["↑", "UpArrow"],
     ["←", "LeftArrow"],
     ["↓", "DownArrow"],
     ["→", "RightArrow"],
+    
 
-    ["0", "Kp0"],
-    [",", "KpDelete"],
   ],
 ];
 
-const magicKeysLayout = [
+const macKeysLayout = [
   { row: 0, col: 0, w: 1.5, cls: "function" },
   { row: 0, col: 1.5 },
   { row: 0, col: 2.5 },
@@ -141,15 +107,6 @@ const magicKeysLayout = [
   { row: 0, col: 10.5 },
   { row: 0, col: 11.5 },
   { row: 0, col: 12.5 },
-
-  { row: 0, col: 15 },
-  { row: 0, col: 16 },
-  { row: 0, col: 17 },
-
-  { row: 0, col: 18.5 },
-  { row: 0, col: 19.5 },
-  { row: 0, col: 20.5 },
-  { row: 0, col: 21.5 },
 
   { row: 1, col: 0, cls: "function" },
   { row: 1, col: 1 },
@@ -166,14 +123,7 @@ const magicKeysLayout = [
   { row: 1, col: 12, w: 1 },
   { row: 1, col: 13, w: 1.5 },
 
-  { row: 1, col: 15 },
-  { row: 1, col: 16 },
-  { row: 1, col: 17 },
 
-  { row: 1, col: 18.5 },
-  { row: 1, col: 19.5 },
-  { row: 1, col: 20.5 },
-  { row: 1, col: 21.5 },
 
   { row: 2, col: 0, w: 1.5 },
   { row: 2, col: 1.5 },
@@ -190,14 +140,7 @@ const magicKeysLayout = [
   { row: 2, col: 12.5 },
   { row: 2, col: 13.5, w: 1, h: 2 },
 
-  { row: 2, col: 15 },
-  { row: 2, col: 16 },
-  { row: 2, col: 17 },
 
-  { row: 2, col: 18.5 },
-  { row: 2, col: 19.5 },
-  { row: 2, col: 20.5 },
-  { row: 2, col: 21.5 },
 
   { row: 3, col: 0, w: 1.5 },
   { row: 3, col: 1.5 },
@@ -213,10 +156,6 @@ const magicKeysLayout = [
   { row: 3, col: 11.5 },
   { row: 3, col: 12.5 },
 
-  { row: 3, col: 18.5 },
-  { row: 3, col: 19.5 },
-  { row: 3, col: 20.5 },
-  { row: 3, col: 21.5 },
 
   { row: 4, col: 0, w: 1.2 },
   { row: 4, col: 1.3 },
@@ -232,44 +171,38 @@ const magicKeysLayout = [
   { row: 4, col: 11.3 },
   { row: 4, col: 12.3, w: 2.2 },
 
-  { row: 4, col: 16 },
+  { row: 5, col: 0, w: 1 },
+  { row: 5, col: 1, w: 1 },
+  { row: 5, col: 2, w: 1 },
+  { row: 5, col: 3, w: 1 },
+  { row: 5, col: 4, w: 5.5 },
+  { row: 5, col: 9.5, w: 1 },
+  { row: 5, col: 10.5, w: 1 },
 
-  { row: 4, col: 18.5 },
-  { row: 4, col: 19.5 },
-  { row: 4, col: 20.5 },
-  { row: 4, col: 21.5, h: 2 },
+  { row: 5, col: 12.5, w: 1, h: 0.5 },
 
-  { row: 5, col: 0, w: 1.5 },
-  { row: 5, col: 1.5, w: 1.2 },
-  { row: 5, col: 2.7, w: 1.3 },
-  { row: 5, col: 4, w: 6 },
-  { row: 5, col: 10, w: 1.5 },
-  { row: 5, col: 11.5, w: 1.5 },
-  { row: 5, col: 13, w: 1.5 },
+  { row: 5.5, col: 11.5, w: 1, h: 0.5 },
+  { row: 5.5, col: 12.5, w: 1, h: 0.5 },
+  { row: 5.5, col: 13.5, w: 1, h: 0.5 },
+  
 
-  { row: 5, col: 15, w: 1 },
-  { row: 5, col: 16, w: 1 },
-  { row: 5, col: 17, w: 1 },
-
-  { row: 5, col: 18.5, w: 2 },
-  { row: 5, col: 20.5 },
 ];
 
-const getMagicKeys = () => {
+const getMacKeys = () => {
   const result = [];
-  magicKeysLayout.forEach((k, key) => {
+  macKeysLayout.forEach((k, key) => {
     result.push({
       ...k,
-      label: magicLayers[0][key][0],
-      code: magicLayers[0][key][1],
+      label: macLayers[0][key][0],
+      code: macLayers[0][key][1],
     });
   });
 
   return result;
 };
 
-export const magicLayout = {
-  name: "Magic Keyboard",
+export const macLayout = {
+  name: "Mac Keyboard",
   keySize: { w: 53, h: 50, gap: 2 },
-  keys: getMagicKeys(),
+  keys: getMacKeys(),
 };
