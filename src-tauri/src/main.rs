@@ -91,7 +91,11 @@ fn convert_event(ev: Event) -> Option<KeyEventPayload> {
             key: key_to_string(key),
             event_type: "up".into(),
         }),
-        _ => None,
+        other => {
+            // Helpful to see which events are not being handled (e.g., mouse or media keys)
+            eprintln!("Ignoring non-key event: {:?}", other);
+            None
+        }
     }
 }
 
