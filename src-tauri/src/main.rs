@@ -29,9 +29,25 @@ fn read_config_file() -> Result<String, String> {
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
         .map_err(|e| format!("cannot resolve home directory: {e}"))?;
-    let path = PathBuf::from(home).join(".keyri.json");
-    std::fs::read_to_string(&path)
-        .map_err(|e| format!("failed to read {}: {e}", path.display()))
+    let primary = PathBuf::from(&home).join(".keyri.json");
+    let fallback = PathBuf::from(&home).join("keyri.json");
+
+    std::fs::read_to_string(&primary)
+        .or_else(|_| std::fs::read_to_string(&fallback))
+        .map_err(|e| {
+            format!(
+                "failed to read {} or {}: {e}",
+                primary.display(),
+                fallback.display()
+            )
+        })
+}
+
+#[tauri::command]
+fn read_layout_file(path: String) -> Result<String, String> {
+    let path_buf = PathBuf::from(&path);
+    std::fs::read_to_string(&path_buf)
+        .map_err(|e| format!("failed to read {}: {e}", path_buf.display()))
 }
 
 #[tauri::command]
@@ -121,6 +137,7 @@ fn main() {
             start_keyboard_listener,
             set_window_decorations,
             read_config_file,
+            read_layout_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

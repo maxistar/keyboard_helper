@@ -24,28 +24,78 @@ function normalizeLayers(layerSource) {
   return [defaultLayer, ...additionalLayers].filter(Boolean);
 }
 
-const layoutKeys = ["qwertz", "corne", "dactyl", "magic", "mac"];
+const builtinLayoutFiles = {
+  qwertz: "layout_qwertz.json",
+  corne: "layout_corne.json",
+  dactyl: "layout_dactyl.json",
+  magic: "layout_magic.json",
+  mac: "layout_mac.json",
+};
 let layoutDefinitions = {};
 let normalizedLayoutLayers = {};
 let layouts = {};
 let layoutLayers = {};
 
-async function loadLayoutDefinitions() {
-  const entries = [];
-  for (const key of layoutKeys) {
-    const fileName = `layout_${key}.json`;
+async function loadLayoutDefinition(key, source) {
+  // source: true (builtin) or string path
+  if (source === true) {
+    const fileName = builtinLayoutFiles[key];
+    if (!fileName) {
+      console.warn(`No builtin layout file mapped for key ${key}`);
+      return null;
+    }
     try {
       const resp = await fetch(fileName);
       if (!resp.ok) {
         console.warn(`Failed to load ${fileName}: ${resp.status}`);
-        continue;
+        return null;
       }
-      const data = await resp.json();
-      entries.push([key, data]);
+      return await resp.json();
     } catch (err) {
       console.warn(`Failed to parse ${fileName}`, err);
+      return null;
     }
   }
+
+  if (typeof source === "string") {
+    const tauri = window.__TAURI__;
+    if (!tauri?.core?.invoke) {
+      console.warn("Tauri API unavailable; cannot load external layout:", key);
+      return null;
+    }
+    try {
+      const raw = await tauri.core.invoke("read_layout_file", { path: source });
+      if (typeof raw !== "string") {
+        console.warn(`External layout for ${key} did not return string content`);
+        return null;
+      }
+      return JSON.parse(raw);
+    } catch (err) {
+      console.warn(`Failed to load external layout for ${key} from ${source}`, err);
+      return null;
+    }
+  }
+
+  return null;
+}
+
+async function loadLayoutDefinitions(config) {
+  const entries = [];
+  const layoutConfig = config?.layouts;
+  if (layoutConfig && typeof layoutConfig === "object") {
+    for (const [key, source] of Object.entries(layoutConfig)) {
+      const def = await loadLayoutDefinition(key, source);
+      if (def) entries.push([key, def]);
+    }
+  } else {
+    // fallback: load all built-in layouts
+    for (const [key, fileName] of Object.entries(builtinLayoutFiles)) {
+      if (!fileName) continue;
+      const def = await loadLayoutDefinition(key, true);
+      if (def) entries.push([key, def]);
+    }
+  }
+
   layoutDefinitions = Object.fromEntries(entries);
   rebuildLayoutData();
 }
@@ -76,13 +126,6 @@ let currentLayoutKey = "qwertz";
 
 function getAllowedLayoutKeys(config) {
   const availableKeys = Object.keys(layoutDefinitions);
-  const configuredLayouts = config?.layouts;
-  if (configuredLayouts && typeof configuredLayouts === "object") {
-    const filtered = availableKeys.filter((key) => configuredLayouts[key]);
-    if (filtered.length > 0) {
-      return filtered;
-    }
-  }
   return availableKeys;
 }
 
@@ -329,12 +372,12 @@ function setLayout(key) {
 
 window.addEventListener("DOMContentLoaded", async () => {
   const tauri = window.__TAURI__;
-  await loadLayoutDefinitions();
+  const config = await loadConfig();
+  await loadLayoutDefinitions(config);
   if (Object.keys(layoutDefinitions).length === 0) {
     console.error("No layouts loaded; cannot initialize UI");
     return;
   }
-  const config = await loadConfig();
   const allowedLayoutKeys = getAllowedLayoutKeys(config);
   const layoutMenuOptions = allowedLayoutKeys.map((key) => ({
     key,
