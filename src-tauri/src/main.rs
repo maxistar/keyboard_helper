@@ -93,7 +93,7 @@ fn convert_event(ev: Event) -> Option<KeyEventPayload> {
         }),
         other => {
             // Helpful to see which events are not being handled (e.g., mouse or media keys)
-            eprintln!("Ignoring non-key event: {:?}", other);
+            // eprintln!("Ignoring non-key event: {:?}", other);
             None
         }
     }
