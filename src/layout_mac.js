@@ -1,4 +1,4 @@
-export const macLayers = [
+const macLayers = [
   [
     ["Esc", "Escape"],
     ["F1", "F1"],
@@ -188,21 +188,9 @@ const macKeysLayout = [
 
 ];
 
-const getMacKeys = () => {
-  const result = [];
-  macKeysLayout.forEach((k, key) => {
-    result.push({
-      ...k,
-      label: macLayers[0][key][0],
-      code: macLayers[0][key][1],
-    });
-  });
-
-  return result;
-};
-
-export const macLayout = {
+export default {
   name: "Mac Keyboard",
-  keySize: { w: 53, h: 50, gap: 2 },
-  keys: getMacKeys(),
+  keySize: { w: 60, h: 50, gap: 2 },
+  keyPositions: macKeysLayout,
+  keyLayers: macLayers,
 };

@@ -1,4 +1,4 @@
-export const dactylLayers = [[
+const dactylLayers = [[
     ["ESC", "KeyQ"],
     ["1", "Digit1"],
     ["2", "Digit2"],
@@ -285,17 +285,9 @@ const dactylKeysLayout = [
 
 ];
 
-const getDactylKeys = () => {
-    const result = [];
-    dactylKeysLayout.forEach((k, key) => {
-        result.push({ ...k, label: dactylLayers[0][key][0], code: dactylLayers[0][key][1] });
-    });
-
-    return result;
-};
-
-export const dactylLayout = {
+export default {
     name: "Dactyl Manuform (split)",
     keySize: { w: 57, h: 45, gap: 10 },
-    keys: getDactylKeys(),
+    keyPositions: dactylKeysLayout,
+    keyLayers: dactylLayers,
 };

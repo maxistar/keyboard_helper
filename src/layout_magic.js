@@ -1,4 +1,4 @@
-export const magicLayers = [
+const magicLayers = [
   [
     ["Esc", "Escape"],
     ["F1", "F1"],
@@ -255,21 +255,9 @@ const magicKeysLayout = [
   { row: 5, col: 20.5 },
 ];
 
-const getMagicKeys = () => {
-  const result = [];
-  magicKeysLayout.forEach((k, key) => {
-    result.push({
-      ...k,
-      label: magicLayers[0][key][0],
-      code: magicLayers[0][key][1],
-    });
-  });
-
-  return result;
-};
-
-export const magicLayout = {
+export default {
   name: "Magic Keyboard",
   keySize: { w: 53, h: 50, gap: 2 },
-  keys: getMagicKeys(),
+  keyPositions: magicKeysLayout,
+  keyLayers: magicLayers,
 };

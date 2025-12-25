@@ -1,25 +1,44 @@
-import { qwertyLayout, qwertyLayers } from "./layout_qwertz.js";
-import { corneLayout, corneLayers } from "./layout_corne.js";
-import { dactylLayout, dactylLayers } from "./layout_dactyl.js";
-import { magicLayout, magicLayers } from "./layout_magic.js";
-import { macLayout, macLayers } from "./layout_mac.js";
+import qwertyDefinition from "./layout_qwertz.js";
+import corneDefinition from "./layout_corne.js";
+import dactylDefinition from "./layout_dactyl.js";
+import magicDefinition from "./layout_magic.js";
+import macDefinition from "./layout_mac.js";
 import { createMenu } from "./menu.js";
 
-const layouts = {
-  qwerty: qwertyLayout,
-  corne: corneLayout,
-  dactyl: dactylLayout,
-  magic: magicLayout,
-  mac: macLayout,
+function buildKeysFromBase(keyPositions, layers) {
+  const baseLayer = layers?.[0] ?? [];
+  return keyPositions.map((k, index) => {
+    const [label, code, image] = baseLayer[index] ?? [];
+    return { ...k, label, code, image };
+  });
+}
+
+function buildLayout(config, layers) {
+  return {
+    name: config.name,
+    keySize: config.keySize,
+    keys: buildKeysFromBase(config.keyPositions, layers),
+  };
+}
+
+const layoutDefinitions = {
+  qwerty: qwertyDefinition,
+  corne: corneDefinition,
+  dactyl: dactylDefinition,
+  magic: magicDefinition,
+  mac: macDefinition,
 };
 
-const layoutLayers = {
-  qwerty: qwertyLayers,
-  corne: corneLayers,
-  dactyl: dactylLayers,
-  magic: magicLayers,
-  mac: macLayers,
-};
+const layouts = Object.fromEntries(
+  Object.entries(layoutDefinitions).map(([key, def]) => [
+    key,
+    buildLayout(def, def.keyLayers),
+  ])
+);
+
+const layoutLayers = Object.fromEntries(
+  Object.entries(layoutDefinitions).map(([key, def]) => [key, def.keyLayers])
+);
 
 const layoutRoot = document.getElementById("layoutRoot");
 let currentLayerIndex = 0;

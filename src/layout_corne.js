@@ -1,4 +1,4 @@
-export const corneLayers = [[
+const corneLayers = [[
     ["Tab", "Tab"],
     ["q", "KeyQ"],
     ["w", "KeyW"],
@@ -166,11 +166,11 @@ export const corneLayers = [[
     ["BT3", "KeyC", "assets/images/android-logo.png"],
     ["BT4", "KeyV"],
     ["BT5", "KeyB"],
-    ["Т", "KeyM"],
-    ["Ь", "KeyM"],
-    ["Б", "KeyM"],
-    ["Ю", "KeyM"],
-    [".", "KeyM"],
+    ["", ""],
+    ["LC", ""],
+    ["RC", ""],
+    ["", ""],
+    ["", ""],
     null,
     null,
     null,
@@ -204,17 +204,17 @@ export const corneLayers = [[
     ["↑", "KeyL"],
     ["→", "KeyL"],
     null,
-    ["BT Clr", "KeyY"],
-    ["BT1", "KeyY"],
-    ["BT2", "KeyX"],
-    ["BT3", "KeyC"],
-    ["BT4", "KeyV"],
-    ["BT5", "KeyB"],
-    ["Т", "KeyM"],
-    ["Ь", "KeyM"],
-    ["Б", "KeyM"],
-    ["Ю", "KeyM"],
-    [".", "KeyM"],
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
     null,
     null,
     null,
@@ -274,19 +274,9 @@ const corneKeysLayout = [
     { row: 3.2, col: 11, cls: "action" },
 ];
 
-const getCorneKeys = () => {
-    const result = [];
-    corneKeysLayout.forEach((k, key) => {
-        const [label, code, image] = corneLayers[0][key];
-        const labelValue = image ? { text: label, image } : label;
-        result.push({ ...k, label: labelValue, code });
-    });
-
-    return result;
-};
-
-export const corneLayout = {
+export default {
     name: "Corne (split)",
     keySize: { w: 57, h: 45, gap: 10 },
-    keys: getCorneKeys(),
+    keyPositions: corneKeysLayout,
+    keyLayers: corneLayers,
 };

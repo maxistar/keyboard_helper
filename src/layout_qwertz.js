@@ -1,4 +1,4 @@
-export const qwertyLayers = [
+const qwertyLayers = [
     [
         ["Esc", "Escape"],
         ["F1", "F1"],
@@ -748,17 +748,9 @@ const qwertyKeysLayout = [
     { row: 5.3, col: 20.5 },  
 ];
 
-const getQwertyKeys = () => {
-    const result = [];
-    qwertyKeysLayout.forEach((k, key) => {
-        result.push({ ...k, label: qwertyLayers[0][key][0], code: qwertyLayers[0][key][1] });
-    });
-
-    return result;
-};
-
-export const qwertyLayout = {
+export default {
     name: "QWERTY",
     keySize: { w: 53, h: 50, gap: 2 },
-    keys: getQwertyKeys(),
+    keyPositions: qwertyKeysLayout,
+    keyLayers: qwertyLayers,
 };
