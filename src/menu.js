@@ -1,12 +1,4 @@
-const layoutMenuOptions = [
-  { key: "qwerty", label: "Qwerz" },
-  { key: "magic", label: "Magic Keyboard" },
-  { key: "mac", label: "Mac Keyboard" },
-  { key: "dactyl", label: "Dacty" },
-  { key: "corne", label: "Corney" },  
-];
-
-export function createMenu({ onLayoutSelect, getCurrentLayoutKey }) {
+export function createMenu({ onLayoutSelect, getCurrentLayoutKey, layoutOptions = [] }) {
   const mount = document.getElementById("menuRoot");
   if (!mount) {
     return { updateActive: () => {} };
@@ -103,7 +95,7 @@ export function createMenu({ onLayoutSelect, getCurrentLayoutKey }) {
     const layoutList = document.createElement("ul");
     layoutList.className = "menu-items";
 
-    layoutMenuOptions.forEach((entry) => {
+    layoutOptions.forEach((entry) => {
       const item = document.createElement("li");
       const button = document.createElement("button");
       button.type = "button";

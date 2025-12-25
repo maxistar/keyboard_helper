@@ -29,6 +29,11 @@ const layoutDefinitions = {
   mac: macDefinition,
 };
 
+const layoutMenuOptions = Object.entries(layoutDefinitions).map(([key, def]) => ({
+  key,
+  label: def.name,
+}));
+
 const layouts = Object.fromEntries(
   Object.entries(layoutDefinitions).map(([key, def]) => [
     key,
@@ -271,6 +276,7 @@ window.addEventListener("DOMContentLoaded", () => {
   menuControls = createMenu({
     onLayoutSelect: setLayout,
     getCurrentLayoutKey: () => currentLayoutKey,
+    layoutOptions: layoutMenuOptions,
   });
   if (tauri) {
     tauri.core
