@@ -21,6 +21,14 @@ function buildLayout(config, layers) {
   };
 }
 
+function normalizeLayers(layerSource) {
+  if (!layerSource) return [];
+  if (Array.isArray(layerSource)) return layerSource;
+  const { default: defaultLayer, ...rest } = layerSource;
+  const additionalLayers = Object.keys(rest).map((key) => rest[key]);
+  return [defaultLayer, ...additionalLayers].filter(Boolean);
+}
+
 const layoutDefinitions = {
   qwerty: qwertyDefinition,
   corne: corneDefinition,
@@ -34,16 +42,21 @@ const layoutMenuOptions = Object.entries(layoutDefinitions).map(([key, def]) => 
   label: def.name,
 }));
 
-const layouts = Object.fromEntries(
+const normalizedLayoutLayers = Object.fromEntries(
   Object.entries(layoutDefinitions).map(([key, def]) => [
     key,
-    buildLayout(def, def.keyLayers),
+    normalizeLayers(def.keyLayers),
   ])
 );
 
-const layoutLayers = Object.fromEntries(
-  Object.entries(layoutDefinitions).map(([key, def]) => [key, def.keyLayers])
+const layouts = Object.fromEntries(
+  Object.entries(layoutDefinitions).map(([key, def]) => [
+    key,
+    buildLayout(def, normalizedLayoutLayers[key]),
+  ])
 );
+
+const layoutLayers = normalizedLayoutLayers;
 
 const layoutRoot = document.getElementById("layoutRoot");
 let currentLayerIndex = 0;

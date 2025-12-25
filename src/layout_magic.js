@@ -1,5 +1,5 @@
-const magicLayers = [
-  [
+const magicLayers = {
+  default: [
     ["Esc", "Escape"],
     ["F1", "F1"],
     ["F2", "F2"],
@@ -125,7 +125,7 @@ const magicLayers = [
     ["0", "Kp0"],
     [",", "KpDelete"],
   ],
-];
+};
 
 const magicKeysLayout = [
   { row: 0, col: 0, w: 1.5, cls: "function" },

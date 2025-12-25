@@ -1,5 +1,5 @@
-const qwertyLayers = [
-    [
+const qwertyLayers = {
+    default: [
         ["Esc", "Escape"],
         ["F1", "F1"],
         ["F2", "F2"],
@@ -123,8 +123,8 @@ const qwertyLayers = [
         [",", "KpDelete"],
 
     ],
-
-    [ // Shift layer
+    // end default
+    shift: [ // Shift layer
         ["Esc", "Escape"],
         ["F1", "F1"],
         ["F2", "F2"],
@@ -245,10 +245,10 @@ const qwertyLayers = [
         ["→", "RightArrow"],
 
         ["0", "Kp0"],
-        [",", "KpDelete"],
-
+        [",", "KpDelete"]
     ],
-    [ // AltGtr layer
+    altGr: [ 
+        // AltGtr layer
         ["Esc", "Escape"],
         ["F1", "F1"],
         ["F2", "F2"],
@@ -371,9 +371,9 @@ const qwertyLayers = [
         ["0", "Kp0"],
         [",", "KpDelete"],
 
-    ],
-
-    [ // Russian layer
+    ], // end altGr
+    russian: [ 
+        // Russian layer
         ["Esc", "Escape"],
         ["F1", "F1"],
         ["F2", "F2"],
@@ -494,10 +494,10 @@ const qwertyLayers = [
         ["→", "RightArrow"],
 
         ["0", "Kp0"],
-        [",", "KpDelete"],
-
-    ],    
-[ // Russian shift layer
+        [",", "KpDelete"], 
+    ], // end russian
+    russianShift: [ 
+        // Russian shift layer
         ["Esc", "Escape"],
         ["F1", "F1"],
         ["F2", "F2"],
@@ -619,9 +619,8 @@ const qwertyLayers = [
 
         ["0", "Kp0"],
         [",", "KpDelete"],
-
     ],        
-];
+};
 
 const qwertyKeysLayout = [
 

@@ -1,5 +1,5 @@
-const macLayers = [
-  [
+const macLayers = {
+  default: [
     ["Esc", "Escape"],
     ["F1", "F1"],
     ["F2", "F2"],
@@ -91,7 +91,7 @@ const macLayers = [
     
 
   ],
-];
+};
 
 const macKeysLayout = [
   { row: 0, col: 0, w: 1.5, cls: "function" },

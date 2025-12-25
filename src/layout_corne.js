@@ -1,4 +1,5 @@
-const corneLayers = [[
+const corneLayers = {
+  default: [
     ["Tab", "Tab"],
     ["q", "KeyQ"],
     ["w", "KeyW"],
@@ -45,7 +46,7 @@ const corneLayers = [[
     ["Up", ""],
     ["ALT", "AltGr"],
 ],
-[
+  layer1: [
     null,
     ["Q", "KeyQ"],
     ["W", "KeyW"],
@@ -90,7 +91,7 @@ const corneLayers = [[
     null,
     null,
 ],
-[
+  layer2: [
     null,
     ["Й", "KeyQ"],
     ["Ц", "KeyW"],
@@ -135,7 +136,7 @@ const corneLayers = [[
     null,
     null,
 ],
-[
+  layer3: [
     null,
     ["Й", "KeyQ"],
     ["Ц", "KeyW"],
@@ -180,7 +181,7 @@ const corneLayers = [[
     null,
     null,
 ],
-[
+layer4:[
     ["CAPS", "KeyQ"],
     ["!", "KeyW"],
     ["@", "KeyE"],
@@ -224,7 +225,7 @@ const corneLayers = [[
     null,
     null,
 ]
-];
+};
 
 const corneKeysLayout = [
     { row: 0, col: 1 },

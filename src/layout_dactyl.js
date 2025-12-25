@@ -1,4 +1,5 @@
-const dactylLayers = [[
+const dactylLayers = {
+  default: [
     ["ESC", "KeyQ"],
     ["1", "Digit1"],
     ["2", "Digit2"],
@@ -67,8 +68,8 @@ const dactylLayers = [[
     ["Alt", "Backspace"],
     ["AltGr", "Backspace"],
     ["Ctrl", "Backspace"],
-],
-[ // LOWER
+  ], // end default
+  lower: [ // LOWER
     ["BTCLR", "KeyQ"],
     ["BT1", "Digit1", "assets/images/linux-logo-penguin.png"],
     ["BT2", "Digit2", "assets/images/apple_rainbow.png"],
@@ -136,8 +137,8 @@ const dactylLayers = [[
     null,
     null,
     null,
-],
-[ // MAGIC
+  ], // end lower
+  magic: [ // MAGIC
     ["ESC", "KeyQ"],
     ["F1", "Digit1"],
     ["F2", "Digit2"],
@@ -206,7 +207,7 @@ const dactylLayers = [[
     null,
     null,
 ]
-];
+};
 
 const dactylKeysLayout = [
     { row: 0.2, col: 0, w: 1.5, cls: "action" },
@@ -282,8 +283,7 @@ const dactylKeysLayout = [
 
     { row: 5.6, col: 9.3, cls: "action", angle: -10 },
     { row: 5.4, col: 10.4, cls: "action", angle: -9 },
-
-];
+  ];
 
 export default {
     name: "Dactyl Manuform (split)",
