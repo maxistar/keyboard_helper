@@ -2,6 +2,7 @@ import { qwertyLayout, qwertyLayers } from "./layout_qwertz.js";
 import { corneLayout, corneLayers } from "./layout_corne.js";
 import { dactylLayout, dactylLayers } from "./layout_dactyl.js";
 import { magicLayout, magicLayers } from "./layout_magic.js";
+import { createMenu } from "./menu.js";
 
 const layouts = {
   qwerty: qwertyLayout,
@@ -20,6 +21,7 @@ const layoutLayers = {
 const layoutRoot = document.getElementById("layoutRoot");
 let currentLayerIndex = 0;
 let layerIndicatorEl = null;
+let menuControls = null;
 //let currentLayoutKey = "corne"; 
 let currentLayoutKey = "dactyl";
 //let currentLayoutKey = "qwerty";
@@ -236,10 +238,17 @@ function setLayout(key) {
   currentLayoutKey = key;
   currentLayerIndex = 0;
   renderKeyboard(layout);
+  if (menuControls && typeof menuControls.updateActive === "function") {
+    menuControls.updateActive();
+  }
 }
 
 window.addEventListener("DOMContentLoaded", () => {
   const tauri = window.__TAURI__;
+  menuControls = createMenu({
+    onLayoutSelect: setLayout,
+    getCurrentLayoutKey: () => currentLayoutKey,
+  });
   if (tauri) {
     tauri.core
       .invoke("start_keyboard_listener")
@@ -269,4 +278,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   setLayout(currentLayoutKey);
+  if (menuControls && typeof menuControls.updateActive === "function") {
+    menuControls.updateActive();
+  }
 });
