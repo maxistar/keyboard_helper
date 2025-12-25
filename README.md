@@ -1,12 +1,8 @@
-# Tauri + Vanilla
+# Keyboard Layout Visualizer (Tauri)
 
-This template should help get you started developing with Tauri in vanilla HTML, CSS and Javascript.
+Desktop helper to visualize split/ergonomic keyboard layouts (Corne, QWERTZ, Dactyl, Magic) and highlight pressed keys in real time. Built with vanilla HTML/CSS/JS on top of Tauri.
 
-## Recommended IDE Setup
-
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
-
-## Start the app
+## Start the app (dev)
 
 Install dependencies and launch the Tauri dev window:
 
@@ -14,3 +10,13 @@ Install dependencies and launch the Tauri dev window:
 npm install
 npm run tauri dev
 ```
+
+## Build a release binary
+
+Produce a packaged release build (bundles Rust + frontend):
+
+```bash
+npm run tauri build
+```
+
+Artifacts will be written to `src-tauri/target/release/` (per-platform bundles such as `.app`, `.dmg`, `.exe`, `.msi`, or distributable archives). Use the standard Tauri CLI flags for platform-specific targets if you need to cross-compile.

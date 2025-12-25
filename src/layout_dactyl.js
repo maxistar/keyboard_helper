@@ -108,7 +108,7 @@ export const dactylLayers = [[
     ["ö", "Semicolon"],
     ["ä", "Semicolon"],
 
-    ["Shift", "KeyZ"],
+    null,
     ["z", "KeyZ"],
     ["x", "KeyX"],
     ["c", "KeyC"],
@@ -119,7 +119,7 @@ export const dactylLayers = [[
     [",", "Comma"],
     [".", "Period"],
     ["/", "Slash"],
-    ["Shift", "Slash"],
+    null,
 
     ["Space", "Space"],
     ["Enter", "Enter"],
@@ -177,7 +177,7 @@ export const dactylLayers = [[
     ["+", "Semicolon"],
     ["ä", "Semicolon"],
 
-    ["Shift", "KeyZ"],
+    null,
     ["z", "KeyZ"],
     ["7", "KeyX"],
     ["8", "KeyC"],
@@ -188,7 +188,7 @@ export const dactylLayers = [[
     [",", "Comma"],
     [".", "Period"],
     ["/", "Slash"],
-    ["Shift", "Slash"],
+    null,
 
     ["/", "Space"],
     ["0", "Enter"],
