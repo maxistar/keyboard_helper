@@ -3,6 +3,7 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::path::PathBuf;
 use tauri::{
     Emitter, Manager, State,
 };
@@ -21,6 +22,16 @@ struct KeyboardListenerState {
 struct KeyEventPayload {
     key: String,       // например: "KeyA", "Enter", "Unknown"
     event_type: String // "down" или "up"
+}
+
+#[tauri::command]
+fn read_config_file() -> Result<String, String> {
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .map_err(|e| format!("cannot resolve home directory: {e}"))?;
+    let path = PathBuf::from(home).join(".keyri.json");
+    std::fs::read_to_string(&path)
+        .map_err(|e| format!("failed to read {}: {e}", path.display()))
 }
 
 #[tauri::command]
@@ -109,9 +120,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             start_keyboard_listener,
             set_window_decorations,
+            read_config_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-
-

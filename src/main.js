@@ -30,17 +30,14 @@ function normalizeLayers(layerSource) {
 }
 
 const layoutDefinitions = {
-  qwerty: qwertyDefinition,
+  qwertz: qwertyDefinition,
   corne: corneDefinition,
   dactyl: dactylDefinition,
   magic: magicDefinition,
   mac: macDefinition,
 };
 
-const layoutMenuOptions = Object.entries(layoutDefinitions).map(([key, def]) => ({
-  key,
-  label: def.name,
-}));
+
 
 const normalizedLayoutLayers = Object.fromEntries(
   Object.entries(layoutDefinitions).map(([key, def]) => [
@@ -67,6 +64,43 @@ let menuControls = null;
 let currentLayoutKey = "mac";
 //let currentLayoutKey = "qwerty";
 //let currentLayoutKey = "magic";
+
+function getAllowedLayoutKeys(config) {
+  const availableKeys = Object.keys(layoutDefinitions);
+  const configuredLayouts = config?.layouts;
+  if (configuredLayouts && typeof configuredLayouts === "object") {
+    const filtered = availableKeys.filter((key) => configuredLayouts[key]);
+    if (filtered.length > 0) {
+      return filtered;
+    }
+  }
+  return availableKeys;
+}
+
+function pickDefaultLayout(config, allowedKeys) {
+  const preferred = config?.defaultLayout;
+  console.log("Preferred layout from config:", preferred);
+  if (preferred && allowedKeys.includes(preferred)) {
+    return preferred;
+  }
+  if (allowedKeys.includes(currentLayoutKey)) {
+    return currentLayoutKey;
+  }
+  return allowedKeys[0] ?? currentLayoutKey;
+}
+
+async function loadConfig() {
+  const tauri = window.__TAURI__;
+  if (!tauri?.core?.invoke) return null;
+  try {
+    const raw = await tauri.core.invoke("read_config_file");
+    if (typeof raw !== "string") return null;
+    return JSON.parse(raw);
+  } catch (err) {
+    console.warn("Failed to load config file, using defaults", err);
+    return null;
+  }
+}
 
 function applyKeySizes({ w, h, gap }) {
   const root = document.documentElement;
@@ -284,8 +318,18 @@ function setLayout(key) {
   }
 }
 
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
   const tauri = window.__TAURI__;
+  const config = await loadConfig();
+  console.log("Tauri API:");
+  console.log("Loaded config:", config);  
+  const allowedLayoutKeys = getAllowedLayoutKeys(config);
+  const layoutMenuOptions = allowedLayoutKeys.map((key) => ({
+    key,
+    label: layoutDefinitions[key]?.name ?? key,
+  }));
+  currentLayoutKey = pickDefaultLayout(config, allowedLayoutKeys);
+
   menuControls = createMenu({
     onLayoutSelect: setLayout,
     getCurrentLayoutKey: () => currentLayoutKey,
