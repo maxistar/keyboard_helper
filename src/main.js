@@ -1,29 +1,159 @@
-import { qwertyLayout, qwertyLayers } from "./layout_qwertz.js";
-import { corneLayout, corneLayers } from "./layout_corne.js";
-import { dactylLayout, dactylLayers } from "./layout_dactyl.js";
-import { magicLayout, magicLayers } from "./layout_magic.js";
+import { createMenu } from "./menu.js";
 
-const layouts = {
-  qwerty: qwertyLayout,
-  corne: corneLayout,
-  dactyl: dactylLayout,
-  magic: magicLayout,
-};
+function buildKeysFromBase(keyPositions, layers) {
+  const baseLayer = layers?.[0] ?? [];
+  return keyPositions.map((k, index) => {
+    const [label, code, image] = baseLayer[index] ?? [];
+    return { ...k, label, code, image };
+  });
+}
 
-const layoutLayers = {
-  qwerty: qwertyLayers,
-  corne: corneLayers,
-  dactyl: dactylLayers,
-  magic: magicLayers,
+function buildLayout(config, layers) {
+  return {
+    name: config.name,
+    keySize: config.keySize,
+    keys: buildKeysFromBase(config.keyPositions, layers),
+  };
+}
+
+function normalizeLayers(layerSource) {
+  if (!layerSource) return [];
+  if (Array.isArray(layerSource)) return layerSource;
+  const { default: defaultLayer, ...rest } = layerSource;
+  const additionalLayers = Object.keys(rest).map((key) => rest[key]);
+  return [defaultLayer, ...additionalLayers].filter(Boolean);
+}
+
+const builtinLayoutFiles = {
+  qwerty: "layout_qwerty.json",
+  qwertz: "layout_qwertz.json",
+  corne: "layout_corne.json",
+  dactyl: "layout_dactyl.json",
+  magic: "layout_magic.json",
+  mac: "layout_mac.json",
 };
+let layoutDefinitions = {};
+let normalizedLayoutLayers = {};
+let layouts = {};
+let layoutLayers = {};
+
+async function loadLayoutDefinition(key, source) {
+  // source: true (builtin) or string path
+  if (source === true) {
+    const fileName = builtinLayoutFiles[key];
+    if (!fileName) {
+      console.warn(`No builtin layout file mapped for key ${key}`);
+      return null;
+    }
+    try {
+      const resp = await fetch(fileName);
+      if (!resp.ok) {
+        console.warn(`Failed to load ${fileName}: ${resp.status}`);
+        return null;
+      }
+      return await resp.json();
+    } catch (err) {
+      console.warn(`Failed to parse ${fileName}`, err);
+      return null;
+    }
+  }
+
+  if (typeof source === "string") {
+    const tauri = window.__TAURI__;
+    if (!tauri?.core?.invoke) {
+      console.warn("Tauri API unavailable; cannot load external layout:", key);
+      return null;
+    }
+    try {
+      const raw = await tauri.core.invoke("read_layout_file", { path: source });
+      if (typeof raw !== "string") {
+        console.warn(`External layout for ${key} did not return string content`);
+        return null;
+      }
+      return JSON.parse(raw);
+    } catch (err) {
+      console.warn(`Failed to load external layout for ${key} from ${source}`, err);
+      return null;
+    }
+  }
+
+  return null;
+}
+
+async function loadLayoutDefinitions(config) {
+  const entries = [];
+  const layoutConfig = config?.layouts;
+  if (layoutConfig && typeof layoutConfig === "object") {
+    for (const [key, source] of Object.entries(layoutConfig)) {
+      const def = await loadLayoutDefinition(key, source);
+      if (def) entries.push([key, def]);
+    }
+  } else {
+    // fallback: load all built-in layouts
+    for (const [key, fileName] of Object.entries(builtinLayoutFiles)) {
+      if (!fileName) continue;
+      const def = await loadLayoutDefinition(key, true);
+      if (def) entries.push([key, def]);
+    }
+  }
+
+  layoutDefinitions = Object.fromEntries(entries);
+  rebuildLayoutData();
+}
+
+function rebuildLayoutData() {
+  normalizedLayoutLayers = Object.fromEntries(
+    Object.entries(layoutDefinitions).map(([key, def]) => [
+      key,
+      normalizeLayers(def.keyLayers),
+    ])
+  );
+
+  layouts = Object.fromEntries(
+    Object.entries(layoutDefinitions).map(([key, def]) => [
+      key,
+      buildLayout(def, normalizedLayoutLayers[key]),
+    ])
+  );
+
+  layoutLayers = normalizedLayoutLayers;
+}
 
 const layoutRoot = document.getElementById("layoutRoot");
 let currentLayerIndex = 0;
 let layerIndicatorEl = null;
-//let currentLayoutKey = "corne"; 
-let currentLayoutKey = "dactyl";
-//let currentLayoutKey = "qwerty";
-//let currentLayoutKey = "magic";
+let menuControls = null;
+let currentLayoutKey = "qwerty";
+
+function getAllowedLayoutKeys(config) {
+  const availableKeys = Object.keys(layoutDefinitions);
+  return availableKeys;
+}
+
+function pickDefaultLayout(config, allowedKeys) {
+  const preferred = config?.defaultLayout;
+  console.log("Preferred layout from config:", preferred);
+  if (preferred && allowedKeys.includes(preferred)) {
+    return preferred;
+  }
+  if (allowedKeys.includes(currentLayoutKey)) {
+    return currentLayoutKey;
+  }
+  return allowedKeys[0] ?? currentLayoutKey;
+}
+
+async function loadConfig() {
+  const tauri = window.__TAURI__;
+  if (!tauri?.core?.invoke) return null;
+  try {
+    const raw = await tauri.core.invoke("read_config_file");
+    if (typeof raw !== "string") return null;
+    return JSON.parse(raw);
+  } catch (err) {
+    console.warn("Failed to load config file, using defaults", err);
+    return null;
+  }
+}
 
 function applyKeySizes({ w, h, gap }) {
   const root = document.documentElement;
@@ -236,10 +366,31 @@ function setLayout(key) {
   currentLayoutKey = key;
   currentLayerIndex = 0;
   renderKeyboard(layout);
+  if (menuControls && typeof menuControls.updateActive === "function") {
+    menuControls.updateActive();
+  }
 }
 
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
   const tauri = window.__TAURI__;
+  const config = await loadConfig();
+  await loadLayoutDefinitions(config);
+  if (Object.keys(layoutDefinitions).length === 0) {
+    console.error("No layouts loaded; cannot initialize UI");
+    return;
+  }
+  const allowedLayoutKeys = getAllowedLayoutKeys(config);
+  const layoutMenuOptions = allowedLayoutKeys.map((key) => ({
+    key,
+    label: layoutDefinitions[key]?.name ?? key,
+  }));
+  currentLayoutKey = pickDefaultLayout(config, allowedLayoutKeys);
+
+  menuControls = createMenu({
+    onLayoutSelect: setLayout,
+    getCurrentLayoutKey: () => currentLayoutKey,
+    layoutOptions: layoutMenuOptions,
+  });
   if (tauri) {
     tauri.core
       .invoke("start_keyboard_listener")
@@ -269,4 +420,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   setLayout(currentLayoutKey);
+  if (menuControls && typeof menuControls.updateActive === "function") {
+    menuControls.updateActive();
+  }
 });

@@ -3,10 +3,58 @@ name: Build Tauri Release
 on:
   push:
     branches: ["master"]
+    tags: ["v[0-9]*.[0-9]*.[0-9]*"]
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      is_release: ${{ steps.context.outputs.is_release }}
+      release_id: ${{ steps.create_release.outputs.id }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine release context
+        id: context
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify tag matches versions
+        if: steps.context.outputs.is_release == 'true'
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          EXPECTED="${TAG#v}"
+          PKG_VERSION=$(jq -r '.version' package.json)
+          TAURI_VERSION=$(jq -r '.version' src-tauri/tauri.conf.json)
+          if [[ "$PKG_VERSION" != "$EXPECTED" ]]; then
+            echo "package.json version ($PKG_VERSION) does not match tag ($EXPECTED)" >&2
+            exit 1
+          fi
+          if [[ "$TAURI_VERSION" != "$EXPECTED" ]]; then
+            echo "tauri.conf.json version ($TAURI_VERSION) does not match tag ($EXPECTED)" >&2
+            exit 1
+          fi
+
+      - name: Create GitHub release
+        id: create_release
+        if: steps.context.outputs.is_release == 'true'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+
   build:
     name: Build (${{ matrix.platform }})
+    needs: prepare
     runs-on: ${{ matrix.platform }}
     strategy:
       fail-fast: false
@@ -42,10 +90,17 @@ jobs:
       - name: Install JS dependencies
         run: npm ci
 
-      - name: Build Tauri app
+      - name: Build Tauri app (attach to release)
+        if: needs.prepare.outputs.is_release == 'true'
+        uses: tauri-apps/tauri-action@v0
+        with:
+          releaseId: ${{ needs.prepare.outputs.release_id }}
+
+      - name: Build Tauri app (no release)
+        if: needs.prepare.outputs.is_release != 'true'
         uses: tauri-apps/tauri-action@v0
 
-      - name: Upload release artifacts
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: tauri-release-${{ matrix.platform }}
