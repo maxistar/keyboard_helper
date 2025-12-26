@@ -25,6 +25,7 @@ function normalizeLayers(layerSource) {
 }
 
 const builtinLayoutFiles = {
+  qwerty: "layout_qwerty.json",
   qwertz: "layout_qwertz.json",
   corne: "layout_corne.json",
   dactyl: "layout_dactyl.json",
@@ -122,7 +123,7 @@ const layoutRoot = document.getElementById("layoutRoot");
 let currentLayerIndex = 0;
 let layerIndicatorEl = null;
 let menuControls = null;
-let currentLayoutKey = "qwertz";
+let currentLayoutKey = "qwerty";
 
 function getAllowedLayoutKeys(config) {
   const availableKeys = Object.keys(layoutDefinitions);

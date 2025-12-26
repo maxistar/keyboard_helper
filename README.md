@@ -29,7 +29,18 @@ Releases are cut from `master` with semantic version tags.
 - Trigger: create an annotated tag `vMAJOR.MINOR.PATCH` on `master` and push it; CI will build macOS/Windows/Linux bundles and publish a GitHub release with the assets attached. The job should fail if the tag does not match the version in both files.
 - Steps:
   1. Bump the version in `package.json` and `src-tauri/tauri.conf.json`, commit, and merge to `master`.
-  2. Tag the merge commit (`git tag -a v0.2.0 -m "Release v0.2.0"`) and push the tag (`git push origin v0.2.0`).
-  3. Watch the release workflow in GitHub Actions; when it finishes, download artifacts from the GitHub release.
+  2. Draft release notes (highlights, fixes, platform notes). Keep them short and paste them into the GitHub release description after CI creates it.
+  3. Tag the merge commit (`git tag -a v0.2.0 -m "Release v0.2.0"`) and push the tag (`git push origin v0.2.0`).
+  4. Watch the release workflow in GitHub Actions; when it finishes, open the generated GitHub release for `v0.2.0`, paste the release notes into the description, and publish/save.
 - Non-tag pushes to `master` still run the build and upload artifacts to the workflow run but do not create a GitHub release entry.
-- Status: Release publishing is specified in `openspec/changes/add-release-publishing`; until the release workflow is implemented, download artifacts from the workflow run on `master`.
+
+## App configuration & external layouts
+
+You can point the app at external layout files and pick a default layout via a user config. The app looks for `~/.keyri.json` first and then `~/keyri.json`.
+
+- Fields:
+  - `defaultLayout`: key of the layout to select at startup (must exist in `layouts`).
+  - `layouts`: object mapping layout keys to either `true` (use built-in) or a filesystem path (load external JSON).
+- Layout file format: JSON with `name`, `keySize` (`w`, `h`, `gap` in px), `keyPositions` (array of `{row,col}` with optional `w`/`h` overrides), and `keyLayers`. `keyLayers` can be an object with `default`, `shift`, etc., or an array where index 0 is the base layer. Each layer entry is `[label, code]` (or an object with `text`/`image` for custom labels).
+- References: see built-in layouts for structure (`src/layout_corne.json`, `src/layout_qwertz.json`, `src/layout_dactyl.json`, `src/layout_mac.json`, `src/layout_magic.json`). Copy one, edit, and point your config at the new path. Keep a personal config in `~/.keyri.json`.
+- If no config file is found, the app loads all built-in layouts and defaults to QWERTY. External layout paths must be readable from the filesystem; otherwise the app falls back to built-ins.
