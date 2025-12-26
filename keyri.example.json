@@ -1,0 +1,11 @@
+{
+    "defaultLayout": "corney",
+    "layouts": {
+        "qwertz": true,
+        "dactyl": true,
+        "magic": true,
+        "mac": true,
+        "corne": true,
+        "corney": "/home/maxim/projects/keyboards/corney/layout_corney.json"
+    }   
+}
