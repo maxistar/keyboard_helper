@@ -25,10 +25,10 @@ Artifacts will be written to `src-tauri/target/release/` (per-platform bundles s
 
 Releases are cut from `master` with semantic version tags.
 
-- Version source: keep `package.json` and `src-tauri/tauri.conf.json` on the same semver (e.g., `0.2.0`). Update both before tagging.
+- Version source: keep `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml` on the same semver (e.g., `0.2.0`). Update all three before tagging so the JS package, Tauri config, and Rust crate stay aligned.
 - Trigger: create an annotated tag `vMAJOR.MINOR.PATCH` on `master` and push it; CI will build macOS/Windows/Linux bundles and publish a GitHub release with the assets attached. The job should fail if the tag does not match the version in both files.
 - Steps:
-  1. Bump the version in `package.json` and `src-tauri/tauri.conf.json`, commit, and merge to `master`.
+  1. Bump the version in `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml`, commit, and merge to `master`.
   2. Draft release notes (highlights, fixes, platform notes). Keep them short and paste them into the GitHub release description after CI creates it.
   3. Tag the merge commit (`git tag -a v0.2.0 -m "Release v0.2.0"`) and push the tag (`git push origin v0.2.0`).
   4. Watch the release workflow in GitHub Actions; when it finishes, open the generated GitHub release for `v0.2.0`, paste the release notes into the description, and publish/save.

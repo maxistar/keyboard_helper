@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Keyboard Layout",
-  "version": "0.1.0",
-  "identifier": "com.maxim.tauri-app",
+  "version": "0.2.1",
+  "identifier": "me.maxistar.keyri-app",
   "build": {
     "frontendDist": "../src"
   },
