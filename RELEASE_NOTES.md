@@ -8,3 +8,7 @@
 ## v0.2.1
 
 - bugfixes in QWERTY layout
+
+## v0.2.2
+
+- technical release to debug the process
