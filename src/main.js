@@ -16,12 +16,33 @@ function buildLayout(config, layers) {
   };
 }
 
-function normalizeLayers(layerSource) {
-  if (!layerSource) return [];
-  if (Array.isArray(layerSource)) return layerSource;
+function formatLayerName(rawName, index) {
+  if (!rawName) return `Layer ${index + 1}`;
+  const spaced = String(rawName).replace(/[_-]+/g, " ");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+function normalizeLayerData(layerSource) {
+  if (!layerSource) return { layers: [], names: [] };
+
+  if (Array.isArray(layerSource)) {
+    return {
+      layers: layerSource,
+      names: layerSource.map((_, index) => `Layer ${index + 1}`),
+    };
+  }
+
   const { default: defaultLayer, ...rest } = layerSource;
-  const additionalLayers = Object.keys(rest).map((key) => rest[key]);
-  return [defaultLayer, ...additionalLayers].filter(Boolean);
+  const entries = [];
+  if (defaultLayer) entries.push(["default", defaultLayer]);
+  for (const [key, value] of Object.entries(rest)) {
+    if (value) entries.push([key, value]);
+  }
+
+  return {
+    layers: entries.map(([, layer]) => layer),
+    names: entries.map(([name], index) => formatLayerName(name, index)),
+  };
 }
 
 const builtinLayoutFiles = {
@@ -36,6 +57,7 @@ let layoutDefinitions = {};
 let normalizedLayoutLayers = {};
 let layouts = {};
 let layoutLayers = {};
+let layoutLayerNames = {};
 
 async function loadLayoutDefinition(key, source) {
   // source: true (builtin) or string path
@@ -102,19 +124,16 @@ async function loadLayoutDefinitions(config) {
 }
 
 function rebuildLayoutData() {
-  normalizedLayoutLayers = Object.fromEntries(
-    Object.entries(layoutDefinitions).map(([key, def]) => [
-      key,
-      normalizeLayers(def.keyLayers),
-    ])
-  );
+  normalizedLayoutLayers = {};
+  layoutLayerNames = {};
+  layouts = {};
 
-  layouts = Object.fromEntries(
-    Object.entries(layoutDefinitions).map(([key, def]) => [
-      key,
-      buildLayout(def, normalizedLayoutLayers[key]),
-    ])
-  );
+  for (const [key, def] of Object.entries(layoutDefinitions)) {
+    const { layers, names } = normalizeLayerData(def.keyLayers);
+    normalizedLayoutLayers[key] = layers;
+    layoutLayerNames[key] = names;
+    layouts[key] = buildLayout(def, layers);
+  }
 
   layoutLayers = normalizedLayoutLayers;
 }
@@ -253,7 +272,17 @@ function ensureLayerIndicator() {
 function renderLayerIndicator() {
   ensureLayerIndicator();
   const totalLayers = layoutLayers[currentLayoutKey]?.length ?? 1;
+  const layerNames = layoutLayerNames[currentLayoutKey] ?? [];
   layerIndicatorEl.innerHTML = "";
+
+  const activeName = layerNames[currentLayerIndex] ?? `Layer ${currentLayerIndex + 1}`;
+  const nameEl = document.createElement("span");
+  nameEl.className = "layer-name";
+  nameEl.textContent = activeName;
+  layerIndicatorEl.appendChild(nameEl);
+
+  const dotsWrapper = document.createElement("div");
+  dotsWrapper.className = "layer-dots";
 
   for (let i = 0; i < totalLayers; i++) {
     const dot = document.createElement("span");
@@ -264,8 +293,10 @@ function renderLayerIndicator() {
     dot.dataset.index = i;
     dot.title = `Layer ${i + 1}`;
     dot.addEventListener("click", () => applyLayer(i));
-    layerIndicatorEl.appendChild(dot);
+    dotsWrapper.appendChild(dot);
   }
+
+  layerIndicatorEl.appendChild(dotsWrapper);
 }
 
 function applyLayer(index) {
@@ -316,37 +347,47 @@ function handleKey(code, type) {
   console.log(`Key ${code} ${type}`);
   if (!el) return;
   if (type === "down") {
-    if (currentLayoutKey === "corne" && code === "ShiftLeft") {
+    //if (currentLayoutKey === "corne" && code === "ShiftLeft") {
       // rerender labels and keycodes!!!
-      shiftCorne();
-    }
+    //  shiftCorne();
+    //}
 
-    if (currentLayoutKey === "dactyl" && code === "F18") {
+    //if (currentLayoutKey === "corney" && (code === "ShiftLeft" || code === "ShiftRight")) {
       // rerender labels and keycodes!!!
-      console.log("Setting Dactyl lower layer");
-      setDactylLower();
-      setTimeout(() => {
-        setDactylDefault();
-      }, 2000);
-    }
+//      shiftCorne();
+    //}      
 
-    if (currentLayoutKey === "dactyl" && code === "F19") {
+    //if (currentLayoutKey === "dactyl" && code === "F18") {
       // rerender labels and keycodes!!!
-      console.log("Setting Dactyl magic layer");
-      setDactylMagic();
-      setTimeout(() => {
-        setDactylDefault();
-      }, 2000);
-    }
+    //  console.log("Setting Dactyl lower layer");
+    //  setDactylLower();
+    //  setTimeout(() => {
+    //    setDactylDefault();
+    //  }, 2000);
+    //}
 
-    el.classList.add("pressed");
+    //if (currentLayoutKey === "dactyl" && code === "F19") {
+      // rerender labels and keycodes!!!
+    //  console.log("Setting Dactyl magic layer");
+    //  setDactylMagic();
+    //  setTimeout(() => {
+    //    setDactylDefault();
+    //  }, 2000);
+    //} 
+
+    el.classList.add("pressed");  
   } else if (type === "up") {
-    el.classList.remove("pressed");
+    el.classList.remove("pressed");     
 
-    if (currentLayoutKey === "corne" && code === "ShiftLeft") {
+    //if (currentLayoutKey === "corne" && code === "ShiftLeft") {
       // rerender labels and keycodes!!!
-      normalCorne();
-    }
+    //  normalCorne();
+    //}
+
+    //if (currentLayoutKey === "corney" && (code === "ShiftLeft" || code === "ShiftRight")) {
+      // rerender labels and keycodes!!!
+    //  normalCorne();
+    //}
 
     //if (currentLayoutKey === "dactyl" && code === 'F18') {
     // rerender labels and keycodes!!!
