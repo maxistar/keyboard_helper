@@ -193,8 +193,35 @@ function calcBounds(keys) {
   return { maxCol, maxRow };
 }
 
-function renderKeyLabel(el, label) {
+function normalizeKeyEntry(entry) { 
+  if (!entry) return { label: null, code: null };
+
+  if (Array.isArray(entry)) {
+    const [text, code, image] = entry;
+    if (image) {
+      return { label: { text, image }, code };
+    }
+    return { label: text, code };
+  }
+
+  if (typeof entry === "object") {
+    const label = entry.label ?? entry.text ?? entry;
+    const code = entry.code ?? null;
+    if (entry.image) {
+      return { label: { text: entry.text ?? entry.label, image: entry.image, alt: entry.alt }, code };
+    }
+    return { label, code };
+  }
+
+  return { label: entry, code: null };
+}
+
+function renderKeyLabel(el, entry) {
+  const { label, code } = normalizeKeyEntry(entry);
   el.innerHTML = "";
+  if (code) {
+    el.dataset.key = code;
+  }
   if (!label) return;
 
   if (typeof label === "object" && label.image) {
@@ -214,18 +241,6 @@ function renderKeyLabel(el, label) {
   el.textContent = label;
 }
 
-function normalizeLabel(entry) {
-  if (!entry) return null;
-  if (Array.isArray(entry)) {
-    const [text, , image] = entry;
-    if (image) {
-      return { text, image };
-    }
-    return text;
-  }
-  return entry;
-}
-
 function renderKeyboard(layout) {
   layoutRoot.innerHTML = "";
 
@@ -241,8 +256,7 @@ function renderKeyboard(layout) {
   layout.keys.forEach((k, key) => {
     const el = document.createElement("div");
     el.className = `key ${k.cls || ""}`.trim();
-    renderKeyLabel(el, k.label);
-    el.dataset.key = k.code;
+    renderKeyLabel(el, k);
     el.dataset.index = key;
     el.style.setProperty("--row", k.row);
     el.style.setProperty("--col", k.col);
@@ -313,7 +327,10 @@ function applyLayer(index) {
     if (!targetKey) return;
     const el = document.querySelector(`.key[data-index="${keyIndex}"]`);
     if (!el) return;
-    renderKeyLabel(el, normalizeLabel(targetKey));
+    const normalized = normalizeKeyEntry(targetKey);
+    const baseNormalized = normalizeKeyEntry(baseLayer[keyIndex]);
+    const code = normalized.code ?? baseNormalized.code;
+    renderKeyLabel(el, { label: normalized.label, code });
   });
 
   currentLayerIndex = safeIndex;
@@ -350,17 +367,17 @@ function handleKey(code, type) {
     //if (currentLayoutKey === "corne" && code === "ShiftLeft") {
       // rerender labels and keycodes!!!
     //  shiftCorne();
-    //}
+    //} 
 
     //if (currentLayoutKey === "corney" && (code === "ShiftLeft" || code === "ShiftRight")) {
       // rerender labels and keycodes!!!
-//      shiftCorne();
-    //}      
-
+//      shiftCorne();  
+    //}        
+ 
     //if (currentLayoutKey === "dactyl" && code === "F18") {
       // rerender labels and keycodes!!!
     //  console.log("Setting Dactyl lower layer");
-    //  setDactylLower();
+    //  setDactylLower(); 
     //  setTimeout(() => {
     //    setDactylDefault();
     //  }, 2000);
