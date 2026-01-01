@@ -141,6 +141,9 @@ function rebuildLayoutData() {
 const layoutRoot = document.getElementById("layoutRoot");
 let currentLayerIndex = 0;
 let layerIndicatorEl = null;
+let hudContainer = null;
+let keyEventIndicatorEl = null;
+let keyEventHideTimer = null;
 let menuControls = null;
 let currentLayoutKey = "qwerty";
 
@@ -193,7 +196,7 @@ function calcBounds(keys) {
   return { maxCol, maxRow };
 }
 
-function normalizeKeyEntry(entry) { 
+function normalizeKeyEntry(entry) {
   if (!entry) return { label: null, code: null };
 
   if (Array.isArray(entry)) {
@@ -271,15 +274,55 @@ function renderKeyboard(layout) {
   renderLayerIndicator();
 }
 
+function ensureHudContainer() {
+  if (!hudContainer) {
+    hudContainer = document.createElement("div");
+    hudContainer.className = "hud";
+  }
+
+  if (!document.body.contains(hudContainer)) {
+    document.body.appendChild(hudContainer);
+  }
+}
+
+function ensureKeyEventIndicator() {
+  ensureHudContainer();
+  if (!keyEventIndicatorEl) {
+    keyEventIndicatorEl = document.createElement("div");
+    keyEventIndicatorEl.className = "key-event-indicator";
+  }
+
+  if (!hudContainer.contains(keyEventIndicatorEl)) {
+    hudContainer.insertBefore(keyEventIndicatorEl, hudContainer.firstChild);
+  }
+}
+
+function showKeyEvent(code) {
+  ensureKeyEventIndicator();
+  keyEventIndicatorEl.textContent = code ?? "";
+  keyEventIndicatorEl.classList.add("visible");
+  if (keyEventHideTimer) {
+    clearTimeout(keyEventHideTimer);
+  }
+  keyEventHideTimer = setTimeout(() => {
+    if (keyEventIndicatorEl) {
+      keyEventIndicatorEl.classList.remove("visible");
+      keyEventIndicatorEl.textContent = "";
+    }
+    keyEventHideTimer = null;
+  }, 3000);
+}
+
 function ensureLayerIndicator() {
+  ensureHudContainer();
   if (!layerIndicatorEl) {
     layerIndicatorEl = document.createElement("div");
     layerIndicatorEl.id = "layerIndicator";
     layerIndicatorEl.className = "layers-indicator";
   }
 
-  if (!document.body.contains(layerIndicatorEl)) {
-    document.body.appendChild(layerIndicatorEl);
+  if (!hudContainer.contains(layerIndicatorEl)) {
+    hudContainer.appendChild(layerIndicatorEl);
   }
 }
 
@@ -364,6 +407,7 @@ function handleKey(code, type) {
   console.log(`Key ${code} ${type}`);
   if (!el) return;
   if (type === "down") {
+    showKeyEvent(code);
     //if (currentLayoutKey === "corne" && code === "ShiftLeft") {
       // rerender labels and keycodes!!!
     //  shiftCorne();

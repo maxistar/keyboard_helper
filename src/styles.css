@@ -96,11 +96,37 @@ select {
   overflow: hidden;
 }
 
-.layers-indicator {
+.hud {
   position: fixed;
   z-index: 1000;
   right: 14px;
   bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.key-event-indicator {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #000;
+  background: transparent;
+  padding: 6px 8px;
+  min-width: 120px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  text-shadow: none;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.key-event-indicator.visible {
+  opacity: 1;
+}
+
+.layers-indicator {
   display: flex;
   align-items: center;
   gap: 8px;
