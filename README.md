@@ -21,6 +21,10 @@ npm run tauri build
 
 Artifacts will be written to `src-tauri/target/release/` (per-platform bundles such as `.app`, `.dmg`, `.exe`, `.msi`, or distributable archives). Use the standard Tauri CLI flags for platform-specific targets if you need to cross-compile.
 
+## Tray behavior
+
+Closing the window hides the app to the system tray instead of quitting. Use the tray menu to restore the window or quit the app.
+
 ## Release process
 
 Releases are cut from `master` with semantic version tags.
