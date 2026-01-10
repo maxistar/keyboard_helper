@@ -58,63 +58,74 @@ let normalizedLayoutLayers = {};
 let layouts = {};
 let layoutLayers = {};
 let layoutLayerNames = {};
+let layoutSources = {};
 
 async function loadLayoutDefinition(key, source) {
   // source: true (builtin) or string path
   if (source === true) {
     const fileName = builtinLayoutFiles[key];
     if (!fileName) {
-      console.warn(`No builtin layout file mapped for key ${key}`);
-      return null;
+      const error = `No builtin layout file mapped for key ${key}`;
+      console.warn(error);
+      return { def: null, error };
     }
     try {
       const resp = await fetch(fileName);
       if (!resp.ok) {
-        console.warn(`Failed to load ${fileName}: ${resp.status}`);
-        return null;
+        const error = `Failed to load ${fileName}: ${resp.status}`;
+        console.warn(error);
+        return { def: null, error };
       }
-      return await resp.json();
+      return { def: await resp.json(), error: null };
     } catch (err) {
-      console.warn(`Failed to parse ${fileName}`, err);
-      return null;
+      const error = `Failed to parse ${fileName}`;
+      console.warn(error, err);
+      return { def: null, error };
     }
   }
 
   if (typeof source === "string") {
     const tauri = window.__TAURI__;
     if (!tauri?.core?.invoke) {
-      console.warn("Tauri API unavailable; cannot load external layout:", key);
-      return null;
+      const error = "Tauri API unavailable; cannot load external layout";
+      console.warn(`${error}:`, key);
+      return { def: null, error };
     }
     try {
       const raw = await tauri.core.invoke("read_layout_file", { path: source });
       if (typeof raw !== "string") {
-        console.warn(`External layout for ${key} did not return string content`);
-        return null;
+        const error = `External layout for ${key} did not return string content`;
+        console.warn(error);
+        return { def: null, error };
       }
-      return JSON.parse(raw);
+      return { def: JSON.parse(raw), error: null };
     } catch (err) {
-      console.warn(`Failed to load external layout for ${key} from ${source}`, err);
-      return null;
+      const message = err?.message ?? String(err);
+      const error = `Failed to load external layout for ${key} from ${source}: ${message}`;
+      console.warn(error, err);
+      return { def: null, error };
     }
   }
 
-  return null;
+  return { def: null, error: null };
 }
 
 async function loadLayoutDefinitions(config) {
   const entries = [];
   const layoutConfig = config?.layouts;
+  layoutSources = {};
   if (layoutConfig && typeof layoutConfig === "object") {
     for (const [key, source] of Object.entries(layoutConfig)) {
-      const def = await loadLayoutDefinition(key, source);
+      layoutSources[key] = source;
+      const { def } = await loadLayoutDefinition(key, source);
       if (def) entries.push([key, def]);
     }
   } else {
     // fallback: load all built-in layouts
     for (const [key, fileName] of Object.entries(builtinLayoutFiles)) {
       if (!fileName) continue;
-      const def = await loadLayoutDefinition(key, true);
+      layoutSources[key] = true;
+      const { def } = await loadLayoutDefinition(key, true);
       if (def) entries.push([key, def]);
     }
   }
@@ -144,6 +155,8 @@ let layerIndicatorEl = null;
 let hudContainer = null;
 let keyEventIndicatorEl = null;
 let keyEventHideTimer = null;
+let layoutErrorEl = null;
+let layoutErrorTimer = null;
 let menuControls = null;
 let currentLayoutKey = "qwerty";
 
@@ -295,6 +308,33 @@ function ensureKeyEventIndicator() {
   if (!hudContainer.contains(keyEventIndicatorEl)) {
     hudContainer.insertBefore(keyEventIndicatorEl, hudContainer.firstChild);
   }
+}
+
+function ensureLayoutError() {
+  ensureHudContainer();
+  if (!layoutErrorEl) {
+    layoutErrorEl = document.createElement("div");
+    layoutErrorEl.className = "layout-error";
+  }
+  if (!hudContainer.contains(layoutErrorEl)) {
+    hudContainer.appendChild(layoutErrorEl);
+  }
+}
+
+function showLayoutError(message) {
+  ensureLayoutError();
+  layoutErrorEl.textContent = message;
+  layoutErrorEl.classList.add("visible");
+  if (layoutErrorTimer) {
+    clearTimeout(layoutErrorTimer);
+  }
+  layoutErrorTimer = setTimeout(() => {
+    if (layoutErrorEl) {
+      layoutErrorEl.classList.remove("visible");
+      layoutErrorEl.textContent = "";
+    }
+    layoutErrorTimer = null;
+  }, 4000);
 }
 
 function showKeyEvent(code) {
@@ -462,7 +502,29 @@ function handleKey(code, type) {
   }
 }
 
-function setLayout(key) {
+async function refreshExternalLayout(key) {
+  const source = layoutSources[key];
+  if (typeof source !== "string") return true;
+  const { def, error } = await loadLayoutDefinition(key, source);
+  if (!def) {
+    showLayoutError(error ?? `Failed to reload layout "${key}".`);
+    return false;
+  }
+  layoutDefinitions = { ...layoutDefinitions, [key]: def };
+  rebuildLayoutData();
+  return true;
+}
+
+async function setLayout(key) {
+  const previousKey = currentLayoutKey;
+  const refreshed = await refreshExternalLayout(key);
+  if (!refreshed) {
+    currentLayoutKey = previousKey;
+    if (menuControls && typeof menuControls.updateActive === "function") {
+      menuControls.updateActive();
+    }
+    return;
+  }
   const layout = layouts[key];
   if (!layout) return;
   currentLayoutKey = key;
