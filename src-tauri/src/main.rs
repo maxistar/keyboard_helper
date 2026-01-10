@@ -5,6 +5,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::path::PathBuf;
 use tauri::{
+    menu::{Menu, MenuItem},
+    tray::TrayIconBuilder,
     Emitter, Manager, State,
 };
 use rdev::{listen, Event, EventType, Key};
@@ -129,10 +131,43 @@ fn key_to_string(key: Key) -> String {
     format!("{:?}", key)
 }
 
+fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
+    let restore = MenuItem::with_id(app, "restore", "Restore", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&restore, &quit])?;
+    let mut builder = TrayIconBuilder::new()
+        .menu(&menu)
+        .tooltip("Keyboard Layout");
+
+    if let Some(icon) = app.default_window_icon().cloned() {
+        builder = builder.icon(icon);
+    }
+
+    builder
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            "restore" => {
+                if let Some(window) = app.get_webview_window("overlay") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+            "quit" => {
+                app.exit(0);
+            }
+            _ => {}
+        })
+        .build(app)?;
+
+    Ok(())
+}
 
 fn main() {
     tauri::Builder::default()
         .manage(KeyboardListenerState::default())
+        .setup(|app| {
+            build_tray(app.handle())?;
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             start_keyboard_listener,
             set_window_decorations,
