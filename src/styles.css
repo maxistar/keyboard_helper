@@ -199,6 +199,7 @@ select {
 
 .key {
   position: absolute;
+  z-index: 2;
   width: calc(var(--key-w) * var(--w, 1) + var(--gap) * (var(--w, 1) - 1));
   height: calc(var(--key-h) * var(--h, 1) + var(--gap) * (var(--h, 1) - 1));
   left: calc(var(--col) * (var(--key-w) + var(--gap)));
@@ -246,4 +247,20 @@ select {
   height: 60%;
   object-fit: contain;
   pointer-events: none;
+}
+
+.combo-border {
+  position: absolute;
+  z-index: 14444;
+  border: 1px solid rgb(0, 68, 255);
+  border-radius: 12px;
+  pointer-events: none;
+  opacity: 0.65;
+  transition: border-color 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+.combo-border.active {
+  border-color: #db0808;
+  box-shadow: 0 0 0 2px rgba(60, 201, 199, 0.35);
+  opacity: 1;
 }

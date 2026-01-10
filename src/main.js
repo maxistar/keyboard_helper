@@ -59,6 +59,9 @@ let layouts = {};
 let layoutLayers = {};
 let layoutLayerNames = {};
 let layoutSources = {};
+let comboDefinitionsByLayout = {};
+let comboBordersByCode = new Map();
+let comboBorderEls = [];
 
 async function loadLayoutDefinition(key, source) {
   // source: true (builtin) or string path
@@ -138,12 +141,16 @@ function rebuildLayoutData() {
   normalizedLayoutLayers = {};
   layoutLayerNames = {};
   layouts = {};
+  comboDefinitionsByLayout = {};
 
   for (const [key, def] of Object.entries(layoutDefinitions)) {
     const { layers, names } = normalizeLayerData(def.keyLayers);
     normalizedLayoutLayers[key] = layers;
     layoutLayerNames[key] = names;
     layouts[key] = buildLayout(def, layers);
+    if (Array.isArray(def.combos)) {
+      comboDefinitionsByLayout[key] = def.combos.map(normalizeCombo).filter(Boolean);
+    }
   }
 
   layoutLayers = normalizedLayoutLayers;
@@ -190,6 +197,15 @@ async function loadConfig() {
   }
 }
 
+function normalizeCombo(combo) {
+  if (!combo || typeof combo !== "object") return null;
+  const { key1, key2, code } = combo;
+  if (!key1 || !key2 || !code) return null;
+  if (typeof key1.row !== "number" || typeof key1.col !== "number") return null;
+  if (typeof key2.row !== "number" || typeof key2.col !== "number") return null;
+  return { key1, key2, code: String(code) };
+}
+
 function applyKeySizes({ w, h, gap }) {
   const root = document.documentElement;
   root.style.setProperty("--key-w", `${w}px`);
@@ -207,6 +223,65 @@ function calcBounds(keys) {
     if (k.row + keyHeight > maxRow) maxRow = k.row + keyHeight;
   });
   return { maxCol, maxRow };
+}
+
+function calcKeyBounds(key, keySize) {
+  const width = keySize.w * (key.w ?? 1) + keySize.gap * ((key.w ?? 1) - 1);
+  const height = keySize.h * (key.h ?? 1) + keySize.gap * ((key.h ?? 1) - 1);
+  const left = key.col * (keySize.w + keySize.gap);
+  const top = key.row * (keySize.h + keySize.gap);
+  return { left, top, width, height };
+}
+
+function clearComboBorders() {
+  comboBordersByCode.clear();
+  comboBorderEls.forEach((el) => el.remove());
+  comboBorderEls = [];
+}
+
+function renderComboBorders(layout, comboDefinitions) {
+  clearComboBorders();
+  if (!comboDefinitions.length) return;
+
+  const positionIndex = new Map();
+  layout.keys.forEach((key) => {
+    positionIndex.set(`${key.row},${key.col}`, key);
+  });
+
+  const padding = 4;
+  comboDefinitions.forEach((combo) => {
+    const key1 = positionIndex.get(`${combo.key1.row},${combo.key1.col}`);
+    const key2 = positionIndex.get(`${combo.key2.row},${combo.key2.col}`);
+    if (!key1 || !key2) return;
+
+    const bounds1 = calcKeyBounds(key1, layout.keySize);
+    const bounds2 = calcKeyBounds(key2, layout.keySize);
+    const left = Math.min(bounds1.left, bounds2.left) - padding;
+    const top = Math.min(bounds1.top, bounds2.top) - padding;
+    const right = Math.max(bounds1.left + bounds1.width, bounds2.left + bounds2.width) + padding;
+    const bottom = Math.max(bounds1.top + bounds1.height, bounds2.top + bounds2.height) + padding;
+
+    const border = document.createElement("div");
+    border.className = "combo-border";
+    border.dataset.comboCode = combo.code;
+    border.style.left = `${left}px`;
+    border.style.top = `${top}px`;
+    border.style.width = `${right - left}px`;
+    border.style.height = `${bottom - top}px`;
+    layoutRoot.appendChild(border);
+
+    comboBorderEls.push(border);
+    if (!comboBordersByCode.has(combo.code)) {
+      comboBordersByCode.set(combo.code, []);
+    }
+    comboBordersByCode.get(combo.code).push(border);
+  });
+}
+
+function setComboActive(code, active) {
+  const borders = comboBordersByCode.get(code);
+  if (!borders) return;
+  borders.forEach((border) => border.classList.toggle("active", active));
 }
 
 function normalizeKeyEntry(entry) {
@@ -261,6 +336,8 @@ function renderKeyboard(layout) {
   layoutRoot.innerHTML = "";
 
   applyKeySizes(layout.keySize);
+  const comboDefinitions = comboDefinitionsByLayout[currentLayoutKey] ?? [];
+  renderComboBorders(layout, comboDefinitions);
 
   const { w, h, gap } = layout.keySize;
   const { maxCol, maxRow } = calcBounds(layout.keys);
@@ -443,6 +520,11 @@ function setDactylMagic() {
 }
 
 function handleKey(code, type) {
+  if (type === "down") {
+    setComboActive(code, true);
+  } else if (type === "up") {
+    setComboActive(code, false);
+  }
   const el = document.querySelector(`.key[data-key="${code}"]`);
   console.log(`Key ${code} ${type}`);
   if (!el) return;
