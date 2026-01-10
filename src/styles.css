@@ -23,13 +23,13 @@ body {
 
 .windowless {
   position: fixed;
-  top: 60px;
-  right: 10px;
+  top:  10px;
+  right:  60px;
   z-index: 1000; 
   padding: 6px 10px;
   background: rgba(26, 33, 54, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
+  border-radius: 8px;  
   box-shadow: 0 5px 5px rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(6px);
   color: #e4e7ef;
@@ -99,8 +99,8 @@ select {
 .hud {
   position: fixed;
   z-index: 1000;
-  right: 14px;
-  bottom: 14px;
+  right:  110px;
+  top: 10px;
   display: flex;
   align-items: center;
   gap: 10px;
