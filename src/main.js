@@ -16,12 +16,33 @@ function buildLayout(config, layers) {
   };
 }
 
-function normalizeLayers(layerSource) {
-  if (!layerSource) return [];
-  if (Array.isArray(layerSource)) return layerSource;
+function formatLayerName(rawName, index) {
+  if (!rawName) return `Layer ${index + 1}`;
+  const spaced = String(rawName).replace(/[_-]+/g, " ");
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+function normalizeLayerData(layerSource) {
+  if (!layerSource) return { layers: [], names: [] };
+
+  if (Array.isArray(layerSource)) {
+    return {
+      layers: layerSource,
+      names: layerSource.map((_, index) => `Layer ${index + 1}`),
+    };
+  }
+
   const { default: defaultLayer, ...rest } = layerSource;
-  const additionalLayers = Object.keys(rest).map((key) => rest[key]);
-  return [defaultLayer, ...additionalLayers].filter(Boolean);
+  const entries = [];
+  if (defaultLayer) entries.push(["default", defaultLayer]);
+  for (const [key, value] of Object.entries(rest)) {
+    if (value) entries.push([key, value]);
+  }
+
+  return {
+    layers: entries.map(([, layer]) => layer),
+    names: entries.map(([name], index) => formatLayerName(name, index)),
+  };
 }
 
 const builtinLayoutFiles = {
@@ -36,63 +57,78 @@ let layoutDefinitions = {};
 let normalizedLayoutLayers = {};
 let layouts = {};
 let layoutLayers = {};
+let layoutLayerNames = {};
+let layoutSources = {};
+let comboDefinitionsByLayout = {};
+let comboBordersByCode = new Map();
+let comboBorderEls = [];
 
 async function loadLayoutDefinition(key, source) {
   // source: true (builtin) or string path
   if (source === true) {
     const fileName = builtinLayoutFiles[key];
     if (!fileName) {
-      console.warn(`No builtin layout file mapped for key ${key}`);
-      return null;
+      const error = `No builtin layout file mapped for key ${key}`;
+      console.warn(error);
+      return { def: null, error };
     }
     try {
       const resp = await fetch(fileName);
       if (!resp.ok) {
-        console.warn(`Failed to load ${fileName}: ${resp.status}`);
-        return null;
+        const error = `Failed to load ${fileName}: ${resp.status}`;
+        console.warn(error);
+        return { def: null, error };
       }
-      return await resp.json();
+      return { def: await resp.json(), error: null };
     } catch (err) {
-      console.warn(`Failed to parse ${fileName}`, err);
-      return null;
+      const error = `Failed to parse ${fileName}`;
+      console.warn(error, err);
+      return { def: null, error };
     }
   }
 
   if (typeof source === "string") {
     const tauri = window.__TAURI__;
     if (!tauri?.core?.invoke) {
-      console.warn("Tauri API unavailable; cannot load external layout:", key);
-      return null;
+      const error = "Tauri API unavailable; cannot load external layout";
+      console.warn(`${error}:`, key);
+      return { def: null, error };
     }
     try {
       const raw = await tauri.core.invoke("read_layout_file", { path: source });
       if (typeof raw !== "string") {
-        console.warn(`External layout for ${key} did not return string content`);
-        return null;
+        const error = `External layout for ${key} did not return string content`;
+        console.warn(error);
+        return { def: null, error };
       }
-      return JSON.parse(raw);
+      return { def: JSON.parse(raw), error: null };
     } catch (err) {
-      console.warn(`Failed to load external layout for ${key} from ${source}`, err);
-      return null;
+      const message = err?.message ?? String(err);
+      const error = `Failed to load external layout for ${key} from ${source}: ${message}`;
+      console.warn(error, err);
+      return { def: null, error };
     }
   }
 
-  return null;
+  return { def: null, error: null };
 }
 
 async function loadLayoutDefinitions(config) {
   const entries = [];
   const layoutConfig = config?.layouts;
+  layoutSources = {};
   if (layoutConfig && typeof layoutConfig === "object") {
     for (const [key, source] of Object.entries(layoutConfig)) {
-      const def = await loadLayoutDefinition(key, source);
+      layoutSources[key] = source;
+      const { def } = await loadLayoutDefinition(key, source);
       if (def) entries.push([key, def]);
     }
   } else {
     // fallback: load all built-in layouts
     for (const [key, fileName] of Object.entries(builtinLayoutFiles)) {
       if (!fileName) continue;
-      const def = await loadLayoutDefinition(key, true);
+      layoutSources[key] = true;
+      const { def } = await loadLayoutDefinition(key, true);
       if (def) entries.push([key, def]);
     }
   }
@@ -102,19 +138,20 @@ async function loadLayoutDefinitions(config) {
 }
 
 function rebuildLayoutData() {
-  normalizedLayoutLayers = Object.fromEntries(
-    Object.entries(layoutDefinitions).map(([key, def]) => [
-      key,
-      normalizeLayers(def.keyLayers),
-    ])
-  );
+  normalizedLayoutLayers = {};
+  layoutLayerNames = {};
+  layouts = {};
+  comboDefinitionsByLayout = {};
 
-  layouts = Object.fromEntries(
-    Object.entries(layoutDefinitions).map(([key, def]) => [
-      key,
-      buildLayout(def, normalizedLayoutLayers[key]),
-    ])
-  );
+  for (const [key, def] of Object.entries(layoutDefinitions)) {
+    const { layers, names } = normalizeLayerData(def.keyLayers);
+    normalizedLayoutLayers[key] = layers;
+    layoutLayerNames[key] = names;
+    layouts[key] = buildLayout(def, layers);
+    if (Array.isArray(def.combos)) {
+      comboDefinitionsByLayout[key] = def.combos.map(normalizeCombo).filter(Boolean);
+    }
+  }
 
   layoutLayers = normalizedLayoutLayers;
 }
@@ -122,6 +159,11 @@ function rebuildLayoutData() {
 const layoutRoot = document.getElementById("layoutRoot");
 let currentLayerIndex = 0;
 let layerIndicatorEl = null;
+let hudContainer = null;
+let keyEventIndicatorEl = null;
+let keyEventHideTimer = null;
+let layoutErrorEl = null;
+let layoutErrorTimer = null;
 let menuControls = null;
 let currentLayoutKey = "qwerty";
 
@@ -155,6 +197,15 @@ async function loadConfig() {
   }
 }
 
+function normalizeCombo(combo) {
+  if (!combo || typeof combo !== "object") return null;
+  const { key1, key2, code } = combo;
+  if (!key1 || !key2 || !code) return null;
+  if (typeof key1.row !== "number" || typeof key1.col !== "number") return null;
+  if (typeof key2.row !== "number" || typeof key2.col !== "number") return null;
+  return { key1, key2, code: String(code) };
+}
+
 function applyKeySizes({ w, h, gap }) {
   const root = document.documentElement;
   root.style.setProperty("--key-w", `${w}px`);
@@ -174,8 +225,94 @@ function calcBounds(keys) {
   return { maxCol, maxRow };
 }
 
-function renderKeyLabel(el, label) {
+function calcKeyBounds(key, keySize) {
+  const width = keySize.w * (key.w ?? 1) + keySize.gap * ((key.w ?? 1) - 1);
+  const height = keySize.h * (key.h ?? 1) + keySize.gap * ((key.h ?? 1) - 1);
+  const left = key.col * (keySize.w + keySize.gap);
+  const top = key.row * (keySize.h + keySize.gap);
+  return { left, top, width, height };
+}
+
+function clearComboBorders() {
+  comboBordersByCode.clear();
+  comboBorderEls.forEach((el) => el.remove());
+  comboBorderEls = [];
+}
+
+function renderComboBorders(layout, comboDefinitions) {
+  clearComboBorders();
+  if (!comboDefinitions.length) return;
+
+  const positionIndex = new Map();
+  layout.keys.forEach((key) => {
+    positionIndex.set(`${key.row},${key.col}`, key);
+  });
+
+  const padding = 4;
+  comboDefinitions.forEach((combo) => {
+    const key1 = positionIndex.get(`${combo.key1.row},${combo.key1.col}`);
+    const key2 = positionIndex.get(`${combo.key2.row},${combo.key2.col}`);
+    if (!key1 || !key2) return;
+
+    const bounds1 = calcKeyBounds(key1, layout.keySize);
+    const bounds2 = calcKeyBounds(key2, layout.keySize);
+    const left = Math.min(bounds1.left, bounds2.left) - padding;
+    const top = Math.min(bounds1.top, bounds2.top) - padding;
+    const right = Math.max(bounds1.left + bounds1.width, bounds2.left + bounds2.width) + padding;
+    const bottom = Math.max(bounds1.top + bounds1.height, bounds2.top + bounds2.height) + padding;
+
+    const border = document.createElement("div");
+    border.className = "combo-border";
+    border.dataset.comboCode = combo.code;
+    border.style.left = `${left}px`;
+    border.style.top = `${top}px`;
+    border.style.width = `${right - left}px`;
+    border.style.height = `${bottom - top}px`;
+    layoutRoot.appendChild(border);
+
+    comboBorderEls.push(border);
+    if (!comboBordersByCode.has(combo.code)) {
+      comboBordersByCode.set(combo.code, []);
+    }
+    comboBordersByCode.get(combo.code).push(border);
+  });
+}
+
+function setComboActive(code, active) {
+  const borders = comboBordersByCode.get(code);
+  if (!borders) return;
+  borders.forEach((border) => border.classList.toggle("active", active));
+}
+
+function normalizeKeyEntry(entry) {
+  if (!entry) return { label: null, code: null };
+
+  if (Array.isArray(entry)) {
+    const [text, code, image] = entry;
+    if (image) {
+      return { label: { text, image }, code };
+    }
+    return { label: text, code };
+  }
+
+  if (typeof entry === "object") {
+    const label = entry.label ?? entry.text ?? entry;
+    const code = entry.code ?? null;
+    if (entry.image) {
+      return { label: { text: entry.text ?? entry.label, image: entry.image, alt: entry.alt }, code };
+    }
+    return { label, code };
+  }
+
+  return { label: entry, code: null };
+}
+
+function renderKeyLabel(el, entry) {
+  const { label, code } = normalizeKeyEntry(entry);
   el.innerHTML = "";
+  if (code) {
+    el.dataset.key = code;
+  }
   if (!label) return;
 
   if (typeof label === "object" && label.image) {
@@ -195,22 +332,12 @@ function renderKeyLabel(el, label) {
   el.textContent = label;
 }
 
-function normalizeLabel(entry) {
-  if (!entry) return null;
-  if (Array.isArray(entry)) {
-    const [text, , image] = entry;
-    if (image) {
-      return { text, image };
-    }
-    return text;
-  }
-  return entry;
-}
-
 function renderKeyboard(layout) {
   layoutRoot.innerHTML = "";
 
   applyKeySizes(layout.keySize);
+  const comboDefinitions = comboDefinitionsByLayout[currentLayoutKey] ?? [];
+  renderComboBorders(layout, comboDefinitions);
 
   const { w, h, gap } = layout.keySize;
   const { maxCol, maxRow } = calcBounds(layout.keys);
@@ -222,8 +349,7 @@ function renderKeyboard(layout) {
   layout.keys.forEach((k, key) => {
     const el = document.createElement("div");
     el.className = `key ${k.cls || ""}`.trim();
-    renderKeyLabel(el, k.label);
-    el.dataset.key = k.code;
+    renderKeyLabel(el, k);
     el.dataset.index = key;
     el.style.setProperty("--row", k.row);
     el.style.setProperty("--col", k.col);
@@ -238,22 +364,99 @@ function renderKeyboard(layout) {
   renderLayerIndicator();
 }
 
+function ensureHudContainer() {
+  if (!hudContainer) {
+    hudContainer = document.createElement("div");
+    hudContainer.className = "hud";
+  }
+
+  if (!document.body.contains(hudContainer)) {
+    document.body.appendChild(hudContainer);
+  }
+}
+
+function ensureKeyEventIndicator() {
+  ensureHudContainer();
+  if (!keyEventIndicatorEl) {
+    keyEventIndicatorEl = document.createElement("div");
+    keyEventIndicatorEl.className = "key-event-indicator";
+  }
+
+  if (!hudContainer.contains(keyEventIndicatorEl)) {
+    hudContainer.insertBefore(keyEventIndicatorEl, hudContainer.firstChild);
+  }
+}
+
+function ensureLayoutError() {
+  ensureHudContainer();
+  if (!layoutErrorEl) {
+    layoutErrorEl = document.createElement("div");
+    layoutErrorEl.className = "layout-error";
+  }
+  if (!hudContainer.contains(layoutErrorEl)) {
+    hudContainer.appendChild(layoutErrorEl);
+  }
+}
+
+function showLayoutError(message) {
+  ensureLayoutError();
+  layoutErrorEl.textContent = message;
+  layoutErrorEl.classList.add("visible");
+  if (layoutErrorTimer) {
+    clearTimeout(layoutErrorTimer);
+  }
+  layoutErrorTimer = setTimeout(() => {
+    if (layoutErrorEl) {
+      layoutErrorEl.classList.remove("visible");
+      layoutErrorEl.textContent = "";
+    }
+    layoutErrorTimer = null;
+  }, 4000);
+}
+
+function showKeyEvent(code) {
+  ensureKeyEventIndicator();
+  keyEventIndicatorEl.textContent = code ?? "";
+  keyEventIndicatorEl.classList.add("visible");
+  if (keyEventHideTimer) {
+    clearTimeout(keyEventHideTimer);
+  }
+  keyEventHideTimer = setTimeout(() => {
+    if (keyEventIndicatorEl) {
+      keyEventIndicatorEl.classList.remove("visible");
+      keyEventIndicatorEl.textContent = "";
+    }
+    keyEventHideTimer = null;
+  }, 3000);
+}
+
 function ensureLayerIndicator() {
+  ensureHudContainer();
   if (!layerIndicatorEl) {
     layerIndicatorEl = document.createElement("div");
     layerIndicatorEl.id = "layerIndicator";
     layerIndicatorEl.className = "layers-indicator";
   }
 
-  if (!document.body.contains(layerIndicatorEl)) {
-    document.body.appendChild(layerIndicatorEl);
+  if (!hudContainer.contains(layerIndicatorEl)) {
+    hudContainer.appendChild(layerIndicatorEl);
   }
 }
 
 function renderLayerIndicator() {
   ensureLayerIndicator();
   const totalLayers = layoutLayers[currentLayoutKey]?.length ?? 1;
+  const layerNames = layoutLayerNames[currentLayoutKey] ?? [];
   layerIndicatorEl.innerHTML = "";
+
+  const activeName = layerNames[currentLayerIndex] ?? `Layer ${currentLayerIndex + 1}`;
+  const nameEl = document.createElement("span");
+  nameEl.className = "layer-name";
+  nameEl.textContent = activeName;
+  layerIndicatorEl.appendChild(nameEl);
+
+  const dotsWrapper = document.createElement("div");
+  dotsWrapper.className = "layer-dots";
 
   for (let i = 0; i < totalLayers; i++) {
     const dot = document.createElement("span");
@@ -264,8 +467,10 @@ function renderLayerIndicator() {
     dot.dataset.index = i;
     dot.title = `Layer ${i + 1}`;
     dot.addEventListener("click", () => applyLayer(i));
-    layerIndicatorEl.appendChild(dot);
+    dotsWrapper.appendChild(dot);
   }
+
+  layerIndicatorEl.appendChild(dotsWrapper);
 }
 
 function applyLayer(index) {
@@ -282,7 +487,10 @@ function applyLayer(index) {
     if (!targetKey) return;
     const el = document.querySelector(`.key[data-index="${keyIndex}"]`);
     if (!el) return;
-    renderKeyLabel(el, normalizeLabel(targetKey));
+    const normalized = normalizeKeyEntry(targetKey);
+    const baseNormalized = normalizeKeyEntry(baseLayer[keyIndex]);
+    const code = normalized.code ?? baseNormalized.code;
+    renderKeyLabel(el, { label: normalized.label, code });
   });
 
   currentLayerIndex = safeIndex;
@@ -312,41 +520,57 @@ function setDactylMagic() {
 }
 
 function handleKey(code, type) {
+  if (type === "down") {
+    setComboActive(code, true);
+  } else if (type === "up") {
+    setComboActive(code, false);
+  }
   const el = document.querySelector(`.key[data-key="${code}"]`);
   console.log(`Key ${code} ${type}`);
   if (!el) return;
   if (type === "down") {
-    if (currentLayoutKey === "corne" && code === "ShiftLeft") {
+    showKeyEvent(code);
+    //if (currentLayoutKey === "corne" && code === "ShiftLeft") {
       // rerender labels and keycodes!!!
-      shiftCorne();
-    }
+    //  shiftCorne();
+    //} 
 
-    if (currentLayoutKey === "dactyl" && code === "F18") {
+    //if (currentLayoutKey === "corney" && (code === "ShiftLeft" || code === "ShiftRight")) {
       // rerender labels and keycodes!!!
-      console.log("Setting Dactyl lower layer");
-      setDactylLower();
-      setTimeout(() => {
-        setDactylDefault();
-      }, 2000);
-    }
-
-    if (currentLayoutKey === "dactyl" && code === "F19") {
+//      shiftCorne();  
+    //}        
+ 
+    //if (currentLayoutKey === "dactyl" && code === "F18") {
       // rerender labels and keycodes!!!
-      console.log("Setting Dactyl magic layer");
-      setDactylMagic();
-      setTimeout(() => {
-        setDactylDefault();
-      }, 2000);
-    }
+    //  console.log("Setting Dactyl lower layer");
+    //  setDactylLower(); 
+    //  setTimeout(() => {
+    //    setDactylDefault();
+    //  }, 2000);
+    //}
 
-    el.classList.add("pressed");
+    //if (currentLayoutKey === "dactyl" && code === "F19") {
+      // rerender labels and keycodes!!!
+    //  console.log("Setting Dactyl magic layer");
+    //  setDactylMagic();
+    //  setTimeout(() => {
+    //    setDactylDefault();
+    //  }, 2000);
+    //} 
+
+    el.classList.add("pressed");  
   } else if (type === "up") {
-    el.classList.remove("pressed");
+    el.classList.remove("pressed");     
 
-    if (currentLayoutKey === "corne" && code === "ShiftLeft") {
+    //if (currentLayoutKey === "corne" && code === "ShiftLeft") {
       // rerender labels and keycodes!!!
-      normalCorne();
-    }
+    //  normalCorne();
+    //}
+
+    //if (currentLayoutKey === "corney" && (code === "ShiftLeft" || code === "ShiftRight")) {
+      // rerender labels and keycodes!!!
+    //  normalCorne();
+    //}
 
     //if (currentLayoutKey === "dactyl" && code === 'F18') {
     // rerender labels and keycodes!!!
@@ -360,7 +584,29 @@ function handleKey(code, type) {
   }
 }
 
-function setLayout(key) {
+async function refreshExternalLayout(key) {
+  const source = layoutSources[key];
+  if (typeof source !== "string") return true;
+  const { def, error } = await loadLayoutDefinition(key, source);
+  if (!def) {
+    showLayoutError(error ?? `Failed to reload layout "${key}".`);
+    return false;
+  }
+  layoutDefinitions = { ...layoutDefinitions, [key]: def };
+  rebuildLayoutData();
+  return true;
+}
+
+async function setLayout(key) {
+  const previousKey = currentLayoutKey;
+  const refreshed = await refreshExternalLayout(key);
+  if (!refreshed) {
+    currentLayoutKey = previousKey;
+    if (menuControls && typeof menuControls.updateActive === "function") {
+      menuControls.updateActive();
+    }
+    return;
+  }
   const layout = layouts[key];
   if (!layout) return;
   currentLayoutKey = key;

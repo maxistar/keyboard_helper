@@ -43,7 +43,7 @@ where
         let context = xrecord::XRecordCreateContext(
             dpy_control,
             0,
-            &mut RECORD_ALL_CLIENTS,
+            &raw mut RECORD_ALL_CLIENTS,
             1,
             &mut &mut record_range as *mut &mut xrecord::XRecordRange
                 as *mut *mut xrecord::XRecordRange,
@@ -105,8 +105,10 @@ unsafe extern "C" fn record_callback(
     let x = xdatum.root_x as f64;
     let y = xdatum.root_y as f64;
 
-    if let Some(event) = convert(&mut KEYBOARD, code, type_, x, y) {
-        if let Some(callback) = &mut GLOBAL_CALLBACK {
+    let keyboard = &raw mut KEYBOARD;
+    if let Some(event) = convert(unsafe { &mut *keyboard }, code, type_, x, y) {
+        let callback = &raw mut GLOBAL_CALLBACK;
+        if let Some(callback) = unsafe { &mut *callback } {
             callback(event);
         }
     }
