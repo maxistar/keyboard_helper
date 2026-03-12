@@ -3,6 +3,7 @@
   "version": "0.2.4",
   "private": true,
   "scripts": {
+    "test": "node --test tests",
     "tauri": "tauri"
   },
   "devDependencies": {

@@ -81,7 +81,9 @@ fn start_keyboard_listener(app_handle: tauri::AppHandle, state: State<KeyboardLi
 
         // Функция, которая будет вызываться на каждое событие
         let callback = move |event: Event| {
-            if let Some(payload) = convert_event(event) {
+            println!("Global input event: {:?}", event);
+
+            if let Some(payload) = convert_event(&event) {
                 // Шлём во все окна Tauri событие "key_event"
                 if let Err(err) = app_handle.emit("key_event", payload) {
                     eprintln!("Failed to emit key_event: {:?}", err);
@@ -100,7 +102,7 @@ fn start_keyboard_listener(app_handle: tauri::AppHandle, state: State<KeyboardLi
 }
 
 /// Преобразуем rdev::Event в удобный для фронта формат
-fn convert_event(ev: Event) -> Option<KeyEventPayload> {
+fn convert_event(ev: &Event) -> Option<KeyEventPayload> {
     
     //if let Some(name) = ev.name.as_deref() {
     //    if name == "F24" {
@@ -108,13 +110,13 @@ fn convert_event(ev: Event) -> Option<KeyEventPayload> {
     //    }
     //}
 
-    match ev.event_type {
+    match &ev.event_type {
         EventType::KeyPress(key) => Some(KeyEventPayload {
-            key: key_to_string(key),
+            key: key_to_string(*key),
             event_type: "down".into(),
         }),
         EventType::KeyRelease(key) => Some(KeyEventPayload {
-            key: key_to_string(key),
+            key: key_to_string(*key),
             event_type: "up".into(),
         }),
         _other => {
