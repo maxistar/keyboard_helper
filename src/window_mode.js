@@ -58,6 +58,11 @@
             setDecorations(!decorationsEnabled);
         };
 
+        document.addEventListener("click", () => {
+            if (decorationsEnabled) return;
+            setDecorations(true);
+        });
+
         toggleButton.addEventListener("click", (event) => {
             event.preventDefault();
             toggleDecorations();

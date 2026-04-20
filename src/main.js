@@ -1,4 +1,8 @@
 import { createMenu } from "./menu.js";
+import {
+  createBleLayerSyncController,
+  normalizeBleLayerSource,
+} from "./ble_layer_sync.js";
 
 function buildKeysFromBase(keyPositions, layers) {
   const baseLayer = layers?.[0] ?? [];
@@ -59,6 +63,7 @@ let layouts = {};
 let layoutLayers = {};
 let layoutLayerNames = {};
 let layoutSources = {};
+let layoutBleSources = {};
 let comboDefinitionsByLayout = {};
 let comboBordersByCode = new Map();
 let comboBorderEls = [];
@@ -141,6 +146,7 @@ function rebuildLayoutData() {
   normalizedLayoutLayers = {};
   layoutLayerNames = {};
   layouts = {};
+  layoutBleSources = {};
   comboDefinitionsByLayout = {};
 
   for (const [key, def] of Object.entries(layoutDefinitions)) {
@@ -148,6 +154,7 @@ function rebuildLayoutData() {
     normalizedLayoutLayers[key] = layers;
     layoutLayerNames[key] = names;
     layouts[key] = buildLayout(def, layers);
+    layoutBleSources[key] = normalizeBleLayerSource(def);
     if (Array.isArray(def.combos)) {
       comboDefinitionsByLayout[key] = def.combos.map(normalizeCombo).filter(Boolean);
     }
@@ -166,6 +173,7 @@ let layoutErrorEl = null;
 let layoutErrorTimer = null;
 let menuControls = null;
 let currentLayoutKey = "qwerty";
+let bleLayerSync = null;
 
 function getAllowedLayoutKeys(config) {
   const availableKeys = Object.keys(layoutDefinitions);
@@ -612,6 +620,11 @@ async function setLayout(key) {
   currentLayoutKey = key;
   currentLayerIndex = 0;
   renderKeyboard(layout);
+
+  if (bleLayerSync) {
+    await bleLayerSync.start(key, layoutBleSources[key] ?? null);
+  }
+
   if (menuControls && typeof menuControls.updateActive === "function") {
     menuControls.updateActive();
   }
@@ -637,6 +650,17 @@ window.addEventListener("DOMContentLoaded", async () => {
     getCurrentLayoutKey: () => currentLayoutKey,
     layoutOptions: layoutMenuOptions,
   });
+
+  bleLayerSync = createBleLayerSyncController({
+    tauri,
+    onLayerChange: (layer) => applyLayer(layer),
+    onStatusChange: (status) => {
+      if (status.state === "error" && status.message) {
+        console.warn("BLE layer sync unavailable:", status.message);
+      }
+    },
+  });
+
   if (tauri) {
     tauri.core
       .invoke("start_keyboard_listener")

@@ -1,5 +1,11 @@
 {
   "name": "Corne (split)",
+  "bleLayerSource": {
+    "deviceName": "Corney",
+    "serviceUuid": "12341234-1234-5678-7856-123412345678",
+    "characteristicUuid": "12341234-1234-5678-7856-123412345679",
+    "format": "int32-le"
+  },
   "keySize": {"w": 57,"h": 45,"gap": 10},
   "keyPositions": [
     {"row": 0,"col": 1},{"row": 0,"col": 2},{"row": 0,"col": 3},{"row": 0,"col": 4},{"row": 0,"col": 5},{"row": 0,"col": 6},{"row": 0,"col": 10},{"row": 0,"col": 11},{"row": 0,"col": 12},{"row": 0,"col": 13},{"row": 0,"col": 14},{"row": 0,"col": 15},

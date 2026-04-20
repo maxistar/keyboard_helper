@@ -4,13 +4,14 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::path::PathBuf;
+mod ble_layer_sync;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
     Emitter, Manager, State,
 };
 use rdev::{listen, Event, EventType, Key};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Debug, Clone)]
 
@@ -20,10 +21,25 @@ struct KeyboardListenerState {
     is_running: Arc<AtomicBool>,
 }
 
+#[derive(Default)]
+struct BleLayerSyncTauriState {
+    inner: Arc<ble_layer_sync::BleLayerSyncState>,
+}
+
 #[derive(Serialize, Debug, Clone)]
 struct KeyEventPayload {
     key: String,       // например: "KeyA", "Enter", "Unknown"
     event_type: String // "down" или "up"
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+struct BleLayerSyncConfig {
+    layout_key: String,
+    device_name: Option<String>,
+    service_uuid: String,
+    characteristic_uuid: String,
+    format: String,
 }
 
 #[tauri::command]
@@ -99,6 +115,31 @@ fn start_keyboard_listener(app_handle: tauri::AppHandle, state: State<KeyboardLi
     });
 }
 
+#[tauri::command]
+fn start_ble_layer_sync(
+    app_handle: tauri::AppHandle,
+    state: State<BleLayerSyncTauriState>,
+    config: BleLayerSyncConfig,
+) -> Result<(), String> {
+    ble_layer_sync::start_sync(
+        app_handle,
+        state.inner.clone(),
+        ble_layer_sync::BleLayerSyncConfig {
+            layout_key: config.layout_key,
+            device_name: config.device_name,
+            service_uuid: config.service_uuid,
+            characteristic_uuid: config.characteristic_uuid,
+            format: config.format,
+        },
+    );
+    Ok(())
+}
+
+#[tauri::command]
+fn stop_ble_layer_sync(state: State<BleLayerSyncTauriState>) {
+    ble_layer_sync::stop_sync(state.inner.clone());
+}
+
 /// Преобразуем rdev::Event в удобный для фронта формат
 fn convert_event(ev: Event) -> Option<KeyEventPayload> {
     
@@ -164,6 +205,7 @@ fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
 fn main() {
     tauri::Builder::default()
         .manage(KeyboardListenerState::default())
+        .manage(BleLayerSyncTauriState::default())
         .setup(|app| {
             build_tray(app.handle())?;
             if let Some(window) = app.get_webview_window("overlay") {
@@ -179,6 +221,8 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             start_keyboard_listener,
+            start_ble_layer_sync,
+            stop_ble_layer_sync,
             set_window_decorations,
             read_config_file,
             read_layout_file,

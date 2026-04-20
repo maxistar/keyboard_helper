@@ -46,6 +46,19 @@ You can point the app at external layout files and pick a default layout via a u
   - `defaultLayout`: key of the layout to select at startup (must exist in `layouts`).
   - `layouts`: object mapping layout keys to either `true` (use built-in) or a filesystem path (load external JSON).
 - Layout combos (layout-specific): add a `combos` array inside a layout file with entries like `{ "key1": { "row": 1, "col": 4 }, "key2": { "row": 1, "col": 5 }, "code": "Enter" }`.
-- Layout file format: JSON with `name`, `keySize` (`w`, `h`, `gap` in px), `keyPositions` (array of `{row,col}` with optional `w`/`h` overrides), and `keyLayers`. `keyLayers` can be an object with `default`, `shift`, etc., or an array where index 0 is the base layer. Each layer entry is `[label, code]` (or an object with `text`/`image` for custom labels).
+- Layout file format: JSON with `name`, optional `bleLayerSource`, `keySize` (`w`, `h`, `gap` in px), `keyPositions` (array of `{row,col}` with optional `w`/`h` overrides), and `keyLayers`. `keyLayers` can be an object with `default`, `shift`, etc., or an array where index 0 is the base layer. Each layer entry is `[label, code]` (or an object with `text`/`image` for custom labels).
+- `bleLayerSource` is optional and enables BLE-authoritative layer updates for the selected keyboard only. Shape:
+  - `deviceName`: BLE keyboard name to match
+  - `serviceUuid`: custom GATT service UUID
+  - `characteristicUuid`: custom active-layer characteristic UUID
+  - `format`: currently `int32-le`
 - References: see built-in layouts for structure (`src/layout_corne.json`, `src/layout_qwertz.json`, `src/layout_dactyl.json`, `src/layout_mac.json`, `src/layout_magic.json`). Copy one, edit, and point your config at the new path. Keep a personal config in `~/.keyri.json`.
 - If no config file is found, the app loads all built-in layouts and defaults to QWERTY. External layout paths must be readable from the filesystem; otherwise the app falls back to built-ins.
+
+## BLE layer sync
+
+If the selected layout defines `bleLayerSource`, the app attempts to connect to that keyboard over BLE and listen for active-layer notifications. When BLE sync is active, the on-screen layer indicator follows the keyboard's reported layer and key highlighting remains independent.
+
+- If BLE sync starts successfully, the app bootstraps the current layer and then updates immediately from notifications.
+- If BLE metadata is absent, BLE startup fails, or the BLE feed disconnects, the app falls back to the existing non-BLE behavior.
+- BLE sync starts and stops automatically when you switch layouts.
