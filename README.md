@@ -2,6 +2,21 @@
 
 Desktop helper to visualize split/ergonomic keyboard layouts (Corne, QWERTZ, Dactyl, Magic) and highlight pressed keys in real time. Built with vanilla HTML/CSS/JS on top of Tauri.
 
+## Clone
+
+```bash
+git clone https://github.com/maxistar/keyboard_helper.git
+cd keyboard_helper
+```
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) (LTS)
+- [Rust](https://rustup.rs/) toolchain (`rustup` recommended)
+- Platform dependencies for Tauri v2: [tauri.app/start/prerequisites](https://v2.tauri.app/start/prerequisites/)
+
+The Tauri CLI is a dev dependency — `npm install` pulls it in automatically.
+
 ## Start the app (dev)
 
 Install dependencies and launch the Tauri dev window:
