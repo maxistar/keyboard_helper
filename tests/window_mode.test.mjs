@@ -53,13 +53,9 @@ class EventTargetStub {
 
 function createEnvironment() {
   const invokeCalls = [];
-  const toggleButton = new EventTargetStub();
-  toggleButton.dataset = {};
-  toggleButton.title = "";
-  toggleButton.textContent = "";
 
   const document = new EventTargetStub();
-  document.getElementById = (id) => (id === "windowless" ? toggleButton : null);
+  document.getElementById = () => null;
 
   const window = new EventTargetStub();
   window.document = document;
@@ -99,30 +95,29 @@ function createEnvironment() {
   });
   vm.runInContext(source, context, { filename: "window_mode.js" });
 
-  return { document, invokeCalls, tauri, toggleButton, window };
+  return { document, invokeCalls, tauri, timers, window };
 }
 
 const flushAsyncWork = async () => {
   await new Promise((resolve) => setImmediate(resolve));
 };
 
-test("document click restores visible mode when currently windowless", async () => {
-  const { document, invokeCalls, tauri, toggleButton, window } = createEnvironment();
+test("auto-hide hides chrome after inactivity and document click restores it", async () => {
+  const { document, invokeCalls, tauri, timers, window } = createEnvironment();
   window.setupWindowModeToggle(tauri);
 
-  const toggleClickEvent = {
-    defaultPrevented: false,
-    preventDefault() {
-      this.defaultPrevented = true;
-    },
-  };
-  toggleButton.trigger("click", toggleClickEvent);
+  assert.equal(invokeCalls.length, 0);
+  assert.equal(timers.size, 1);
+
+  const [{ fn, ms }] = [...timers.values()];
+  assert.equal(ms, 30_000);
+  fn();
   await flushAsyncWork();
 
-  assert.equal(toggleClickEvent.defaultPrevented, true);
   assert.equal(invokeCalls.length, 1);
   assert.equal(invokeCalls[0].command, "set_window_decorations");
   assert.equal(invokeCalls[0].payload.decorations, false);
+  assert.equal(timers.size, 0);
 
   const documentClickEvent = {
     prevented: false,
@@ -142,6 +137,7 @@ test("document click restores visible mode when currently windowless", async () 
   assert.equal(invokeCalls[1].payload.decorations, true);
   assert.equal(documentClickEvent.prevented, false);
   assert.equal(documentClickEvent.stopped, false);
+  assert.equal(timers.size, 1);
 });
 
 test("document click is ignored while window is already visible", async () => {
