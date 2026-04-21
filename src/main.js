@@ -174,6 +174,8 @@ let layoutErrorTimer = null;
 let menuControls = null;
 let currentLayoutKey = "qwerty";
 let bleLayerSync = null;
+let shiftHeld = false;
+let altGrHeld = false;
 
 function getAllowedLayoutKeys(config) {
   const availableKeys = Object.keys(layoutDefinitions);
@@ -528,67 +530,42 @@ function setDactylMagic() {
 }
 
 function handleKey(code, type) {
+  const wasShiftHeld = shiftHeld;
+  const wasAltGrHeld = altGrHeld;
+
   if (type === "down") {
     setComboActive(code, true);
+    if (code === "ShiftLeft" || code === "ShiftRight") shiftHeld = true;
+    if (code === "AltGr") altGrHeld = true;
   } else if (type === "up") {
     setComboActive(code, false);
+    if (code === "ShiftLeft" || code === "ShiftRight") shiftHeld = false;
+    if (code === "AltGr") altGrHeld = false;
   }
-  const el = document.querySelector(`.key[data-key="${code}"]`);
+
+  const isModifier = code === "AltGr" || code === "ShiftLeft" || code === "ShiftRight";
+  let el;
+  if (!isModifier && wasAltGrHeld && wasShiftHeld) {
+    el = document.querySelector(`.key[data-key="AltGr+Shift+${code}"]`)
+      || document.querySelector(`.key[data-key="AltGr+${code}"]`)
+      || document.querySelector(`.key[data-key="${code}"]`);
+  } else if (!isModifier && wasAltGrHeld) {
+    el = document.querySelector(`.key[data-key="AltGr+${code}"]`)
+      || document.querySelector(`.key[data-key="${code}"]`);
+  } else if (!isModifier && wasShiftHeld) {
+    el = document.querySelector(`.key[data-key="Shift+${code}"]`)
+      || document.querySelector(`.key[data-key="${code}"]`);
+  } else {
+    el = document.querySelector(`.key[data-key="${code}"]`);
+  }
+
   console.log(`Key ${code} ${type}`);
   if (!el) return;
   if (type === "down") {
     showKeyEvent(code);
-    //if (currentLayoutKey === "corne" && code === "ShiftLeft") {
-      // rerender labels and keycodes!!!
-    //  shiftCorne();
-    //} 
-
-    //if (currentLayoutKey === "corney" && (code === "ShiftLeft" || code === "ShiftRight")) {
-      // rerender labels and keycodes!!!
-//      shiftCorne();  
-    //}        
- 
-    //if (currentLayoutKey === "dactyl" && code === "F18") {
-      // rerender labels and keycodes!!!
-    //  console.log("Setting Dactyl lower layer");
-    //  setDactylLower(); 
-    //  setTimeout(() => {
-    //    setDactylDefault();
-    //  }, 2000);
-    //}
-
-    //if (currentLayoutKey === "dactyl" && code === "F19") {
-      // rerender labels and keycodes!!!
-    //  console.log("Setting Dactyl magic layer");
-    //  setDactylMagic();
-    //  setTimeout(() => {
-    //    setDactylDefault();
-    //  }, 2000);
-    //} 
-
-    el.classList.add("pressed");  
+    el.classList.add("pressed");
   } else if (type === "up") {
-    el.classList.remove("pressed");     
-
-    //if (currentLayoutKey === "corne" && code === "ShiftLeft") {
-      // rerender labels and keycodes!!!
-    //  normalCorne();
-    //}
-
-    //if (currentLayoutKey === "corney" && (code === "ShiftLeft" || code === "ShiftRight")) {
-      // rerender labels and keycodes!!!
-    //  normalCorne();
-    //}
-
-    //if (currentLayoutKey === "dactyl" && code === 'F18') {
-    // rerender labels and keycodes!!!
-    //    setDactylDefault();
-    //}
-
-    //if (currentLayoutKey === "dactyl" && code === 'F19') {
-    // rerender labels and keycodes!!!
-    //    console.log("Un Setting Dactyl magic layer");
-    //}
+    el.classList.remove("pressed");
   }
 }
 
