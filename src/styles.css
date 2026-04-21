@@ -62,7 +62,7 @@ select {
 .hud {
   position: fixed;
   z-index: 1000;
-  right:  110px;
+  right:  60px;
   top: 10px;
   display: flex;
   align-items: center;
@@ -71,22 +71,12 @@ select {
 
 .key-event-indicator {
   font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: #000;
-  padding: 6px 8px;
-  min-width: 120px;
-  border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  text-shadow: none;
-  white-space: nowrap;
+  color: #e4e7ef;
   opacity: 0;
-  transition: opacity 160ms ease;
 }
 
 .key-event-indicator.visible {
   opacity: 1;
-  background-color: #ffffff20;
 }
 
 .layout-error {

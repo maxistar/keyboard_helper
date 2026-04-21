@@ -3,6 +3,7 @@ import {
   createBleLayerSyncController,
   normalizeBleLayerSource,
 } from "./ble_layer_sync.js";
+import { createPressedKeyTracker, resolveKeyElement } from "./key_highlight.js";
 
 function buildKeysFromBase(keyPositions, layers) {
   const baseLayer = layers?.[0] ?? [];
@@ -176,6 +177,7 @@ let currentLayoutKey = "qwerty";
 let bleLayerSync = null;
 let shiftHeld = false;
 let altGrHeld = false;
+const pressedKeyTracker = createPressedKeyTracker();
 
 function getAllowedLayoutKeys(config) {
   const availableKeys = Object.keys(layoutDefinitions);
@@ -344,6 +346,7 @@ function renderKeyLabel(el, entry) {
 
 function renderKeyboard(layout) {
   layoutRoot.innerHTML = "";
+  pressedKeyTracker.clear();
 
   applyKeySizes(layout.keySize);
   const comboDefinitions = comboDefinitionsByLayout[currentLayoutKey] ?? [];
@@ -543,28 +546,19 @@ function handleKey(code, type) {
     if (code === "AltGr") altGrHeld = false;
   }
 
-  const isModifier = code === "AltGr" || code === "ShiftLeft" || code === "ShiftRight";
-  let el;
-  if (!isModifier && wasAltGrHeld && wasShiftHeld) {
-    el = document.querySelector(`.key[data-key="AltGr+Shift+${code}"]`)
-      || document.querySelector(`.key[data-key="AltGr+${code}"]`)
-      || document.querySelector(`.key[data-key="${code}"]`);
-  } else if (!isModifier && wasAltGrHeld) {
-    el = document.querySelector(`.key[data-key="AltGr+${code}"]`)
-      || document.querySelector(`.key[data-key="${code}"]`);
-  } else if (!isModifier && wasShiftHeld) {
-    el = document.querySelector(`.key[data-key="Shift+${code}"]`)
-      || document.querySelector(`.key[data-key="${code}"]`);
-  } else {
-    el = document.querySelector(`.key[data-key="${code}"]`);
-  }
-
   console.log(`Key ${code} ${type}`);
-  if (!el) return;
   if (type === "down") {
+    const el = resolveKeyElement(document, code, wasShiftHeld, wasAltGrHeld);
+    if (!el) return;
     showKeyEvent(code);
     el.classList.add("pressed");
+    pressedKeyTracker.remember(code, el);
   } else if (type === "up") {
+    const el = pressedKeyTracker.release(
+      code,
+      resolveKeyElement(document, code, wasShiftHeld, wasAltGrHeld),
+    );
+    if (!el) return;
     el.classList.remove("pressed");
   }
 }
