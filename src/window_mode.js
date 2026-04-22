@@ -2,19 +2,10 @@
     const AUTO_HIDE_MS = 30_000;
 
     function setupWindowModeToggle(tauri) {
-        const toggleButton = document.getElementById("windowless");
-        if (!toggleButton || !tauri) return;
+        if (!tauri) return;
 
         let decorationsEnabled = true;
         let hideTimeoutId = null;
-
-        const updateLabel = () => {
-            toggleButton.dataset.state = decorationsEnabled ? "windowed" : "windowless";
-            toggleButton.title = decorationsEnabled
-                ? "Windowed (click to hide chrome)"
-                : "Windowless (click to show chrome)";
-            toggleButton.textContent = "";
-        };
 
         const clearHideTimer = () => {
             if (hideTimeoutId) {
@@ -47,15 +38,10 @@
                 } else {
                     clearHideTimer();
                 }
-                updateLabel();
             } catch (err) {
                 decorationsEnabled = !nextState;
                 console.error("Failed to toggle window decorations:", err);
             }
-        };
-
-        const toggleDecorations = () => {
-            setDecorations(!decorationsEnabled);
         };
 
         document.addEventListener("click", () => {
@@ -63,12 +49,6 @@
             setDecorations(true);
         });
 
-        toggleButton.addEventListener("click", (event) => {
-            event.preventDefault();
-            toggleDecorations();
-        });
-
-        updateLabel();
         scheduleHideTimer();
     }
 

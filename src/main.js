@@ -3,6 +3,7 @@ import {
   createBleLayerSyncController,
   normalizeBleLayerSource,
 } from "./ble_layer_sync.js";
+import { createPressedKeyTracker, resolveKeyElement } from "./key_highlight.js";
 
 function buildKeysFromBase(keyPositions, layers) {
   const baseLayer = layers?.[0] ?? [];
@@ -174,6 +175,9 @@ let layoutErrorTimer = null;
 let menuControls = null;
 let currentLayoutKey = "qwerty";
 let bleLayerSync = null;
+let shiftHeld = false;
+let altGrHeld = false;
+const pressedKeyTracker = createPressedKeyTracker();
 
 function getAllowedLayoutKeys(config) {
   const availableKeys = Object.keys(layoutDefinitions);
@@ -342,6 +346,7 @@ function renderKeyLabel(el, entry) {
 
 function renderKeyboard(layout) {
   layoutRoot.innerHTML = "";
+  pressedKeyTracker.clear();
 
   applyKeySizes(layout.keySize);
   const comboDefinitions = comboDefinitionsByLayout[currentLayoutKey] ?? [];
@@ -528,67 +533,33 @@ function setDactylMagic() {
 }
 
 function handleKey(code, type) {
+  const wasShiftHeld = shiftHeld;
+  const wasAltGrHeld = altGrHeld;
+
   if (type === "down") {
     setComboActive(code, true);
+    if (code === "ShiftLeft" || code === "ShiftRight") shiftHeld = true;
+    if (code === "AltGr") altGrHeld = true;
   } else if (type === "up") {
     setComboActive(code, false);
+    if (code === "ShiftLeft" || code === "ShiftRight") shiftHeld = false;
+    if (code === "AltGr") altGrHeld = false;
   }
-  const el = document.querySelector(`.key[data-key="${code}"]`);
+
   console.log(`Key ${code} ${type}`);
-  if (!el) return;
   if (type === "down") {
+    const el = resolveKeyElement(document, code, wasShiftHeld, wasAltGrHeld);
+    if (!el) return;
     showKeyEvent(code);
-    //if (currentLayoutKey === "corne" && code === "ShiftLeft") {
-      // rerender labels and keycodes!!!
-    //  shiftCorne();
-    //} 
-
-    //if (currentLayoutKey === "corney" && (code === "ShiftLeft" || code === "ShiftRight")) {
-      // rerender labels and keycodes!!!
-//      shiftCorne();  
-    //}        
- 
-    //if (currentLayoutKey === "dactyl" && code === "F18") {
-      // rerender labels and keycodes!!!
-    //  console.log("Setting Dactyl lower layer");
-    //  setDactylLower(); 
-    //  setTimeout(() => {
-    //    setDactylDefault();
-    //  }, 2000);
-    //}
-
-    //if (currentLayoutKey === "dactyl" && code === "F19") {
-      // rerender labels and keycodes!!!
-    //  console.log("Setting Dactyl magic layer");
-    //  setDactylMagic();
-    //  setTimeout(() => {
-    //    setDactylDefault();
-    //  }, 2000);
-    //} 
-
-    el.classList.add("pressed");  
+    el.classList.add("pressed");
+    pressedKeyTracker.remember(code, el);
   } else if (type === "up") {
-    el.classList.remove("pressed");     
-
-    //if (currentLayoutKey === "corne" && code === "ShiftLeft") {
-      // rerender labels and keycodes!!!
-    //  normalCorne();
-    //}
-
-    //if (currentLayoutKey === "corney" && (code === "ShiftLeft" || code === "ShiftRight")) {
-      // rerender labels and keycodes!!!
-    //  normalCorne();
-    //}
-
-    //if (currentLayoutKey === "dactyl" && code === 'F18') {
-    // rerender labels and keycodes!!!
-    //    setDactylDefault();
-    //}
-
-    //if (currentLayoutKey === "dactyl" && code === 'F19') {
-    // rerender labels and keycodes!!!
-    //    console.log("Un Setting Dactyl magic layer");
-    //}
+    const el = pressedKeyTracker.release(
+      code,
+      resolveKeyElement(document, code, wasShiftHeld, wasAltGrHeld),
+    );
+    if (!el) return;
+    el.classList.remove("pressed");
   }
 }
 

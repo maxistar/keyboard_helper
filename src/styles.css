@@ -21,43 +21,6 @@ body {
   color: #e4e7ef;
 }
 
-.windowless {
-  position: fixed;
-  top:  10px;
-  right:  60px;
-  z-index: 1000; 
-  padding: 6px 10px;
-  background: rgba(26, 33, 54, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;  
-  box-shadow: 0 5px 5px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(6px);
-  color: #e4e7ef;
-  text-decoration: none;
-  font-size: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 0;
-}
-
-.windowless::before {
-  --icon-size: 16px;
-  content: "";
-  width: var(--icon-size);
-  height: var(--icon-size);
-  display: inline-block;
-  background-repeat: no-repeat;
-  background-size: contain;
-}
-
-.windowless[data-state="windowed"]::before {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23e4e7ef' stroke-width='2'%3E%3Cpath d='M5 7h14'/%3E%3Cpath d='M9 12h6'/%3E%3Cpath d='M7 17h10'/%3E%3C/svg%3E");
-}
-
-.windowless[data-state="windowless"]::before {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23e4e7ef' stroke-width='2'%3E%3Crect x='4' y='6' width='16' height='12' rx='2' ry='2'/%3E%3Cpath d='M9 10h6'/%3E%3C/svg%3E");  
-}
-
 .shell {
   display: flex;
   flex-direction: column;
@@ -99,7 +62,7 @@ select {
 .hud {
   position: fixed;
   z-index: 1000;
-  right:  110px;
+  right:  60px;
   top: 10px;
   display: flex;
   align-items: center;
@@ -108,18 +71,8 @@ select {
 
 .key-event-indicator {
   font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: #000;
-  background: transparent;
-  padding: 6px 8px;
-  min-width: 120px;
-  border-radius: 8px;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  text-shadow: none;
-  white-space: nowrap;
+  color: #e4e7ef;
   opacity: 0;
-  transition: opacity 160ms ease;
 }
 
 .key-event-indicator.visible {
@@ -151,11 +104,6 @@ select {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: rgba(10, 13, 26, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 999px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(6px);
 }
 
 .layer-name {

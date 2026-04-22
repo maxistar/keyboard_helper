@@ -6,5 +6,9 @@
   <string>Keyboard Layout connects to your keyboard over Bluetooth Low Energy to display the active layer in real time.</string>
   <key>NSBluetoothPeripheralUsageDescription</key>
   <string>Keyboard Layout connects to your keyboard over Bluetooth Low Energy to display the active layer in real time.</string>
+  <key>NSInputMonitoringUsageDescription</key>
+  <string>Keyboard Layout monitors key presses to highlight keys in real time.</string>
+  <key>NSAccessibilityUsageDescription</key>
+  <string>Keyboard Layout monitors key presses to highlight keys in real time.</string>
 </dict>
 </plist>
