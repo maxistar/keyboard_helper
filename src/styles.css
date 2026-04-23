@@ -21,6 +21,10 @@ body {
   color: #e4e7ef;
 }
 
+body.windowed {
+  background: #ffffff5d;
+}
+
 .shell {
   display: flex;
   flex-direction: column;
@@ -70,7 +74,7 @@ select {
 }
 
 .key-event-indicator {
-  font-size: 13px;
+  font-size: 13px;  
   color: #e4e7ef;
   opacity: 0;
 }
@@ -110,11 +114,11 @@ select {
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: #e4e7ef;
+  color: #8a8a8a;
   padding-right: 10px;
   border-right: 1px solid rgba(255, 255, 255, 0.12);
   white-space: nowrap;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.842);
 }
 
 .layer-dots {
@@ -128,7 +132,7 @@ select {
   height: 10px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.35);
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(102, 102, 102, 0.61);
   cursor: pointer;
   transition: border-color 160ms ease, background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }

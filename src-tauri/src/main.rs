@@ -204,6 +204,18 @@ fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            if argv.contains(&"--toggle".to_string()) {
+                if let Some(window) = app.get_webview_window("overlay") {
+                    if window.is_visible().unwrap_or(false) {
+                        let _ = window.hide();
+                    } else {
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    }
+                }
+            }
+        }))
         .manage(KeyboardListenerState::default())
         .manage(BleLayerSyncTauriState::default())
         .setup(|app| {
