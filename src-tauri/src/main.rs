@@ -69,6 +69,19 @@ fn read_layout_file(path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
+fn toggle_window(app_handle: tauri::AppHandle) -> Result<(), String> {
+    let window = app_handle
+        .get_webview_window("overlay")
+        .ok_or_else(|| "overlay window not found".to_string())?;
+    if window.is_visible().map_err(|e| e.to_string())? {
+        window.hide().map_err(|e| e.to_string())
+    } else {
+        window.show().map_err(|e| e.to_string())?;
+        window.set_focus().map_err(|e| e.to_string())
+    }
+}
+
+#[tauri::command]
 fn set_window_decorations(app_handle: tauri::AppHandle, decorations: bool) -> Result<(), String> {
     let window = app_handle
         .get_webview_window("overlay")
@@ -204,6 +217,18 @@ fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            if argv.contains(&"--toggle".to_string()) {
+                if let Some(window) = app.get_webview_window("overlay") {
+                    if window.is_visible().unwrap_or(false) {
+                        let _ = window.hide();
+                    } else {
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    }
+                }
+            }
+        }))
         .manage(KeyboardListenerState::default())
         .manage(BleLayerSyncTauriState::default())
         .setup(|app| {
@@ -223,6 +248,7 @@ fn main() {
             start_keyboard_listener,
             start_ble_layer_sync,
             stop_ble_layer_sync,
+            toggle_window,
             set_window_decorations,
             read_config_file,
             read_layout_file,

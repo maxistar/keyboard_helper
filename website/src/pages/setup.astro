@@ -1,0 +1,115 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="Setup" description="How to install and configure Keyboard Helper.">
+  <style>
+    h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
+    .subtitle { color: var(--text-muted); margin-bottom: 40px; font-size: 1rem; }
+    h2 { font-size: 1.2rem; font-weight: 700; margin: 36px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    h3 { font-size: 1rem; font-weight: 700; margin: 20px 0 8px; color: var(--accent); }
+    p { color: var(--text-muted); line-height: 1.65; margin-bottom: 12px; }
+    ol, ul { padding-left: 20px; color: var(--text-muted); line-height: 1.7; }
+    li { margin-bottom: 6px; }
+    pre {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 18px;
+      overflow-x: auto;
+      font-size: 0.875rem;
+      margin: 12px 0 18px;
+    }
+    code { font-family: "Cascadia Code", "Fira Code", "Courier New", monospace; }
+    pre code { color: var(--text); }
+    p code, li code {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 0.85em;
+      color: var(--accent);
+    }
+    .note {
+      background: rgba(60, 201, 199, 0.08);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      padding: 12px 16px;
+      margin: 16px 0;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+  </style>
+
+  <h1>Setup Guide</h1>
+  <p class="subtitle">Get Keyboard Helper running in a few minutes.</p>
+
+  <h2>1. Download</h2>
+  <p>
+    Grab the latest release for your platform from the
+    <a href="https://github.com/maxistar/keyboard_helper/releases" target="_blank" rel="noopener">GitHub releases page</a>.
+    Builds are available for macOS (Apple Silicon &amp; Intel), Windows, and Linux.
+  </p>
+  <ol>
+    <li>Download the appropriate archive for your OS.</li>
+    <li>On macOS: open the <code>.dmg</code> and drag <em>Keyboard Layout</em> to Applications.</li>
+    <li>On Windows: run the <code>.msi</code> installer.</li>
+    <li>On Linux: extract the archive and run the binary.</li>
+  </ol>
+
+  <h2>2. First launch</h2>
+  <p>Launch the app. A transparent overlay appears showing the default QWERTY layout. Start typing — keys will highlight in real-time.</p>
+  <p>Closing the window hides it to the system tray. Restore it from the tray icon menu.</p>
+
+  <h2>3. Configuration</h2>
+  <p>
+    Create <code>~/.keyri.json</code> to customize the app. The file is optional — without it the app loads all built-in layouts and defaults to QWERTY.
+  </p>
+
+  <h3>Select a default layout</h3>
+  <pre><code>{`{
+  "defaultLayout": "corne",
+  "layouts": {
+    "corne": true,
+    "qwerty": true
+  }
+}`}</code></pre>
+
+  <h3>Load a custom layout file</h3>
+  <pre><code>{`{
+  "defaultLayout": "my-layout",
+  "layouts": {
+    "my-layout": "/home/you/keyboards/my-layout.json"
+  }
+}`}</code></pre>
+  <p>Layout files are JSON — copy one of the built-in layouts from the repo (<code>src/layout_corne.json</code>) as a starting point.</p>
+
+  <h3>Global toggle hotkey</h3>
+  <p>
+    Configure a system-wide hotkey to show or hide the app from the tray. Press it once to restore, press it again to hide.
+  </p>
+  <pre><code>{`{
+  "toggleHotkey": "Shift+Meta+K"
+}`}</code></pre>
+  <p>
+    Supported modifiers: <code>Shift</code>, <code>Meta</code> / <code>Cmd</code>, <code>Ctrl</code>, <code>Alt</code> / <code>Option</code>.
+    Single letters are accepted (<code>K</code> → <code>KeyK</code>). For other keys use the rdev key name directly (e.g. <code>F1</code>).
+  </p>
+  <div class="note">
+    The hotkey is processed by the app's own global keyboard listener — no OS-level shortcut registration needed.
+  </div>
+
+  <h2>4. CLI toggle flag</h2>
+  <p>
+    You can also toggle the app by launching it with the <code>--toggle</code> flag. If the app is already running, this shows or hides the window rather than opening a second instance.
+  </p>
+  <pre><code>/Applications/Keyboard\ Layout.app/Contents/MacOS/keyboard-app --toggle</code></pre>
+  <p>Useful for binding to external hotkey managers like Raycast, BetterTouchTool, or Shortcuts.app.</p>
+
+  <h2>5. Build from source</h2>
+  <p>Prerequisites: <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a> LTS, <a href="https://rustup.rs" target="_blank" rel="noopener">Rust toolchain</a>, and <a href="https://v2.tauri.app/start/prerequisites/" target="_blank" rel="noopener">Tauri v2 platform deps</a>.</p>
+  <pre><code>git clone https://github.com/maxistar/keyboard_helper.git
+cd keyboard_helper
+npm install
+npm run tauri dev    # dev window
+npm run tauri build  # release bundle</code></pre>
+</Layout>

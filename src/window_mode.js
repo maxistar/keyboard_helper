@@ -33,6 +33,7 @@
                 await tauri.core.invoke("set_window_decorations", {
                     decorations: decorationsEnabled,
                 });
+                document.body.classList.toggle("windowed", decorationsEnabled);
                 if (decorationsEnabled) {
                     scheduleHideTimer();
                 } else {
@@ -49,6 +50,7 @@
             setDecorations(true);
         });
 
+        document.body.classList.add("windowed");
         scheduleHideTimer();
     }
 
