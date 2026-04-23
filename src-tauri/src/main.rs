@@ -69,6 +69,19 @@ fn read_layout_file(path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
+fn toggle_window(app_handle: tauri::AppHandle) -> Result<(), String> {
+    let window = app_handle
+        .get_webview_window("overlay")
+        .ok_or_else(|| "overlay window not found".to_string())?;
+    if window.is_visible().map_err(|e| e.to_string())? {
+        window.hide().map_err(|e| e.to_string())
+    } else {
+        window.show().map_err(|e| e.to_string())?;
+        window.set_focus().map_err(|e| e.to_string())
+    }
+}
+
+#[tauri::command]
 fn set_window_decorations(app_handle: tauri::AppHandle, decorations: bool) -> Result<(), String> {
     let window = app_handle
         .get_webview_window("overlay")
@@ -235,6 +248,7 @@ fn main() {
             start_keyboard_listener,
             start_ble_layer_sync,
             stop_ble_layer_sync,
+            toggle_window,
             set_window_decorations,
             read_config_file,
             read_layout_file,

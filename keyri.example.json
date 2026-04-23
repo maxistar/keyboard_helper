@@ -1,5 +1,6 @@
 {
     "defaultLayout": "corney",
+    "toggleHotkey": "Shift+Meta+K",
     "layouts": {
         "qwertz": true,
         "dactyl": true,
@@ -7,5 +8,5 @@
         "mac": true,
         "corne": true,
         "corney": "/home/maxim/projects/keyboards/corney/layout_corney.json"
-    }   
+    }
 }

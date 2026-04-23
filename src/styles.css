@@ -118,7 +118,6 @@ select {
   padding-right: 10px;
   border-right: 1px solid rgba(255, 255, 255, 0.12);
   white-space: nowrap;
-  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.842);
 }
 
 .layer-dots {

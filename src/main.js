@@ -177,6 +177,11 @@ let currentLayoutKey = "qwerty";
 let bleLayerSync = null;
 let shiftHeld = false;
 let altGrHeld = false;
+let metaHeld = false;
+let ctrlHeld = false;
+let altHeld = false;
+let parsedToggleHotkey = null;
+let tauriHandle = null;
 const pressedKeyTracker = createPressedKeyTracker();
 
 function getAllowedLayoutKeys(config) {
@@ -532,6 +537,24 @@ function setDactylMagic() {
   applyLayer(2);
 }
 
+function parseToggleHotkey(str) {
+  if (!str) return null;
+  const parts = str.split("+").map((p) => p.trim());
+  const modifiers = { shift: false, meta: false, ctrl: false, alt: false };
+  let triggerKey = null;
+  for (const part of parts) {
+    switch (part.toLowerCase()) {
+      case "shift": modifiers.shift = true; break;
+      case "meta": case "cmd": case "command": modifiers.meta = true; break;
+      case "ctrl": case "control": modifiers.ctrl = true; break;
+      case "alt": case "option": modifiers.alt = true; break;
+      default:
+        triggerKey = part.length === 1 ? `Key${part.toUpperCase()}` : part;
+    }
+  }
+  return triggerKey ? { modifiers, triggerKey } : null;
+}
+
 function handleKey(code, type) {
   const wasShiftHeld = shiftHeld;
   const wasAltGrHeld = altGrHeld;
@@ -539,11 +562,23 @@ function handleKey(code, type) {
   if (type === "down") {
     setComboActive(code, true);
     if (code === "ShiftLeft" || code === "ShiftRight") shiftHeld = true;
-    if (code === "AltGr") altGrHeld = true;
+    if (code === "AltGr") { altGrHeld = true; altHeld = true; }
+    if (code === "Alt") altHeld = true;
+    if (code === "MetaLeft" || code === "MetaRight") metaHeld = true;
+    if (code === "ControlLeft" || code === "ControlRight") ctrlHeld = true;
+    if (parsedToggleHotkey && code === parsedToggleHotkey.triggerKey) {
+      const m = parsedToggleHotkey.modifiers;
+      if (shiftHeld === m.shift && metaHeld === m.meta && ctrlHeld === m.ctrl && altHeld === m.alt) {
+        tauriHandle?.core?.invoke("toggle_window").catch(console.error);
+      }
+    }
   } else if (type === "up") {
     setComboActive(code, false);
     if (code === "ShiftLeft" || code === "ShiftRight") shiftHeld = false;
-    if (code === "AltGr") altGrHeld = false;
+    if (code === "AltGr") { altGrHeld = false; altHeld = false; }
+    if (code === "Alt") altHeld = false;
+    if (code === "MetaLeft" || code === "MetaRight") metaHeld = false;
+    if (code === "ControlLeft" || code === "ControlRight") ctrlHeld = false;
   }
 
   console.log(`Key ${code} ${type}`);
@@ -603,7 +638,9 @@ async function setLayout(key) {
 
 window.addEventListener("DOMContentLoaded", async () => {
   const tauri = window.__TAURI__;
+  tauriHandle = tauri;
   const config = await loadConfig();
+  parsedToggleHotkey = parseToggleHotkey(config?.toggleHotkey ?? null);
   await loadLayoutDefinitions(config);
   if (Object.keys(layoutDefinitions).length === 0) {
     console.error("No layouts loaded; cannot initialize UI");
