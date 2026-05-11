@@ -56,6 +56,30 @@ function createEnvironment() {
 
   const document = new EventTargetStub();
   document.getElementById = () => null;
+  document.body = {
+    classList: {
+      values: new Set(),
+      add(name) {
+        this.values.add(name);
+      },
+      toggle(name, force) {
+        if (force === undefined) {
+          if (this.values.has(name)) {
+            this.values.delete(name);
+            return false;
+          }
+          this.values.add(name);
+          return true;
+        }
+        if (force) {
+          this.values.add(name);
+          return true;
+        }
+        this.values.delete(name);
+        return false;
+      },
+    },
+  };
 
   const window = new EventTargetStub();
   window.document = document;
