@@ -251,8 +251,16 @@
   cursor: pointer;
 }
 
+.menu-action-game,
 .menu-action-help {
   grid-column: 1 / -1;
+}
+
+.menu-action-game {
+  border-color: rgba(60, 201, 199, 0.42);
+  background: rgba(60, 201, 199, 0.1);
+  color: #dffffa;
+  font-weight: 700;
 }
 
 .menu-action:hover:not(:disabled),

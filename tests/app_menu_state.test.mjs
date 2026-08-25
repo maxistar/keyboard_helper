@@ -17,6 +17,7 @@ function createHarness(overrides = {}) {
     reloadCalls: [],
     reconnectCalls: [],
     helpCalls: [],
+    gameCalls: 0,
     snapshots: [],
     ...overrides,
   };
@@ -33,6 +34,10 @@ function createHarness(overrides = {}) {
     },
     reconnectBle: async (key) => {
       data.reconnectCalls.push(key);
+      return true;
+    },
+    openTypingInvaders: async () => {
+      data.gameCalls += 1;
       return true;
     },
     openHelp: async (url) => {
@@ -94,6 +99,7 @@ test("reconnect prevents duplicates while pending and targets the active BLE lay
       await pending;
       return true;
     },
+    openTypingInvaders: async () => true,
     openHelp: async () => true,
     onChange: (snapshot) => snapshots.push(snapshot),
   });
@@ -132,6 +138,7 @@ test("reload reports success and failure without allowing duplicate requests", a
       throw new Error("Invalid layout JSON");
     },
     reconnectBle: async () => true,
+    openTypingInvaders: async () => true,
     openHelp: async () => true,
   });
   failing.setActiveLayout();
@@ -204,6 +211,7 @@ test("Help uses the fixed setup URL and exposes opener failures as feedback", as
     hasNativeBridge: () => false,
     reloadLayout: async () => false,
     reconnectBle: async () => false,
+    openTypingInvaders: async () => false,
     openHelp: async () => {
       throw new Error("No default browser");
     },
@@ -213,4 +221,49 @@ test("Help uses the fixed setup URL and exposes opener failures as feedback", as
     kind: "error",
     message: "No default browser",
   });
+});
+
+test("game launch requires native availability, prevents duplicates, and reports failure", async () => {
+  let finishLaunch;
+  const pending = new Promise((resolve) => {
+    finishLaunch = resolve;
+  });
+  const native = createHarness();
+  const controller = createAppMenuStateController({
+    getCurrentLayoutKey: () => native.data.currentKey,
+    getCurrentLayoutLabel: (key) => key,
+    getCurrentLayoutSource: () => true,
+    getCurrentBleSource: () => null,
+    hasNativeBridge: () => true,
+    reloadLayout: async () => true,
+    reconnectBle: async () => true,
+    openTypingInvaders: async () => pending,
+    openHelp: async () => true,
+  });
+
+  const first = controller.launchGame();
+  assert.equal(controller.getSnapshot().gamePending, true);
+  assert.equal(await controller.launchGame(), false);
+  finishLaunch(true);
+  assert.equal(await first, true);
+  assert.equal(controller.getSnapshot().gamePending, false);
+
+  const unavailable = createHarness({ native: false });
+  assert.equal(unavailable.controller.getSnapshot().gameAvailable, false);
+  assert.equal(await unavailable.controller.launchGame(), false);
+  assert.equal(unavailable.data.gameCalls, 0);
+
+  const failing = createAppMenuStateController({
+    getCurrentLayoutKey: () => "builtin",
+    getCurrentLayoutLabel: () => "Built in",
+    getCurrentLayoutSource: () => true,
+    getCurrentBleSource: () => null,
+    hasNativeBridge: () => true,
+    reloadLayout: async () => true,
+    reconnectBle: async () => true,
+    openTypingInvaders: async () => { throw new Error("Window unavailable"); },
+    openHelp: async () => true,
+  });
+  assert.equal(await failing.launchGame(), false);
+  assert.equal(failing.getSnapshot().feedback.message, "Window unavailable");
 });

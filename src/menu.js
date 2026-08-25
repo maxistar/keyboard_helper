@@ -9,6 +9,7 @@ export function createMenu({
   onLayoutSelect,
   onReloadLayout,
   onReconnectBle,
+  onStartGame,
   onHelp,
   layoutOptions = [],
 }) {
@@ -27,6 +28,8 @@ export function createMenu({
     reloadPending: false,
     reconnectAvailable: false,
     reconnectPending: false,
+    gameAvailable: false,
+    gamePending: false,
     feedback: null,
   };
   let menuToggle;
@@ -36,6 +39,7 @@ export function createMenu({
   let bleStatusDetail;
   let reloadButton;
   let reconnectButton;
+  let gameButton;
   let feedbackEl;
   const layoutButtons = new Map();
 
@@ -194,13 +198,17 @@ export function createMenu({
     const actionSection = document.createElement("section");
     actionSection.className = "menu-section menu-actions";
     actionSection.appendChild(createSectionHeading("Actions", "menuActionsHeading"));
+    gameButton = createActionButton("Start Shift-Space Invaders", "menu-action-game", async () => {
+      const opened = await onStartGame();
+      if (opened !== false) closeMenu();
+    });
     reloadButton = createActionButton("Reload layout", "menu-action-reload", onReloadLayout);
     reconnectButton = createActionButton("Reconnect BLE", "menu-action-reconnect", onReconnectBle);
     const helpButton = createActionButton("Help", "menu-action-help", async () => {
       const opened = await onHelp();
       if (opened !== false) closeMenu();
     });
-    actionSection.append(reloadButton, reconnectButton, helpButton);
+    actionSection.append(gameButton, reloadButton, reconnectButton, helpButton);
 
     feedbackEl = document.createElement("div");
     feedbackEl.className = "menu-feedback";
@@ -237,6 +245,10 @@ export function createMenu({
     reconnectButton.disabled = !state.reconnectAvailable || state.reconnectPending;
     reconnectButton.textContent = state.reconnectPending ? "Reconnecting…" : "Reconnect BLE";
     reconnectButton.title = state.reconnectAvailable ? "Restart BLE synchronization" : "BLE synchronization is unavailable";
+
+    gameButton.disabled = !state.gameAvailable || state.gamePending;
+    gameButton.textContent = state.gamePending ? "Launching…" : "Start Shift-Space Invaders";
+    gameButton.title = state.gameAvailable ? "Open the typing arcade in a separate window" : "Available in the desktop application";
 
     feedbackEl.textContent = state.feedback?.message ?? "";
     feedbackEl.dataset.kind = state.feedback?.kind ?? "";

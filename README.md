@@ -40,6 +40,18 @@ Artifacts will be written to `src-tauri/target/release/` (per-platform bundles s
 
 Closing the window hides the app to the system tray instead of quitting. Use the tray menu to restore the window or quit the app.
 
+## Shift-Space Invaders
+
+The desktop application includes a word-typing arcade game. Open the application menu and choose **Start Shift-Space Invaders** to launch it in a separate window; choosing the action again focuses the existing game window.
+
+- Select an alien by typing the first letter of its visible English word, then finish the word to destroy it.
+- Each correct character fires a hit. A mistake keeps the completed prefix but resets the score multiplier.
+- Press `Esc` to pause or resume. Moving focus away from the game pauses it automatically.
+- Later waves introduce longer words, faster targets, shorter spawn intervals, and more simultaneous targets.
+- The game-over screen reports score, highest wave, destroyed targets, accuracy, and words per minute.
+
+The first release uses curated English words and keeps results only for the current session. It does not save profiles, achievements, or high scores. The game window is available through the native Tauri application; the standalone browser frontend does not create desktop windows.
+
 ## Release process
 
 Releases are cut from `master` with semantic version tags.

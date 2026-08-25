@@ -191,7 +191,7 @@ function createEnvironment(callbacks = {}) {
   const document = new DocumentStub();
   globalThis.document = document;
   let controls;
-  const calls = { layout: [], reload: 0, reconnect: 0, help: 0 };
+  const calls = { layout: [], reload: 0, reconnect: 0, game: 0, help: 0 };
   const layoutOptions = [
     { key: "alpha", label: "Alpha" },
     { key: "beta", label: "Beta" },
@@ -210,6 +210,10 @@ function createEnvironment(callbacks = {}) {
     }),
     onReconnectBle: callbacks.onReconnectBle ?? (async () => {
       calls.reconnect += 1;
+      return true;
+    }),
+    onStartGame: callbacks.onStartGame ?? (async () => {
+      calls.game += 1;
       return true;
     }),
     onHelp: callbacks.onHelp ?? (async () => {
@@ -233,6 +237,7 @@ test("menu renders state, radio selection, statuses, and action availability", (
       bleState: "connected",
       reloadAvailable: true,
       reconnectAvailable: false,
+      gameAvailable: true,
       feedback: { kind: "success", message: "Layout reloaded." },
     });
 
@@ -242,12 +247,20 @@ test("menu renders state, radio selection, statuses, and action availability", (
     assert.deepEqual(radios.map((radio) => radio.getAttribute("aria-checked")), ["false", "true", "false"]);
     assert.equal(env.document.querySelector(".menu-action-reload").disabled, false);
     assert.equal(env.document.querySelector(".menu-action-reconnect").disabled, true);
+    assert.equal(env.document.querySelector(".menu-action-game").disabled, false);
+    assert.equal(
+      env.document.querySelector(".menu-action-game").textContent,
+      "Start Shift-Space Invaders",
+    );
     assert.equal(env.document.querySelector(".menu-feedback").textContent, "Layout reloaded.");
 
     env.controls.update({ reloadPending: true, reconnectAvailable: true, reconnectPending: true });
     assert.equal(env.document.querySelector(".menu-action-reload").textContent, "Reloading…");
     assert.equal(env.document.querySelector(".menu-action-reload").disabled, true);
     assert.equal(env.document.querySelector(".menu-action-reconnect").textContent, "Reconnecting…");
+    env.controls.update({ gamePending: true });
+    assert.equal(env.document.querySelector(".menu-action-game").textContent, "Launching…");
+    assert.equal(env.document.querySelector(".menu-action-game").disabled, true);
   } finally {
     env.restore();
   }
@@ -292,6 +305,7 @@ test("layout selection updates externally and successful actions invoke callback
       currentLayoutLabel: "Alpha",
       reloadAvailable: true,
       reconnectAvailable: true,
+      gameAvailable: true,
     });
     const toggle = env.document.querySelector(".menu-toggle");
     const panel = env.document.querySelector(".menu-panel");
@@ -309,6 +323,11 @@ test("layout selection updates externally and successful actions invoke callback
     assert.equal(env.calls.reload, 1);
     assert.equal(env.calls.reconnect, 1);
 
+    await env.document.querySelector(".menu-action-game").click();
+    assert.equal(env.calls.game, 1);
+    assert.equal(panel.classList.contains("open"), false);
+
+    await toggle.click();
     await env.document.querySelector(".menu-action-help").click();
     assert.equal(env.calls.help, 1);
     assert.equal(panel.classList.contains("open"), false);
@@ -316,6 +335,24 @@ test("layout selection updates externally and successful actions invoke callback
     env.controls.update({ currentLayoutKey: "gamma", currentLayoutLabel: "External event" });
     assert.equal(radios[2].getAttribute("aria-checked"), "true");
     assert.equal(env.document.querySelector(".menu-current-layout").textContent, "External event");
+  } finally {
+    env.restore();
+  }
+});
+
+test("failed game launch keeps the menu open for accessible feedback", async () => {
+  const env = createEnvironment({ onStartGame: async () => false });
+  try {
+    env.controls.update({
+      gameAvailable: true,
+      feedback: { kind: "error", message: "Window unavailable" },
+    });
+    const toggle = env.document.querySelector(".menu-toggle");
+    const panel = env.document.querySelector(".menu-panel");
+    await toggle.click();
+    await env.document.querySelector(".menu-action-game").click();
+    assert.equal(panel.classList.contains("open"), true);
+    assert.equal(env.document.querySelector(".menu-feedback").textContent, "Window unavailable");
   } finally {
     env.restore();
   }

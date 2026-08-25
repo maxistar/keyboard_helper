@@ -8,7 +8,7 @@ mod ble_layer_sync;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    Emitter, Manager, State,
+    Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder,
 };
 use rdev::{listen, Event, EventType, Key};
 use serde::{Deserialize, Serialize};
@@ -40,6 +40,22 @@ struct BleLayerSyncConfig {
     service_uuid: String,
     characteristic_uuid: String,
     format: String,
+}
+
+const TYPING_INVADERS_WINDOW_LABEL: &str = "typing-invaders";
+
+#[derive(Debug, PartialEq, Eq)]
+enum GameWindowAction {
+    Create,
+    FocusExisting,
+}
+
+fn game_window_action(window_exists: bool) -> GameWindowAction {
+    if window_exists {
+        GameWindowAction::FocusExisting
+    } else {
+        GameWindowAction::Create
+    }
 }
 
 #[tauri::command]
@@ -90,6 +106,39 @@ fn set_window_decorations(app_handle: tauri::AppHandle, decorations: bool) -> Re
     window
         .set_decorations(decorations)
         .map_err(|e| format!("failed to set decorations: {e}"))
+}
+
+#[tauri::command]
+fn open_typing_invaders(app_handle: tauri::AppHandle) -> Result<(), String> {
+    let existing = app_handle.get_webview_window(TYPING_INVADERS_WINDOW_LABEL);
+    match game_window_action(existing.is_some()) {
+        GameWindowAction::FocusExisting => {
+            let window = existing.expect("existing game window checked above");
+            window.show().map_err(|error| error.to_string())?;
+            if window.is_minimized().map_err(|error| error.to_string())? {
+                window.unminimize().map_err(|error| error.to_string())?;
+            }
+            window.set_focus().map_err(|error| error.to_string())
+        }
+        GameWindowAction::Create => {
+            let window = WebviewWindowBuilder::new(
+                &app_handle,
+                TYPING_INVADERS_WINDOW_LABEL,
+                WebviewUrl::App("game.html".into()),
+            )
+            .title("Shift-Space Invaders")
+            .inner_size(1100.0, 720.0)
+            .min_inner_size(720.0, 560.0)
+            .resizable(true)
+            .decorations(true)
+            .transparent(false)
+            .always_on_top(false)
+            .center()
+            .build()
+            .map_err(|error| format!("failed to create Shift-Space Invaders window: {error}"))?;
+            window.set_focus().map_err(|error| error.to_string())
+        }
+    }
 }
 
 #[tauri::command]
@@ -251,9 +300,21 @@ fn main() {
             stop_ble_layer_sync,
             toggle_window,
             set_window_decorations,
+            open_typing_invaders,
             read_config_file,
             read_layout_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{game_window_action, GameWindowAction};
+
+    #[test]
+    fn game_window_is_created_only_when_missing() {
+        assert_eq!(game_window_action(false), GameWindowAction::Create);
+        assert_eq!(game_window_action(true), GameWindowAction::FocusExisting);
+    }
 }

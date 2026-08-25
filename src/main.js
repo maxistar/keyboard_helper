@@ -657,6 +657,14 @@ async function openHelpPage(url) {
   return true;
 }
 
+async function openTypingInvaders() {
+  if (!tauriHandle?.core?.invoke) {
+    throw new Error("Shift-Space Invaders requires the desktop application.");
+  }
+  await tauriHandle.core.invoke("open_typing_invaders");
+  return true;
+}
+
 async function setLayout(key) {
   const previousKey = currentLayoutKey;
   const { ok, error } = await refreshExternalLayout(key);
@@ -717,6 +725,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     hasNativeBridge: () => Boolean(tauriHandle?.core?.invoke && tauriHandle?.event?.listen),
     reloadLayout: reloadCurrentLayout,
     reconnectBle: reconnectCurrentBle,
+    openTypingInvaders,
     openHelp: openHelpPage,
     onChange: (state) => menuControls?.update(state),
   });
@@ -725,6 +734,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     onLayoutSelect: setLayout,
     onReloadLayout: () => menuStateController.reload(),
     onReconnectBle: () => menuStateController.reconnect(),
+    onStartGame: () => menuStateController.launchGame(),
     onHelp: () => menuStateController.help(),
     layoutOptions: layoutMenuOptions,
   });

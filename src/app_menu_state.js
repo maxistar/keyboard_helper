@@ -18,6 +18,7 @@ export function createAppMenuStateController({
   hasNativeBridge,
   reloadLayout,
   reconnectBle,
+  openTypingInvaders,
   openHelp,
   onChange = () => {},
 }) {
@@ -25,6 +26,7 @@ export function createAppMenuStateController({
   let bleMessage = null;
   let reloadPending = false;
   let reconnectPending = false;
+  let gamePending = false;
   let feedback = null;
   let activeRevision = 0;
 
@@ -49,6 +51,8 @@ export function createAppMenuStateController({
       reloadPending,
       reconnectAvailable: bleAvailable && hasNativeBridge(),
       reconnectPending,
+      gameAvailable: hasNativeBridge(),
+      gamePending,
       feedback,
     };
   }
@@ -170,6 +174,27 @@ export function createAppMenuStateController({
     }
   }
 
+  async function launchGame() {
+    if (gamePending || !hasNativeBridge()) return false;
+    gamePending = true;
+    feedback = null;
+    notify();
+    try {
+      const result = await openTypingInvaders();
+      if (result === false) throw new Error("Shift-Space Invaders could not be opened.");
+      return true;
+    } catch (error) {
+      feedback = {
+        kind: "error",
+        message: errorMessage(error, "Failed to open Shift-Space Invaders."),
+      };
+      return false;
+    } finally {
+      gamePending = false;
+      notify();
+    }
+  }
+
   return {
     getSnapshot: snapshot,
     refresh: notify,
@@ -178,6 +203,7 @@ export function createAppMenuStateController({
     reportError,
     reload,
     reconnect,
+    launchGame,
     help,
   };
 }
