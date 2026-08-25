@@ -1,4 +1,6 @@
 import { createMenu } from "./menu.js";
+import { createAppMenuStateController } from "./app_menu_state.js";
+import { reloadActiveExternalLayout } from "./app_menu_actions.js";
 import {
   createBleLayerSyncController,
   normalizeBleLayerSource,
@@ -173,6 +175,7 @@ let keyEventHideTimer = null;
 let layoutErrorEl = null;
 let layoutErrorTimer = null;
 let menuControls = null;
+let menuStateController = null;
 let currentLayoutKey = "qwerty";
 let bleLayerSync = null;
 let shiftHeld = false;
@@ -600,40 +603,82 @@ function handleKey(code, type) {
 
 async function refreshExternalLayout(key) {
   const source = layoutSources[key];
-  if (typeof source !== "string") return true;
+  if (typeof source !== "string") return { ok: true, error: null };
   const { def, error } = await loadLayoutDefinition(key, source);
   if (!def) {
-    showLayoutError(error ?? `Failed to reload layout "${key}".`);
-    return false;
+    return { ok: false, error: error ?? `Failed to reload layout "${key}".` };
   }
   layoutDefinitions = { ...layoutDefinitions, [key]: def };
   rebuildLayoutData();
+  return { ok: true, error: null };
+}
+
+async function reloadCurrentLayout(key) {
+  return reloadActiveExternalLayout({
+    key,
+    getCurrentLayoutKey: () => currentLayoutKey,
+    getLayoutSource: (layoutKey) => layoutSources[layoutKey],
+    loadLayoutDefinition,
+    applyLayoutDefinition: (layoutKey, definition) => {
+      layoutDefinitions = { ...layoutDefinitions, [layoutKey]: definition };
+      rebuildLayoutData();
+    },
+    renderBaseLayout: (layoutKey) => {
+      currentLayerIndex = 0;
+      renderKeyboard(layouts[layoutKey]);
+    },
+    restartBle: async (layoutKey) => {
+      if (bleLayerSync) {
+        await bleLayerSync.start(layoutKey, layoutBleSources[layoutKey] ?? null);
+      }
+      menuStateController?.refresh();
+    },
+  });
+}
+
+async function reconnectCurrentBle(key) {
+  if (key !== currentLayoutKey || !bleLayerSync || !layoutBleSources[key]) return false;
+  return bleLayerSync.start(key, layoutBleSources[key]);
+}
+
+async function openHelpPage(url) {
+  if (tauriHandle) {
+    if (typeof tauriHandle.opener?.openUrl !== "function") {
+      throw new Error("The system browser opener is unavailable.");
+    }
+    await tauriHandle.opener.openUrl(url);
+    return true;
+  }
+
+  if (typeof window.open !== "function") {
+    throw new Error("The browser cannot open the Help page.");
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
   return true;
 }
 
 async function setLayout(key) {
   const previousKey = currentLayoutKey;
-  const refreshed = await refreshExternalLayout(key);
-  if (!refreshed) {
+  const { ok, error } = await refreshExternalLayout(key);
+  if (!ok) {
     currentLayoutKey = previousKey;
-    if (menuControls && typeof menuControls.updateActive === "function") {
-      menuControls.updateActive();
-    }
-    return;
+    showLayoutError(error);
+    menuStateController?.reportError(error);
+    return false;
   }
   const layout = layouts[key];
-  if (!layout) return;
+  if (!layout) return false;
   currentLayoutKey = key;
   currentLayerIndex = 0;
   renderKeyboard(layout);
+  menuStateController?.setActiveLayout();
 
   if (bleLayerSync) {
     await bleLayerSync.start(key, layoutBleSources[key] ?? null);
   }
 
-  if (menuControls && typeof menuControls.updateActive === "function") {
-    menuControls.updateActive();
-  }
+  menuStateController?.refresh();
+  return true;
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
@@ -653,21 +698,37 @@ window.addEventListener("DOMContentLoaded", async () => {
   }));
   currentLayoutKey = pickDefaultLayout(config, allowedLayoutKeys);
 
-  menuControls = createMenu({
-    onLayoutSelect: setLayout,
-    getCurrentLayoutKey: () => currentLayoutKey,
-    layoutOptions: layoutMenuOptions,
-  });
-
   bleLayerSync = createBleLayerSyncController({
     tauri,
     onLayerChange: (layer) => applyLayer(layer),
     onStatusChange: (status) => {
+      menuStateController?.handleBleStatus(status);
       if (status.state === "error" && status.message) {
         console.warn("BLE layer sync unavailable:", status.message);
       }
     },
   });
+
+  menuStateController = createAppMenuStateController({
+    getCurrentLayoutKey: () => currentLayoutKey,
+    getCurrentLayoutLabel: (key) => layoutDefinitions[key]?.name ?? key,
+    getCurrentLayoutSource: () => layoutSources[currentLayoutKey],
+    getCurrentBleSource: () => layoutBleSources[currentLayoutKey] ?? null,
+    hasNativeBridge: () => Boolean(tauriHandle?.core?.invoke && tauriHandle?.event?.listen),
+    reloadLayout: reloadCurrentLayout,
+    reconnectBle: reconnectCurrentBle,
+    openHelp: openHelpPage,
+    onChange: (state) => menuControls?.update(state),
+  });
+
+  menuControls = createMenu({
+    onLayoutSelect: setLayout,
+    onReloadLayout: () => menuStateController.reload(),
+    onReconnectBle: () => menuStateController.reconnect(),
+    onHelp: () => menuStateController.help(),
+    layoutOptions: layoutMenuOptions,
+  });
+  menuStateController.refresh();
 
   if (tauri) {
     tauri.core
@@ -697,8 +758,5 @@ window.addEventListener("DOMContentLoaded", async () => {
     console.warn("Tauri global API (window.__TAURI__) is not available");
   }
 
-  setLayout(currentLayoutKey);
-  if (menuControls && typeof menuControls.updateActive === "function") {
-    menuControls.updateActive();
-  }
+  await setLayout(currentLayoutKey);
 });
