@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { createMenu } from "../src/menu.js";
@@ -60,6 +61,8 @@ class EventTargetStub {
   }
 
   async trigger(type, event = {}) {
+    event.target ??= this;
+    event.currentTarget = this;
     if (!event.preventDefault) {
       event.defaultPrevented = false;
       event.preventDefault = () => {
@@ -93,6 +96,7 @@ class ElementStub extends EventTargetStub {
     this.parentNode = null;
     this.attributes = new Map();
     this.dataset = {};
+    this.style = {};
     this.className = "";
     this.classList = new ClassListStub(this);
     this.id = "";
@@ -102,6 +106,9 @@ class ElementStub extends EventTargetStub {
     this.tabIndex = 0;
     this.title = "";
     this.scrolledIntoView = false;
+    this.rect = { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 };
+    this.offsetWidth = 0;
+    this.offsetHeight = 0;
   }
 
   setAttribute(name, value) {
@@ -152,6 +159,27 @@ class ElementStub extends EventTargetStub {
     this.scrolledIntoView = true;
   }
 
+  getBoundingClientRect() {
+    return this.rect;
+  }
+
+  setRect(rect) {
+    const left = rect.left ?? 0;
+    const top = rect.top ?? 0;
+    const width = rect.width ?? 0;
+    const height = rect.height ?? 0;
+    this.rect = {
+      left,
+      top,
+      width,
+      height,
+      right: rect.right ?? left + width,
+      bottom: rect.bottom ?? top + height,
+    };
+    this.offsetWidth = width;
+    this.offsetHeight = height;
+  }
+
   async click() {
     if (this.disabled) return;
     await this.trigger("click", { target: this });
@@ -166,6 +194,7 @@ class DocumentStub extends EventTargetStub {
     this.menuRoot.id = "menuRoot";
     this.root.appendChild(this.menuRoot);
     this.activeElement = null;
+    this.documentElement = { clientWidth: 1024, clientHeight: 768 };
   }
 
   createElement(tagName) {
@@ -186,10 +215,21 @@ class DocumentStub extends EventTargetStub {
   }
 }
 
+class WindowStub extends EventTargetStub {
+  constructor() {
+    super();
+    this.innerWidth = 1024;
+    this.innerHeight = 768;
+  }
+}
+
 function createEnvironment(callbacks = {}) {
   const previousDocument = globalThis.document;
+  const previousWindow = globalThis.window;
   const document = new DocumentStub();
+  const window = new WindowStub();
   globalThis.document = document;
+  globalThis.window = window;
   let controls;
   const calls = { layout: [], reload: 0, reconnect: 0, game: 0, help: 0 };
   const layoutOptions = [
@@ -224,11 +264,24 @@ function createEnvironment(callbacks = {}) {
 
   const restore = () => {
     globalThis.document = previousDocument;
+    globalThis.window = previousWindow;
   };
-  return { calls, controls, document, restore };
+  return { calls, controls, document, window, restore };
 }
 
-test("menu renders state, radio selection, statuses, and action availability", () => {
+const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+test("menu stacking layer stays above combo-key borders", () => {
+  const menuCss = readFileSync(new URL("../src/menu.css", import.meta.url), "utf8");
+  const appCss = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
+  const menuLayer = Number(menuCss.match(/--app-menu-z-index:\s*(\d+)/)?.[1]);
+  const comboLayer = Number(appCss.match(/\.combo-border\s*\{[^}]*z-index:\s*(\d+)/s)?.[1]);
+
+  assert.ok(menuLayer > comboLayer, `expected menu layer ${menuLayer} above combo layer ${comboLayer}`);
+  assert.match(menuCss, /z-index:\s*calc\(var\(--app-menu-z-index\) \+ 1\)/);
+});
+
+test("menu renders the root hierarchy, synchronized summaries, and contextual controls", () => {
   const env = createEnvironment();
   try {
     env.controls.update({
@@ -238,66 +291,88 @@ test("menu renders state, radio selection, statuses, and action availability", (
       reloadAvailable: true,
       reconnectAvailable: false,
       gameAvailable: true,
-      feedback: { kind: "success", message: "Layout reloaded." },
     });
 
+    const root = env.document.querySelector(".menu-root");
+    const rootItems = root.querySelectorAll('[role="menuitem"]');
+    assert.equal(root.getAttribute("role"), "menu");
+    assert.equal(rootItems.length, 4);
+    assert.equal(env.document.querySelector(".menu-parent-keyboard").getAttribute("aria-haspopup"), "menu");
+    assert.equal(env.document.querySelector(".menu-parent-connection").getAttribute("aria-haspopup"), "menu");
+    assert.equal(env.document.querySelector(".menu-parent-keyboard").querySelector(".menu-root-summary").textContent, "Beta board");
+    assert.equal(env.document.querySelector(".menu-parent-connection").querySelector(".menu-root-summary").textContent, "BLE connected");
     assert.equal(env.document.querySelector(".menu-current-layout").textContent, "Beta board");
     assert.equal(env.document.querySelector(".menu-ble-status").dataset.state, "connected");
-    const radios = env.document.querySelectorAll('[role="radio"]');
+
+    const radios = env.document.querySelectorAll('[role="menuitemradio"]');
     assert.deepEqual(radios.map((radio) => radio.getAttribute("aria-checked")), ["false", "true", "false"]);
     assert.equal(env.document.querySelector(".menu-action-reload").disabled, false);
     assert.equal(env.document.querySelector(".menu-action-reconnect").disabled, true);
     assert.equal(env.document.querySelector(".menu-action-game").disabled, false);
-    assert.equal(
-      env.document.querySelector(".menu-action-game").textContent,
-      "Start Shift-Space Invaders",
-    );
-    assert.equal(env.document.querySelector(".menu-feedback").textContent, "Layout reloaded.");
 
-    env.controls.update({ reloadPending: true, reconnectAvailable: true, reconnectPending: true });
+    env.controls.update({ reloadPending: true, reconnectAvailable: true, reconnectPending: true, gamePending: true });
     assert.equal(env.document.querySelector(".menu-action-reload").textContent, "Reloading…");
     assert.equal(env.document.querySelector(".menu-action-reload").disabled, true);
     assert.equal(env.document.querySelector(".menu-action-reconnect").textContent, "Reconnecting…");
-    env.controls.update({ gamePending: true });
     assert.equal(env.document.querySelector(".menu-action-game").textContent, "Launching…");
-    assert.equal(env.document.querySelector(".menu-action-game").disabled, true);
   } finally {
     env.restore();
   }
 });
 
-test("menu manages focus, radio arrow navigation, Escape, and outside dismissal", async () => {
+test("keyboard navigation traverses levels and dismissal restores focus correctly", async () => {
   const env = createEnvironment();
   try {
     env.controls.update({ currentLayoutKey: "beta", currentLayoutLabel: "Beta" });
     const toggle = env.document.querySelector(".menu-toggle");
-    const panel = env.document.querySelector(".menu-panel");
-    const radios = env.document.querySelectorAll('[role="radio"]');
+    const root = env.document.querySelector(".menu-root");
+    const keyboard = env.document.querySelector(".menu-parent-keyboard");
+    const connection = env.document.querySelector(".menu-parent-connection");
+    const keyboardFlyout = env.document.querySelector(".menu-flyout-keyboard");
+    const radios = env.document.querySelectorAll('[role="menuitemradio"]');
 
     await toggle.click();
-    assert.equal(toggle.getAttribute("aria-expanded"), "true");
-    assert.equal(panel.classList.contains("open"), true);
+    assert.equal(root.classList.contains("open"), true);
+    assert.equal(env.document.activeElement, keyboard);
+
+    await keyboard.trigger("keydown", { key: "ArrowDown" });
+    assert.equal(env.document.activeElement, connection);
+    await connection.trigger("keydown", { key: "Home" });
+    assert.equal(env.document.activeElement, keyboard);
+
+    await keyboard.trigger("keydown", { key: "ArrowRight" });
+    assert.equal(keyboard.getAttribute("aria-expanded"), "true");
+    assert.equal(keyboardFlyout.classList.contains("open"), true);
     assert.equal(env.document.activeElement, radios[1]);
 
-    await radios[1].trigger("keydown", { key: "ArrowDown", target: radios[1] });
+    await radios[1].trigger("keydown", { key: "ArrowDown" });
     assert.equal(env.document.activeElement, radios[2]);
     assert.equal(radios[2].scrolledIntoView, true);
+    await radios[2].trigger("keydown", { key: "ArrowLeft" });
+    assert.equal(keyboardFlyout.classList.contains("open"), false);
+    assert.equal(env.document.activeElement, keyboard);
 
+    await keyboard.trigger("keydown", { key: "ArrowRight" });
     await env.document.trigger("keydown", { key: "Escape" });
-    assert.equal(panel.classList.contains("open"), false);
+    assert.equal(root.classList.contains("open"), false);
+    assert.equal(keyboardFlyout.classList.contains("open"), false);
     assert.equal(env.document.activeElement, toggle);
-    assert.equal(toggle.getAttribute("aria-expanded"), "false");
+
+    await toggle.click();
+    const tabEvent = await env.document.trigger("keydown", { key: "Tab" });
+    assert.equal(root.classList.contains("open"), false);
+    assert.equal(tabEvent.defaultPrevented, false);
 
     await toggle.click();
     const outside = env.document.createElement("div");
     await env.document.trigger("click", { target: outside });
-    assert.equal(panel.classList.contains("open"), false);
+    assert.equal(root.classList.contains("open"), false);
   } finally {
     env.restore();
   }
 });
 
-test("layout selection updates externally and successful actions invoke callbacks", async () => {
+test("contextual flyouts switch exclusively and actions preserve their close behavior", async () => {
   const env = createEnvironment();
   try {
     env.controls.update({
@@ -308,75 +383,136 @@ test("layout selection updates externally and successful actions invoke callback
       gameAvailable: true,
     });
     const toggle = env.document.querySelector(".menu-toggle");
-    const panel = env.document.querySelector(".menu-panel");
-    const radios = env.document.querySelectorAll('[role="radio"]');
+    const root = env.document.querySelector(".menu-root");
+    const keyboardParent = env.document.querySelector(".menu-parent-keyboard");
+    const connectionParent = env.document.querySelector(".menu-parent-connection");
+    const keyboardFlyout = env.document.querySelector(".menu-flyout-keyboard");
+    const connectionFlyout = env.document.querySelector(".menu-flyout-connection");
+    const radios = env.document.querySelectorAll('[role="menuitemradio"]');
 
     await toggle.click();
+    await keyboardParent.click();
+    assert.equal(keyboardFlyout.classList.contains("open"), true);
+    await connectionParent.click();
+    assert.equal(keyboardFlyout.classList.contains("open"), false);
+    assert.equal(connectionFlyout.classList.contains("open"), true);
+
+    await connectionParent.click();
+    await keyboardParent.click();
+    await env.document.querySelector(".menu-action-reload").click();
+    assert.equal(env.calls.reload, 1);
+    assert.equal(keyboardFlyout.classList.contains("open"), true);
+
+    env.controls.update({ feedback: { kind: "success", message: "Layout reloaded." } });
+    assert.equal(env.document.querySelector(".menu-feedback-keyboard").textContent, "Layout reloaded.");
+    assert.equal(env.document.querySelector(".menu-feedback-keyboard").classList.contains("visible"), true);
+
     await radios[1].click();
     assert.deepEqual(env.calls.layout, ["beta"]);
+    assert.equal(root.classList.contains("open"), false);
     assert.equal(radios[1].getAttribute("aria-checked"), "true");
-    assert.equal(panel.classList.contains("open"), false);
 
     await toggle.click();
-    await env.document.querySelector(".menu-action-reload").click();
+    await connectionParent.click();
     await env.document.querySelector(".menu-action-reconnect").click();
-    assert.equal(env.calls.reload, 1);
     assert.equal(env.calls.reconnect, 1);
+    assert.equal(connectionFlyout.classList.contains("open"), true);
 
     await env.document.querySelector(".menu-action-game").click();
     assert.equal(env.calls.game, 1);
-    assert.equal(panel.classList.contains("open"), false);
+    assert.equal(root.classList.contains("open"), false);
 
     await toggle.click();
     await env.document.querySelector(".menu-action-help").click();
     assert.equal(env.calls.help, 1);
-    assert.equal(panel.classList.contains("open"), false);
-
-    env.controls.update({ currentLayoutKey: "gamma", currentLayoutLabel: "External event" });
-    assert.equal(radios[2].getAttribute("aria-checked"), "true");
-    assert.equal(env.document.querySelector(".menu-current-layout").textContent, "External event");
+    assert.equal(root.classList.contains("open"), false);
   } finally {
     env.restore();
   }
 });
 
-test("failed game launch keeps the menu open for accessible feedback", async () => {
-  const env = createEnvironment({ onStartGame: async () => false });
+test("hover intent supports diagonal entry and cancels obsolete submenu requests", async () => {
+  const env = createEnvironment();
   try {
-    env.controls.update({
-      gameAvailable: true,
-      feedback: { kind: "error", message: "Window unavailable" },
-    });
     const toggle = env.document.querySelector(".menu-toggle");
-    const panel = env.document.querySelector(".menu-panel");
+    const keyboardParent = env.document.querySelector(".menu-parent-keyboard");
+    const connectionParent = env.document.querySelector(".menu-parent-connection");
+    const keyboardFlyout = env.document.querySelector(".menu-flyout-keyboard");
+    const connectionFlyout = env.document.querySelector(".menu-flyout-connection");
     await toggle.click();
-    await env.document.querySelector(".menu-action-game").click();
-    assert.equal(panel.classList.contains("open"), true);
-    assert.equal(env.document.querySelector(".menu-feedback").textContent, "Window unavailable");
+
+    await keyboardParent.trigger("pointerenter");
+    await connectionParent.trigger("pointerenter");
+    await wait(140);
+    assert.equal(keyboardFlyout.classList.contains("open"), false);
+    assert.equal(connectionFlyout.classList.contains("open"), true);
+
+    await connectionParent.trigger("pointerleave");
+    await connectionFlyout.trigger("pointerenter");
+    await wait(140);
+    assert.equal(connectionFlyout.classList.contains("open"), true);
+
+    await connectionFlyout.trigger("pointerleave");
+    await wait(140);
+    assert.equal(connectionFlyout.classList.contains("open"), false);
   } finally {
     env.restore();
   }
 });
 
-test("failed Help keeps the menu open and exposes accessible feedback", async () => {
-  let controls;
+test("flyouts prefer left placement, fall back right, and clamp inside the viewport", async () => {
+  const env = createEnvironment();
+  try {
+    const toggle = env.document.querySelector(".menu-toggle");
+    const keyboardParent = env.document.querySelector(".menu-parent-keyboard");
+    const keyboardFlyout = env.document.querySelector(".menu-flyout-keyboard");
+    keyboardFlyout.setRect({ width: 260, height: 200 });
+    await toggle.click();
+
+    keyboardParent.setRect({ left: 700, right: 940, top: 20, width: 240, height: 40 });
+    await keyboardParent.click();
+    assert.equal(keyboardFlyout.dataset.side, "left");
+    assert.equal(keyboardFlyout.style.left, "432px");
+    assert.equal(keyboardFlyout.style.top, "20px");
+
+    await keyboardParent.click();
+    keyboardParent.setRect({ left: 20, right: 220, top: 700, width: 200, height: 40 });
+    await keyboardParent.click();
+    assert.equal(keyboardFlyout.dataset.side, "right");
+    assert.equal(keyboardFlyout.style.left, "228px");
+    assert.equal(keyboardFlyout.style.top, "560px");
+
+    await keyboardParent.click();
+    env.window.innerWidth = 300;
+    keyboardParent.setRect({ left: 20, right: 250, top: 20, width: 230, height: 40 });
+    await keyboardParent.click();
+    assert.equal(keyboardFlyout.dataset.side, "overlap");
+    assert.equal(keyboardFlyout.style.left, "8px");
+  } finally {
+    env.restore();
+  }
+});
+
+test("failed direct actions keep the root open and route accessible feedback there", async () => {
   const env = createEnvironment({
-    onHelp: async () => {
-      controls.update({ feedback: { kind: "error", message: "No default browser" } });
-      return false;
-    },
+    onStartGame: async () => false,
+    onHelp: async () => false,
   });
-  controls = env.controls;
   try {
+    env.controls.update({ gameAvailable: true });
     const toggle = env.document.querySelector(".menu-toggle");
-    const panel = env.document.querySelector(".menu-panel");
+    const root = env.document.querySelector(".menu-root");
     await toggle.click();
-    await env.document.querySelector(".menu-action-help").click();
 
-    assert.equal(panel.classList.contains("open"), true);
-    const feedback = env.document.querySelector(".menu-feedback");
-    assert.equal(feedback.textContent, "No default browser");
-    assert.equal(feedback.getAttribute("aria-live"), "polite");
+    await env.document.querySelector(".menu-action-game").click();
+    env.controls.update({ feedback: { kind: "error", message: "Window unavailable" } });
+    assert.equal(root.classList.contains("open"), true);
+    assert.equal(env.document.querySelector(".menu-feedback-root").textContent, "Window unavailable");
+
+    await env.document.querySelector(".menu-action-help").click();
+    env.controls.update({ feedback: { kind: "error", message: "Help unavailable" } });
+    assert.equal(root.classList.contains("open"), true);
+    assert.equal(env.document.querySelector(".menu-feedback-root").textContent, "Help unavailable");
   } finally {
     env.restore();
   }
