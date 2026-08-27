@@ -6,6 +6,8 @@ import {
   normalizeBleLayerSource,
 } from "./ble_layer_sync.js";
 import { createPressedKeyTracker, resolveKeyElement } from "./key_highlight.js";
+import { BUILTIN_LAYOUT_FILES, normalizeConfig, pickAvailableLayout } from "./app_config.js";
+import { reloadOverlayAfterSettingsSave } from "./settings_runtime.js";
 
 function buildKeysFromBase(keyPositions, layers) {
   const baseLayer = layers?.[0] ?? [];
@@ -52,14 +54,7 @@ function normalizeLayerData(layerSource) {
   };
 }
 
-const builtinLayoutFiles = {
-  qwerty: "layout_qwerty.json",
-  qwertz: "layout_qwertz.json",
-  corne: "layout_corne.json",
-  dactyl: "layout_dactyl.json",
-  magic: "layout_magic.json",
-  mac: "layout_mac.json",
-};
+const builtinLayoutFiles = BUILTIN_LAYOUT_FILES;
 let layoutDefinitions = {};
 let normalizedLayoutLayers = {};
 let layouts = {};
@@ -70,6 +65,7 @@ let layoutBleSources = {};
 let comboDefinitionsByLayout = {};
 let comboBordersByCode = new Map();
 let comboBorderEls = [];
+let layoutLoadErrors = [];
 
 async function loadLayoutDefinition(key, source) {
   // source: true (builtin) or string path
@@ -123,13 +119,15 @@ async function loadLayoutDefinition(key, source) {
 
 async function loadLayoutDefinitions(config) {
   const entries = [];
+  layoutLoadErrors = [];
   const layoutConfig = config?.layouts;
   layoutSources = {};
   if (layoutConfig && typeof layoutConfig === "object") {
     for (const [key, source] of Object.entries(layoutConfig)) {
       layoutSources[key] = source;
-      const { def } = await loadLayoutDefinition(key, source);
+      const { def, error } = await loadLayoutDefinition(key, source);
       if (def) entries.push([key, def]);
+      else if (error) layoutLoadErrors.push(error);
     }
   } else {
     // fallback: load all built-in layouts
@@ -138,6 +136,15 @@ async function loadLayoutDefinitions(config) {
       layoutSources[key] = true;
       const { def } = await loadLayoutDefinition(key, true);
       if (def) entries.push([key, def]);
+    }
+  }
+
+  if (entries.length === 0) {
+    for (const key of Object.keys(builtinLayoutFiles)) {
+      layoutSources[key] = true;
+      const { def, error } = await loadLayoutDefinition(key, true);
+      if (def) entries.push([key, def]);
+      else if (error) layoutLoadErrors.push(error);
     }
   }
 
@@ -195,25 +202,23 @@ function getAllowedLayoutKeys(config) {
 function pickDefaultLayout(config, allowedKeys) {
   const preferred = config?.defaultLayout;
   console.log("Preferred layout from config:", preferred);
-  if (preferred && allowedKeys.includes(preferred)) {
-    return preferred;
-  }
-  if (allowedKeys.includes(currentLayoutKey)) {
-    return currentLayoutKey;
-  }
-  return allowedKeys[0] ?? currentLayoutKey;
+  return pickAvailableLayout(config, allowedKeys, currentLayoutKey) ?? currentLayoutKey;
 }
 
 async function loadConfig() {
   const tauri = window.__TAURI__;
-  if (!tauri?.core?.invoke) return null;
+  if (!tauri?.core?.invoke) return normalizeConfig(null);
   try {
-    const raw = await tauri.core.invoke("read_config_file");
-    if (typeof raw !== "string") return null;
-    return JSON.parse(raw);
+    const result = await tauri.core.invoke("read_config_state");
+    if (result?.status === "valid") return normalizeConfig(result.data);
+    if (result?.status === "invalid") {
+      showLayoutError(`Configuration error in ${result.sourcePath ?? result.path}. Using defaults.`);
+    }
+    return normalizeConfig(null);
   } catch (err) {
     console.warn("Failed to load config file, using defaults", err);
-    return null;
+    showLayoutError("Could not read settings. Using built-in layouts.");
+    return normalizeConfig(null);
   }
 }
 
@@ -665,6 +670,14 @@ async function openTypingInvaders() {
   return true;
 }
 
+async function openSettingsWindow() {
+  if (!tauriHandle?.core?.invoke) {
+    throw new Error("Settings require the desktop application.");
+  }
+  await tauriHandle.core.invoke("open_settings");
+  return true;
+}
+
 async function setLayout(key) {
   const previousKey = currentLayoutKey;
   const { ok, error } = await refreshExternalLayout(key);
@@ -726,6 +739,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     reloadLayout: reloadCurrentLayout,
     reconnectBle: reconnectCurrentBle,
     openTypingInvaders,
+    openSettings: openSettingsWindow,
     openHelp: openHelpPage,
     onChange: (state) => menuControls?.update(state),
   });
@@ -735,6 +749,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     onReloadLayout: () => menuStateController.reload(),
     onReconnectBle: () => menuStateController.reconnect(),
     onStartGame: () => menuStateController.launchGame(),
+    onSettings: () => menuStateController.settings(),
     onHelp: () => menuStateController.help(),
     layoutOptions: layoutMenuOptions,
   });
@@ -761,6 +776,10 @@ window.addEventListener("DOMContentLoaded", async () => {
       })
       .catch((err) => console.error("Failed to listen layout_selected:", err));
 
+    tauri.event
+      .listen("app-settings-saved", () => reloadOverlayAfterSettingsSave(window.location))
+      .catch((err) => console.error("Failed to listen app-settings-saved:", err));
+
     if (typeof window.setupWindowModeToggle === "function") {
       window.setupWindowModeToggle(tauri);
     }
@@ -769,4 +788,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   await setLayout(currentLayoutKey);
+  if (layoutLoadErrors.length) {
+    showLayoutError(`${layoutLoadErrors[0]} A built-in fallback is active.`);
+  }
 });

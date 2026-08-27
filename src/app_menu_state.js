@@ -19,6 +19,7 @@ export function createAppMenuStateController({
   reloadLayout,
   reconnectBle,
   openTypingInvaders,
+  openSettings,
   openHelp,
   onChange = () => {},
 }) {
@@ -27,6 +28,7 @@ export function createAppMenuStateController({
   let reloadPending = false;
   let reconnectPending = false;
   let gamePending = false;
+  let settingsPending = false;
   let feedback = null;
   let activeRevision = 0;
 
@@ -53,6 +55,8 @@ export function createAppMenuStateController({
       reconnectPending,
       gameAvailable: hasNativeBridge(),
       gamePending,
+      settingsAvailable: hasNativeBridge(),
+      settingsPending,
       feedback,
     };
   }
@@ -195,6 +199,27 @@ export function createAppMenuStateController({
     }
   }
 
+  async function settings() {
+    if (settingsPending || !hasNativeBridge()) return false;
+    settingsPending = true;
+    feedback = null;
+    notify();
+    try {
+      const result = await openSettings();
+      if (result === false) throw new Error("Settings could not be opened.");
+      return true;
+    } catch (error) {
+      feedback = {
+        kind: "error",
+        message: errorMessage(error, "Failed to open Settings."),
+      };
+      return false;
+    } finally {
+      settingsPending = false;
+      notify();
+    }
+  }
+
   return {
     getSnapshot: snapshot,
     refresh: notify,
@@ -204,6 +229,7 @@ export function createAppMenuStateController({
     reload,
     reconnect,
     launchGame,
+    settings,
     help,
   };
 }

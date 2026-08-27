@@ -18,6 +18,7 @@ export function createMenu({
   onReloadLayout,
   onReconnectBle,
   onStartGame,
+  onSettings,
   onHelp,
   layoutOptions = [],
 }) {
@@ -38,6 +39,8 @@ export function createMenu({
     reconnectPending: false,
     gameAvailable: false,
     gamePending: false,
+    settingsAvailable: false,
+    settingsPending: false,
     feedback: null,
   };
   let activeSubmenu = null;
@@ -60,6 +63,7 @@ export function createMenu({
   let reloadButton;
   let reconnectButton;
   let gameButton;
+  let settingsButton;
   let rootFeedback;
   let keyboardFeedback;
   let connectionFeedback;
@@ -402,6 +406,14 @@ export function createMenu({
     });
     attachItemKeyboard(gameButton, rootItems);
 
+    settingsButton = createRootItem("Settings", "menu-action-settings");
+    settingsButton.addEventListener("click", async () => {
+      feedbackContext = "root";
+      const opened = await onSettings();
+      if (opened !== false) closeMenu();
+    });
+    attachItemKeyboard(settingsButton, rootItems);
+
     const helpButton = createRootItem("Help", "menu-action-help");
     helpButton.addEventListener("click", async () => {
       feedbackContext = "root";
@@ -411,7 +423,7 @@ export function createMenu({
     attachItemKeyboard(helpButton, rootItems);
 
     rootFeedback = createFeedback("menu-feedback-root");
-    rootMenu.append(keyboardButton, connectionButton, gameButton, helpButton, rootFeedback);
+    rootMenu.append(keyboardButton, connectionButton, gameButton, settingsButton, helpButton, rootFeedback);
 
     keyboardFlyout = createFlyout("keyboard", "keyboardMenuFlyout", "keyboardMenuParent");
     const keyboardHeader = document.createElement("header");
@@ -502,7 +514,7 @@ export function createMenu({
   function renderFeedback() {
     if (state.reloadPending) feedbackContext = "keyboard";
     else if (state.reconnectPending) feedbackContext = "connection";
-    else if (state.gamePending) feedbackContext = "root";
+    else if (state.gamePending || state.settingsPending) feedbackContext = "root";
 
     const targets = {
       root: rootFeedback,
@@ -557,6 +569,12 @@ export function createMenu({
     gameButton.textContent = state.gamePending ? "Launching…" : "Shift-Space Invaders";
     gameButton.title = state.gameAvailable
       ? "Open the typing arcade in a separate window"
+      : "Available in the desktop application";
+
+    settingsButton.disabled = !state.settingsAvailable || state.settingsPending;
+    settingsButton.textContent = state.settingsPending ? "Opening Settings…" : "Settings";
+    settingsButton.title = state.settingsAvailable
+      ? "Open application settings in a separate window"
       : "Available in the desktop application";
 
     const selected = layoutButtons.get(state.currentLayoutKey);

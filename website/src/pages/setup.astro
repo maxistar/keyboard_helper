@@ -62,7 +62,16 @@ import Layout from '../layouts/Layout.astro';
 
   <h2>3. Configuration</h2>
   <p>
-    Create <code>~/.keyri.json</code> to customize the app. The file is optional — without it the app loads all built-in layouts and defaults to QWERTY.
+    Open the application menu and choose <strong>Settings</strong>. You can enable built-in layouts, choose the startup layout, record a show/hide shortcut, and add a custom layout with the native file picker. Review your changes, then choose <strong>Save changes</strong>; the running overlay refreshes automatically.
+  </p>
+
+  <div class="note">
+    Existing JSON configurations remain supported. If the file is malformed, Settings will not overwrite it silently and creates a timestamped backup before a confirmed replacement.
+  </div>
+
+  <h3>Advanced JSON configuration</h3>
+  <p>
+    To manage the file directly, edit <code>~/.keyri.json</code>. The legacy <code>~/keyri.json</code> location is still read, while saves from Settings use the primary path. Without either file the app enables every built-in layout and starts with QWERTY.
   </p>
 
   <h3>Select a default layout</h3>
@@ -81,11 +90,11 @@ import Layout from '../layouts/Layout.astro';
     "my-layout": "/home/you/keyboards/my-layout.json"
   }
 }`}</code></pre>
-  <p>Layout files are JSON — copy one of the built-in layouts from the repo (<code>src/layout_corne.json</code>) as a starting point.</p>
+  <p>Usually, choose <strong>Add layout file…</strong> in Settings. Layout files are JSON — copy one of the built-in layouts from the repo (<code>src/layout_corne.json</code>) as a starting point.</p>
 
   <h3>Global toggle hotkey</h3>
   <p>
-    Configure a system-wide hotkey to show or hide the app from the tray. Press it once to restore, press it again to hide.
+    Use <strong>Record shortcut</strong> in Settings to configure a system-wide hotkey to show or hide the app. Press it once to restore, press it again to hide. The JSON syntax below remains available for advanced editing.
   </p>
   <pre><code>{`{
   "toggleHotkey": "Shift+Meta+K"

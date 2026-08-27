@@ -231,7 +231,7 @@ function createEnvironment(callbacks = {}) {
   globalThis.document = document;
   globalThis.window = window;
   let controls;
-  const calls = { layout: [], reload: 0, reconnect: 0, game: 0, help: 0 };
+  const calls = { layout: [], reload: 0, reconnect: 0, game: 0, settings: 0, help: 0 };
   const layoutOptions = [
     { key: "alpha", label: "Alpha" },
     { key: "beta", label: "Beta" },
@@ -254,6 +254,10 @@ function createEnvironment(callbacks = {}) {
     }),
     onStartGame: callbacks.onStartGame ?? (async () => {
       calls.game += 1;
+      return true;
+    }),
+    onSettings: callbacks.onSettings ?? (async () => {
+      calls.settings += 1;
       return true;
     }),
     onHelp: callbacks.onHelp ?? (async () => {
@@ -291,12 +295,13 @@ test("menu renders the root hierarchy, synchronized summaries, and contextual co
       reloadAvailable: true,
       reconnectAvailable: false,
       gameAvailable: true,
+      settingsAvailable: true,
     });
 
     const root = env.document.querySelector(".menu-root");
     const rootItems = root.querySelectorAll('[role="menuitem"]');
     assert.equal(root.getAttribute("role"), "menu");
-    assert.equal(rootItems.length, 4);
+    assert.equal(rootItems.length, 5);
     assert.equal(env.document.querySelector(".menu-parent-keyboard").getAttribute("aria-haspopup"), "menu");
     assert.equal(env.document.querySelector(".menu-parent-connection").getAttribute("aria-haspopup"), "menu");
     assert.equal(env.document.querySelector(".menu-parent-keyboard").querySelector(".menu-root-summary").textContent, "Beta board");
@@ -309,12 +314,14 @@ test("menu renders the root hierarchy, synchronized summaries, and contextual co
     assert.equal(env.document.querySelector(".menu-action-reload").disabled, false);
     assert.equal(env.document.querySelector(".menu-action-reconnect").disabled, true);
     assert.equal(env.document.querySelector(".menu-action-game").disabled, false);
+    assert.equal(env.document.querySelector(".menu-action-settings").disabled, false);
 
-    env.controls.update({ reloadPending: true, reconnectAvailable: true, reconnectPending: true, gamePending: true });
+    env.controls.update({ reloadPending: true, reconnectAvailable: true, reconnectPending: true, gamePending: true, settingsPending: true });
     assert.equal(env.document.querySelector(".menu-action-reload").textContent, "Reloading…");
     assert.equal(env.document.querySelector(".menu-action-reload").disabled, true);
     assert.equal(env.document.querySelector(".menu-action-reconnect").textContent, "Reconnecting…");
     assert.equal(env.document.querySelector(".menu-action-game").textContent, "Launching…");
+    assert.equal(env.document.querySelector(".menu-action-settings").textContent, "Opening Settings…");
   } finally {
     env.restore();
   }
@@ -423,6 +430,12 @@ test("contextual flyouts switch exclusively and actions preserve their close beh
     assert.equal(root.classList.contains("open"), false);
 
     await toggle.click();
+    env.controls.update({ settingsAvailable: true });
+    await env.document.querySelector(".menu-action-settings").click();
+    assert.equal(env.calls.settings, 1);
+    assert.equal(root.classList.contains("open"), false);
+
+    await toggle.click();
     await env.document.querySelector(".menu-action-help").click();
     assert.equal(env.calls.help, 1);
     assert.equal(root.classList.contains("open"), false);
@@ -496,10 +509,11 @@ test("flyouts prefer left placement, fall back right, and clamp inside the viewp
 test("failed direct actions keep the root open and route accessible feedback there", async () => {
   const env = createEnvironment({
     onStartGame: async () => false,
+    onSettings: async () => false,
     onHelp: async () => false,
   });
   try {
-    env.controls.update({ gameAvailable: true });
+    env.controls.update({ gameAvailable: true, settingsAvailable: true });
     const toggle = env.document.querySelector(".menu-toggle");
     const root = env.document.querySelector(".menu-root");
     await toggle.click();
@@ -508,6 +522,11 @@ test("failed direct actions keep the root open and route accessible feedback the
     env.controls.update({ feedback: { kind: "error", message: "Window unavailable" } });
     assert.equal(root.classList.contains("open"), true);
     assert.equal(env.document.querySelector(".menu-feedback-root").textContent, "Window unavailable");
+
+    await env.document.querySelector(".menu-action-settings").click();
+    env.controls.update({ feedback: { kind: "error", message: "Settings unavailable" } });
+    assert.equal(root.classList.contains("open"), true);
+    assert.equal(env.document.querySelector(".menu-feedback-root").textContent, "Settings unavailable");
 
     await env.document.querySelector(".menu-action-help").click();
     env.controls.update({ feedback: { kind: "error", message: "Help unavailable" } });

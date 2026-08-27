@@ -42,7 +42,7 @@ Closing the window hides the app to the system tray instead of quitting. Use the
 
 ## Shift-Space Invaders
 
-The desktop application includes a word-typing arcade game. Open the application menu and choose **Start Shift-Space Invaders** to launch it in a separate window; choosing the action again focuses the existing game window.
+The desktop application includes a word-typing arcade game. Open the application menu and choose **Shift-Space Invaders** to launch it in a separate window; choosing the action again focuses the existing game window.
 
 - Select an alien by typing the first letter of its visible English word, then finish the word to destroy it.
 - Each correct character fires a hit. A mistake keeps the completed prefix but resets the score multiplier.
@@ -67,7 +67,9 @@ Releases are cut from `master` with semantic version tags.
 
 ## App configuration & external layouts
 
-You can point the app at external layout files and pick a default layout via a user config. The app looks for `~/.keyri.json` first and then `~/keyri.json`.
+Open the application menu and choose **Settings** to select the startup layout, enable built-in layouts, record the show/hide shortcut, or add an external layout with a file picker. Changes are validated before they are saved and apply to the running overlay.
+
+Advanced users can still edit the compatible JSON configuration directly. The app looks for `~/.keyri.json` first and then the legacy `~/keyri.json`; the Settings window writes new changes to `~/.keyri.json`.
 
 - Fields:
   - `defaultLayout`: key of the layout to select at startup (must exist in `layouts`).
@@ -80,7 +82,7 @@ You can point the app at external layout files and pick a default layout via a u
   - `characteristicUuid`: custom active-layer characteristic UUID
   - `format`: currently `int32-le`
 - References: see built-in layouts for structure (`src/layout_corne.json`, `src/layout_qwertz.json`, `src/layout_dactyl.json`, `src/layout_mac.json`, `src/layout_magic.json`). Copy one, edit, and point your config at the new path. Keep a personal config in `~/.keyri.json`.
-- If no config file is found, the app loads all built-in layouts and defaults to QWERTY. External layout paths must be readable from the filesystem; otherwise the app falls back to built-ins.
+- If no config file is found, the Settings window starts from all built-in layouts with QWERTY selected. A malformed config is never silently replaced: recovery requires confirmation and creates a timestamped backup. Unreadable external layouts produce a visible error while the overlay falls back to an available built-in layout.
 
 ## BLE layer sync
 

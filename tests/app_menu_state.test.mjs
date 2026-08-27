@@ -18,6 +18,7 @@ function createHarness(overrides = {}) {
     reconnectCalls: [],
     helpCalls: [],
     gameCalls: 0,
+    settingsCalls: 0,
     snapshots: [],
     ...overrides,
   };
@@ -38,6 +39,10 @@ function createHarness(overrides = {}) {
     },
     openTypingInvaders: async () => {
       data.gameCalls += 1;
+      return true;
+    },
+    openSettings: async () => {
+      data.settingsCalls += 1;
       return true;
     },
     openHelp: async (url) => {
@@ -266,4 +271,48 @@ test("game launch requires native availability, prevents duplicates, and reports
   });
   assert.equal(await failing.launchGame(), false);
   assert.equal(failing.getSnapshot().feedback.message, "Window unavailable");
+});
+
+test("Settings requires native availability, prevents duplicates, and reports failure", async () => {
+  let finishOpen;
+  const pending = new Promise((resolve) => { finishOpen = resolve; });
+  const base = createHarness();
+  const controller = createAppMenuStateController({
+    getCurrentLayoutKey: () => base.data.currentKey,
+    getCurrentLayoutLabel: (key) => key,
+    getCurrentLayoutSource: () => true,
+    getCurrentBleSource: () => null,
+    hasNativeBridge: () => true,
+    reloadLayout: async () => true,
+    reconnectBle: async () => true,
+    openTypingInvaders: async () => true,
+    openSettings: async () => pending,
+    openHelp: async () => true,
+  });
+  const first = controller.settings();
+  assert.equal(controller.getSnapshot().settingsPending, true);
+  assert.equal(await controller.settings(), false);
+  finishOpen(true);
+  assert.equal(await first, true);
+  assert.equal(controller.getSnapshot().settingsPending, false);
+
+  const unavailable = createHarness({ native: false });
+  assert.equal(unavailable.controller.getSnapshot().settingsAvailable, false);
+  assert.equal(await unavailable.controller.settings(), false);
+  assert.equal(unavailable.data.settingsCalls, 0);
+
+  const failing = createAppMenuStateController({
+    getCurrentLayoutKey: () => "builtin",
+    getCurrentLayoutLabel: () => "Built in",
+    getCurrentLayoutSource: () => true,
+    getCurrentBleSource: () => null,
+    hasNativeBridge: () => true,
+    reloadLayout: async () => true,
+    reconnectBle: async () => true,
+    openTypingInvaders: async () => true,
+    openSettings: async () => { throw new Error("Settings window unavailable"); },
+    openHelp: async () => true,
+  });
+  assert.equal(await failing.settings(), false);
+  assert.equal(failing.getSnapshot().feedback.message, "Settings window unavailable");
 });

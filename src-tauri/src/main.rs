@@ -1,20 +1,18 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::path::PathBuf;
 mod ble_layer_sync;
+mod config_store;
+use rdev::{listen, Event, EventType, Key};
+use serde::{Deserialize, Serialize};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
     Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder,
 };
-use rdev::{listen, Event, EventType, Key};
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Debug, Clone)]
-
 
 #[derive(Default)]
 struct KeyboardListenerState {
@@ -28,8 +26,8 @@ struct BleLayerSyncTauriState {
 
 #[derive(Serialize, Debug, Clone)]
 struct KeyEventPayload {
-    key: String,       // например: "KeyA", "Enter", "Unknown"
-    event_type: String // "down" или "up"
+    key: String,        // например: "KeyA", "Enter", "Unknown"
+    event_type: String, // "down" или "up"
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -43,38 +41,43 @@ struct BleLayerSyncConfig {
 }
 
 const TYPING_INVADERS_WINDOW_LABEL: &str = "typing-invaders";
+const SETTINGS_WINDOW_LABEL: &str = "settings";
+
+fn settings_window_creation_error(error: &str) -> String {
+    format!("failed to create Settings window: {error}")
+}
 
 #[derive(Debug, PartialEq, Eq)]
-enum GameWindowAction {
+enum SecondaryWindowAction {
     Create,
     FocusExisting,
 }
 
-fn game_window_action(window_exists: bool) -> GameWindowAction {
+fn secondary_window_action(window_exists: bool) -> SecondaryWindowAction {
     if window_exists {
-        GameWindowAction::FocusExisting
+        SecondaryWindowAction::FocusExisting
     } else {
-        GameWindowAction::Create
+        SecondaryWindowAction::Create
     }
 }
 
 #[tauri::command]
-fn read_config_file() -> Result<String, String> {
-    let home = std::env::var("HOME")
-        .or_else(|_| std::env::var("USERPROFILE"))
-        .map_err(|e| format!("cannot resolve home directory: {e}"))?;
-    let primary = PathBuf::from(&home).join(".keyri.json");
-    let fallback = PathBuf::from(&home).join("keyri.json");
+fn read_config_state() -> Result<config_store::ConfigReadResult, String> {
+    config_store::read_config_at(&config_store::resolve_home()?)
+}
 
-    std::fs::read_to_string(&primary)
-        .or_else(|_| std::fs::read_to_string(&fallback))
-        .map_err(|e| {
-            format!(
-                "failed to read {} or {}: {e}",
-                primary.display(),
-                fallback.display()
-            )
-        })
+#[tauri::command]
+fn save_config(
+    app_handle: tauri::AppHandle,
+    request: config_store::SaveConfigRequest,
+) -> Result<config_store::ConfigSaveResult, String> {
+    let result = config_store::save_config_at(&config_store::resolve_home()?, request)?;
+    app_handle
+        .emit_to("overlay", "app-settings-saved", &result)
+        .map_err(|error| {
+            format!("settings were saved but the overlay could not be notified: {error}")
+        })?;
+    Ok(result)
 }
 
 #[tauri::command]
@@ -111,8 +114,8 @@ fn set_window_decorations(app_handle: tauri::AppHandle, decorations: bool) -> Re
 #[tauri::command]
 fn open_typing_invaders(app_handle: tauri::AppHandle) -> Result<(), String> {
     let existing = app_handle.get_webview_window(TYPING_INVADERS_WINDOW_LABEL);
-    match game_window_action(existing.is_some()) {
-        GameWindowAction::FocusExisting => {
+    match secondary_window_action(existing.is_some()) {
+        SecondaryWindowAction::FocusExisting => {
             let window = existing.expect("existing game window checked above");
             window.show().map_err(|error| error.to_string())?;
             if window.is_minimized().map_err(|error| error.to_string())? {
@@ -120,7 +123,7 @@ fn open_typing_invaders(app_handle: tauri::AppHandle) -> Result<(), String> {
             }
             window.set_focus().map_err(|error| error.to_string())
         }
-        GameWindowAction::Create => {
+        SecondaryWindowAction::Create => {
             let window = WebviewWindowBuilder::new(
                 &app_handle,
                 TYPING_INVADERS_WINDOW_LABEL,
@@ -136,6 +139,39 @@ fn open_typing_invaders(app_handle: tauri::AppHandle) -> Result<(), String> {
             .center()
             .build()
             .map_err(|error| format!("failed to create Shift-Space Invaders window: {error}"))?;
+            window.set_focus().map_err(|error| error.to_string())
+        }
+    }
+}
+
+#[tauri::command]
+fn open_settings(app_handle: tauri::AppHandle) -> Result<(), String> {
+    let existing = app_handle.get_webview_window(SETTINGS_WINDOW_LABEL);
+    match secondary_window_action(existing.is_some()) {
+        SecondaryWindowAction::FocusExisting => {
+            let window = existing.expect("existing settings window checked above");
+            window.show().map_err(|error| error.to_string())?;
+            if window.is_minimized().map_err(|error| error.to_string())? {
+                window.unminimize().map_err(|error| error.to_string())?;
+            }
+            window.set_focus().map_err(|error| error.to_string())
+        }
+        SecondaryWindowAction::Create => {
+            let window = WebviewWindowBuilder::new(
+                &app_handle,
+                SETTINGS_WINDOW_LABEL,
+                WebviewUrl::App("settings.html".into()),
+            )
+            .title("Keyboard Helper Settings")
+            .inner_size(760.0, 720.0)
+            .min_inner_size(620.0, 560.0)
+            .resizable(true)
+            .decorations(true)
+            .transparent(false)
+            .always_on_top(false)
+            .center()
+            .build()
+            .map_err(|error| settings_window_creation_error(&error.to_string()))?;
             window.set_focus().map_err(|error| error.to_string())
         }
     }
@@ -204,7 +240,6 @@ fn stop_ble_layer_sync(state: State<BleLayerSyncTauriState>) {
 
 /// Преобразуем rdev::Event в удобный для фронта формат
 fn convert_event(ev: Event) -> Option<KeyEventPayload> {
-    
     //if let Some(name) = ev.name.as_deref() {
     //    if name == "F24" {
     //        println!("F24 key event found");
@@ -267,6 +302,7 @@ fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             if argv.contains(&"--toggle".to_string()) {
                 if let Some(window) = app.get_webview_window("overlay") {
@@ -301,7 +337,9 @@ fn main() {
             toggle_window,
             set_window_decorations,
             open_typing_invaders,
-            read_config_file,
+            open_settings,
+            read_config_state,
+            save_config,
             read_layout_file,
         ])
         .run(tauri::generate_context!())
@@ -310,11 +348,37 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{game_window_action, GameWindowAction};
+    use super::{secondary_window_action, settings_window_creation_error, SecondaryWindowAction};
 
     #[test]
     fn game_window_is_created_only_when_missing() {
-        assert_eq!(game_window_action(false), GameWindowAction::Create);
-        assert_eq!(game_window_action(true), GameWindowAction::FocusExisting);
+        assert_eq!(
+            secondary_window_action(false),
+            SecondaryWindowAction::Create
+        );
+        assert_eq!(
+            secondary_window_action(true),
+            SecondaryWindowAction::FocusExisting
+        );
+    }
+
+    #[test]
+    fn settings_window_is_created_only_when_missing() {
+        assert_eq!(
+            secondary_window_action(false),
+            SecondaryWindowAction::Create
+        );
+        assert_eq!(
+            secondary_window_action(true),
+            SecondaryWindowAction::FocusExisting
+        );
+    }
+
+    #[test]
+    fn settings_window_creation_failure_has_actionable_context() {
+        assert_eq!(
+            settings_window_creation_error("webview unavailable"),
+            "failed to create Settings window: webview unavailable"
+        );
     }
 }
