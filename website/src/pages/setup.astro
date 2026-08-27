@@ -51,10 +51,14 @@ import Layout from '../layouts/Layout.astro';
   </p>
   <ol>
     <li>Download the appropriate archive for your OS.</li>
-    <li>On macOS: open the <code>.dmg</code> and drag <em>Keyboard Layout</em> to Applications.</li>
+    <li>On macOS: open the <code>.dmg</code> and drag <em>Keyboard Helper.app</em> to Applications.</li>
     <li>On Windows: run the <code>.msi</code> installer.</li>
     <li>On Linux: extract the archive and run the binary.</li>
   </ol>
+
+  <div class="note">
+    Upgrading from an older release? Quit and remove <em>Keyboard Layout.app</em> before installing <em>Keyboard Helper.app</em>. Your existing <code>~/.keyri.json</code> settings remain compatible. If key highlighting stops afterward, remove the stale app entry from <strong>System Settings → Privacy &amp; Security → Input Monitoring</strong>, add <em>Keyboard Helper.app</em>, and launch it again.
+  </div>
 
   <h2>2. First launch</h2>
   <p>Launch the app. A transparent overlay appears showing the default QWERTY layout. Start typing — keys will highlight in real-time.</p>
@@ -111,7 +115,7 @@ import Layout from '../layouts/Layout.astro';
   <p>
     You can also toggle the app by launching it with the <code>--toggle</code> flag. If the app is already running, this shows or hides the window rather than opening a second instance.
   </p>
-  <pre><code>/Applications/Keyboard\ Layout.app/Contents/MacOS/keyboard-app --toggle</code></pre>
+  <pre><code>/Applications/Keyboard\ Helper.app/Contents/MacOS/keyboard-app --toggle</code></pre>
   <p>Useful for binding to external hotkey managers like Raycast, BetterTouchTool, or Shortcuts.app.</p>
 
   <h2>5. Build from source</h2>

@@ -1,4 +1,4 @@
-# Keyboard Layout Visualizer (Tauri)
+# Keyboard Helper
 
 Desktop helper to visualize split/ergonomic keyboard layouts (Corne, QWERTZ, Dactyl, Magic) and highlight pressed keys in real time. Built with vanilla HTML/CSS/JS on top of Tauri.
 
@@ -35,6 +35,14 @@ npm run tauri build
 ```
 
 Artifacts will be written to `src-tauri/target/release/` (per-platform bundles such as `.app`, `.dmg`, `.exe`, `.msi`, or distributable archives). Use the standard Tauri CLI flags for platform-specific targets if you need to cross-compile.
+
+On macOS, the packaged application is named `Keyboard Helper.app`. When upgrading from an older `Keyboard Layout.app` release, quit the old application and remove that bundle before installing the new one. Existing `~/.keyri.json` settings remain compatible. If key highlighting stops after the replacement, remove the stale application entry from **System Settings → Privacy & Security → Input Monitoring**, add `Keyboard Helper.app`, and launch it again.
+
+The application bundle name is user-facing; the internal executable remains `keyboard-app`. External shortcut tools can toggle the running overlay with:
+
+```bash
+/Applications/Keyboard\ Helper.app/Contents/MacOS/keyboard-app --toggle
+```
 
 ## Tray behavior
 

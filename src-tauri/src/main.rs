@@ -8,11 +8,14 @@ mod ble_layer_sync;
 mod config_store;
 use rdev::{listen, Event, EventType, Key};
 use serde::{Deserialize, Serialize};
+#[cfg(target_os = "macos")]
+use tauri::menu::{AboutMetadata, PredefinedMenuItem, Submenu};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
     Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder,
 };
+use tauri_plugin_opener::OpenerExt;
 
 #[derive(Default)]
 struct KeyboardListenerState {
@@ -42,6 +45,12 @@ struct BleLayerSyncConfig {
 
 const TYPING_INVADERS_WINDOW_LABEL: &str = "typing-invaders";
 const SETTINGS_WINDOW_LABEL: &str = "settings";
+const APP_NAME: &str = "Keyboard Helper";
+const HELP_URL: &str = "https://projects.maxistar.me/keyboard_helper/setup/";
+const SETTINGS_MENU_ID: &str = "app.settings";
+const TOGGLE_OVERLAY_MENU_ID: &str = "view.toggle-overlay";
+const TYPING_INVADERS_MENU_ID: &str = "view.typing-invaders";
+const HELP_MENU_ID: &str = "help.keyboard-helper";
 
 fn settings_window_creation_error(error: &str) -> String {
     format!("failed to create Settings window: {error}")
@@ -53,11 +62,105 @@ enum SecondaryWindowAction {
     FocusExisting,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum OverlayVisibilityAction {
+    Hide,
+    ShowAndFocus,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum AppMenuAction {
+    OpenSettings,
+    ToggleOverlay,
+    OpenTypingInvaders,
+    OpenHelp,
+}
+
+impl AppMenuAction {
+    fn from_menu_id(menu_id: &str) -> Option<Self> {
+        match menu_id {
+            SETTINGS_MENU_ID => Some(Self::OpenSettings),
+            TOGGLE_OVERLAY_MENU_ID => Some(Self::ToggleOverlay),
+            TYPING_INVADERS_MENU_ID => Some(Self::OpenTypingInvaders),
+            HELP_MENU_ID => Some(Self::OpenHelp),
+            _ => None,
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::OpenSettings => "Settings",
+            Self::ToggleOverlay => "Show/Hide Keyboard Overlay",
+            Self::OpenTypingInvaders => "Shift-Space Invaders",
+            Self::OpenHelp => "Keyboard Helper Help",
+        }
+    }
+}
+
+trait AppMenuActionHandler {
+    fn open_settings(&mut self) -> Result<(), String>;
+    fn toggle_overlay(&mut self) -> Result<(), String>;
+    fn open_typing_invaders(&mut self) -> Result<(), String>;
+    fn open_help(&mut self) -> Result<(), String>;
+}
+
+fn dispatch_app_menu_action(menu_id: &str, handler: &mut impl AppMenuActionHandler) -> bool {
+    let Some(action) = AppMenuAction::from_menu_id(menu_id) else {
+        return false;
+    };
+
+    let result = match action {
+        AppMenuAction::OpenSettings => handler.open_settings(),
+        AppMenuAction::ToggleOverlay => handler.toggle_overlay(),
+        AppMenuAction::OpenTypingInvaders => handler.open_typing_invaders(),
+        AppMenuAction::OpenHelp => handler.open_help(),
+    };
+
+    if let Err(error) = result {
+        eprintln!("Failed to handle {} menu action: {error}", action.label());
+    }
+
+    true
+}
+
+struct NativeAppMenuActionHandler<'a> {
+    app_handle: &'a tauri::AppHandle,
+}
+
+impl AppMenuActionHandler for NativeAppMenuActionHandler<'_> {
+    fn open_settings(&mut self) -> Result<(), String> {
+        open_settings_window(self.app_handle)
+    }
+
+    fn toggle_overlay(&mut self) -> Result<(), String> {
+        toggle_keyboard_overlay(self.app_handle)
+    }
+
+    fn open_typing_invaders(&mut self) -> Result<(), String> {
+        open_typing_invaders_window(self.app_handle)
+    }
+
+    fn open_help(&mut self) -> Result<(), String> {
+        self.app_handle
+            .opener()
+            .open_url(HELP_URL, None::<&str>)
+            .map_err(|error| format!("failed to open {HELP_URL}: {error}"))
+    }
+}
+
 fn secondary_window_action(window_exists: bool) -> SecondaryWindowAction {
     if window_exists {
         SecondaryWindowAction::FocusExisting
     } else {
         SecondaryWindowAction::Create
+    }
+}
+
+fn overlay_visibility_action(is_visible: bool) -> OverlayVisibilityAction {
+    if is_visible {
+        OverlayVisibilityAction::Hide
+    } else {
+        OverlayVisibilityAction::ShowAndFocus
     }
 }
 
@@ -89,14 +192,19 @@ fn read_layout_file(path: String) -> Result<String, String> {
 
 #[tauri::command]
 fn toggle_window(app_handle: tauri::AppHandle) -> Result<(), String> {
+    toggle_keyboard_overlay(&app_handle)
+}
+
+fn toggle_keyboard_overlay(app_handle: &tauri::AppHandle) -> Result<(), String> {
     let window = app_handle
         .get_webview_window("overlay")
         .ok_or_else(|| "overlay window not found".to_string())?;
-    if window.is_visible().map_err(|e| e.to_string())? {
-        window.hide().map_err(|e| e.to_string())
-    } else {
-        window.show().map_err(|e| e.to_string())?;
-        window.set_focus().map_err(|e| e.to_string())
+    match overlay_visibility_action(window.is_visible().map_err(|error| error.to_string())?) {
+        OverlayVisibilityAction::Hide => window.hide().map_err(|error| error.to_string()),
+        OverlayVisibilityAction::ShowAndFocus => {
+            window.show().map_err(|error| error.to_string())?;
+            window.set_focus().map_err(|error| error.to_string())
+        }
     }
 }
 
@@ -113,6 +221,10 @@ fn set_window_decorations(app_handle: tauri::AppHandle, decorations: bool) -> Re
 
 #[tauri::command]
 fn open_typing_invaders(app_handle: tauri::AppHandle) -> Result<(), String> {
+    open_typing_invaders_window(&app_handle)
+}
+
+fn open_typing_invaders_window(app_handle: &tauri::AppHandle) -> Result<(), String> {
     let existing = app_handle.get_webview_window(TYPING_INVADERS_WINDOW_LABEL);
     match secondary_window_action(existing.is_some()) {
         SecondaryWindowAction::FocusExisting => {
@@ -125,7 +237,7 @@ fn open_typing_invaders(app_handle: tauri::AppHandle) -> Result<(), String> {
         }
         SecondaryWindowAction::Create => {
             let window = WebviewWindowBuilder::new(
-                &app_handle,
+                app_handle,
                 TYPING_INVADERS_WINDOW_LABEL,
                 WebviewUrl::App("game.html".into()),
             )
@@ -146,6 +258,10 @@ fn open_typing_invaders(app_handle: tauri::AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 fn open_settings(app_handle: tauri::AppHandle) -> Result<(), String> {
+    open_settings_window(&app_handle)
+}
+
+fn open_settings_window(app_handle: &tauri::AppHandle) -> Result<(), String> {
     let existing = app_handle.get_webview_window(SETTINGS_WINDOW_LABEL);
     match secondary_window_action(existing.is_some()) {
         SecondaryWindowAction::FocusExisting => {
@@ -158,7 +274,7 @@ fn open_settings(app_handle: tauri::AppHandle) -> Result<(), String> {
         }
         SecondaryWindowAction::Create => {
             let window = WebviewWindowBuilder::new(
-                &app_handle,
+                app_handle,
                 SETTINGS_WINDOW_LABEL,
                 WebviewUrl::App("settings.html".into()),
             )
@@ -273,9 +389,7 @@ fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
     let restore = MenuItem::with_id(app, "restore", "Restore", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&restore, &quit])?;
-    let mut builder = TrayIconBuilder::new()
-        .menu(&menu)
-        .tooltip("Keyboard Layout");
+    let mut builder = TrayIconBuilder::new().menu(&menu).tooltip(APP_NAME);
 
     if let Some(icon) = app.default_window_icon().cloned() {
         builder = builder.icon(icon);
@@ -299,19 +413,98 @@ fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
+#[cfg(target_os = "macos")]
+fn install_macos_application_menu(app: &mut tauri::App) -> tauri::Result<()> {
+    let settings = MenuItem::with_id(
+        app,
+        SETTINGS_MENU_ID,
+        "Settings…",
+        true,
+        Some("CmdOrCtrl+,"),
+    )?;
+    let toggle_overlay = MenuItem::with_id(
+        app,
+        TOGGLE_OVERLAY_MENU_ID,
+        "Show/Hide Keyboard Overlay",
+        true,
+        None::<&str>,
+    )?;
+    let typing_invaders = MenuItem::with_id(
+        app,
+        TYPING_INVADERS_MENU_ID,
+        "Shift-Space Invaders",
+        true,
+        None::<&str>,
+    )?;
+    let help = MenuItem::with_id(
+        app,
+        HELP_MENU_ID,
+        "Keyboard Helper Help",
+        true,
+        None::<&str>,
+    )?;
+
+    let about_metadata = AboutMetadata {
+        name: Some(APP_NAME.to_string()),
+        version: Some(app.package_info().version.to_string()),
+        icon: app.default_window_icon().cloned(),
+        ..Default::default()
+    };
+    let application_menu = Submenu::with_items(
+        app,
+        APP_NAME,
+        true,
+        &[
+            &PredefinedMenuItem::about(app, Some("About Keyboard Helper"), Some(about_metadata))?,
+            &PredefinedMenuItem::separator(app)?,
+            &settings,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::services(app, None)?,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::hide(app, Some("Hide Keyboard Helper"))?,
+            &PredefinedMenuItem::hide_others(app, None)?,
+            &PredefinedMenuItem::show_all(app, None)?,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::quit(app, Some("Quit Keyboard Helper"))?,
+        ],
+    )?;
+    let view_menu = Submenu::with_items(app, "View", true, &[&toggle_overlay, &typing_invaders])?;
+    let window_menu = Submenu::with_items(
+        app,
+        "Window",
+        true,
+        &[
+            &PredefinedMenuItem::minimize(app, None)?,
+            &PredefinedMenuItem::maximize(app, None)?,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::close_window(app, None)?,
+        ],
+    )?;
+    window_menu.set_as_windows_menu_for_nsapp()?;
+    let help_menu = Submenu::with_items(app, "Help", true, &[&help])?;
+    help_menu.set_as_help_menu_for_nsapp()?;
+
+    let menu = Menu::with_items(
+        app,
+        &[&application_menu, &view_menu, &window_menu, &help_menu],
+    )?;
+    app.set_menu(menu)?;
+    app.on_menu_event(|app_handle, event| {
+        let mut handler = NativeAppMenuActionHandler { app_handle };
+        dispatch_app_menu_action(event.id().as_ref(), &mut handler);
+    });
+
+    Ok(())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             if argv.contains(&"--toggle".to_string()) {
-                if let Some(window) = app.get_webview_window("overlay") {
-                    if window.is_visible().unwrap_or(false) {
-                        let _ = window.hide();
-                    } else {
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                    }
+                if let Err(error) = toggle_keyboard_overlay(app) {
+                    eprintln!("Failed to handle --toggle: {error}");
                 }
             }
         }))
@@ -319,6 +512,8 @@ fn main() {
         .manage(BleLayerSyncTauriState::default())
         .setup(|app| {
             build_tray(app.handle())?;
+            #[cfg(target_os = "macos")]
+            install_macos_application_menu(app)?;
             if let Some(window) = app.get_webview_window("overlay") {
                 let window_handle = window.clone();
                 window.on_window_event(move |event| {
@@ -348,7 +543,47 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::{secondary_window_action, settings_window_creation_error, SecondaryWindowAction};
+    use super::{
+        dispatch_app_menu_action, overlay_visibility_action, secondary_window_action,
+        settings_window_creation_error, AppMenuAction, AppMenuActionHandler,
+        OverlayVisibilityAction, SecondaryWindowAction, HELP_MENU_ID, SETTINGS_MENU_ID,
+        TOGGLE_OVERLAY_MENU_ID, TYPING_INVADERS_MENU_ID,
+    };
+
+    #[derive(Default)]
+    struct FakeMenuActionHandler {
+        calls: Vec<AppMenuAction>,
+        fail: bool,
+    }
+
+    impl FakeMenuActionHandler {
+        fn record(&mut self, action: AppMenuAction) -> Result<(), String> {
+            self.calls.push(action);
+            if self.fail {
+                Err("simulated native action failure".to_string())
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    impl AppMenuActionHandler for FakeMenuActionHandler {
+        fn open_settings(&mut self) -> Result<(), String> {
+            self.record(AppMenuAction::OpenSettings)
+        }
+
+        fn toggle_overlay(&mut self) -> Result<(), String> {
+            self.record(AppMenuAction::ToggleOverlay)
+        }
+
+        fn open_typing_invaders(&mut self) -> Result<(), String> {
+            self.record(AppMenuAction::OpenTypingInvaders)
+        }
+
+        fn open_help(&mut self) -> Result<(), String> {
+            self.record(AppMenuAction::OpenHelp)
+        }
+    }
 
     #[test]
     fn game_window_is_created_only_when_missing() {
@@ -379,6 +614,61 @@ mod tests {
         assert_eq!(
             settings_window_creation_error("webview unavailable"),
             "failed to create Settings window: webview unavailable"
+        );
+    }
+
+    #[test]
+    fn overlay_visibility_maps_to_the_expected_toggle_behavior() {
+        assert_eq!(
+            overlay_visibility_action(true),
+            OverlayVisibilityAction::Hide
+        );
+        assert_eq!(
+            overlay_visibility_action(false),
+            OverlayVisibilityAction::ShowAndFocus
+        );
+    }
+
+    #[test]
+    fn stable_custom_menu_ids_route_to_native_actions() {
+        let mut handler = FakeMenuActionHandler::default();
+
+        assert!(dispatch_app_menu_action(SETTINGS_MENU_ID, &mut handler));
+        assert!(dispatch_app_menu_action(
+            TOGGLE_OVERLAY_MENU_ID,
+            &mut handler
+        ));
+        assert!(dispatch_app_menu_action(
+            TYPING_INVADERS_MENU_ID,
+            &mut handler
+        ));
+        assert!(dispatch_app_menu_action(HELP_MENU_ID, &mut handler));
+        assert!(!dispatch_app_menu_action("unknown", &mut handler));
+
+        assert_eq!(
+            handler.calls,
+            vec![
+                AppMenuAction::OpenSettings,
+                AppMenuAction::ToggleOverlay,
+                AppMenuAction::OpenTypingInvaders,
+                AppMenuAction::OpenHelp,
+            ]
+        );
+    }
+
+    #[test]
+    fn a_failed_menu_action_does_not_block_later_actions() {
+        let mut handler = FakeMenuActionHandler {
+            fail: true,
+            ..Default::default()
+        };
+
+        assert!(dispatch_app_menu_action(SETTINGS_MENU_ID, &mut handler));
+        handler.fail = false;
+        assert!(dispatch_app_menu_action(HELP_MENU_ID, &mut handler));
+        assert_eq!(
+            handler.calls,
+            vec![AppMenuAction::OpenSettings, AppMenuAction::OpenHelp]
         );
     }
 }
