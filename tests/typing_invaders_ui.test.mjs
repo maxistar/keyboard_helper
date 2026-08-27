@@ -5,7 +5,11 @@ import {
   createTypingInvadersController,
   gameplayCharacter,
 } from "../src/typing_invaders/controller.js";
-import { describeOverlay, splitWord } from "../src/typing_invaders/view.js";
+import {
+  createTypingInvadersView,
+  describeOverlay,
+  splitWord,
+} from "../src/typing_invaders/view.js";
 
 class EventTargetStub {
   constructor() {
@@ -25,6 +29,89 @@ class EventTargetStub {
   dispatch(type, event = {}) {
     for (const listener of this.listeners.get(type) ?? []) listener(event);
   }
+}
+
+class ViewElementStub extends EventTargetStub {
+  constructor() {
+    super();
+    this.attributes = new Map();
+    this.classList = { toggle: () => {} };
+    this.dataset = {};
+    this.hidden = false;
+    this.firstChild = null;
+    this._textContent = "";
+  }
+
+  get textContent() {
+    return this._textContent;
+  }
+
+  set textContent(value) {
+    this._textContent = String(value);
+    this.firstChild = { textContent: this._textContent };
+  }
+
+  setAttribute(name, value) {
+    this.attributes.set(name, String(value));
+  }
+
+  click() {
+    this.dispatch("click", { target: this });
+  }
+}
+
+function viewHarness() {
+  const ids = [
+    "scoreValue",
+    "waveValue",
+    "livesValue",
+    "streakValue",
+    "accuracyValue",
+    "wpmValue",
+    "targetLayer",
+    "effectLayer",
+    "stateOverlay",
+    "stateKicker",
+    "stateTitle",
+    "stateDescription",
+    "stateAction",
+    "stateHint",
+    "resultGrid",
+    "resultScore",
+    "resultWave",
+    "resultTargets",
+    "resultAccuracy",
+    "resultWpm",
+    "gameAnnouncement",
+  ];
+  const elements = new Map(ids.map((id) => [id, new ViewElementStub()]));
+  elements.get("stateAction").textContent = "Start mission";
+  const document = {
+    body: new ViewElementStub(),
+    getElementById: (id) => elements.get(id) ?? null,
+  };
+  return {
+    action: elements.get("stateAction"),
+    document,
+    elements,
+    view: createTypingInvadersView(document),
+  };
+}
+
+function viewSnapshot(phase, overrides = {}) {
+  return {
+    phase,
+    score: 0,
+    wave: 1,
+    lives: 3,
+    multiplier: 1,
+    accuracy: 100,
+    wpm: 0,
+    targets: [],
+    highestWave: 1,
+    destroyedTargets: 0,
+    ...overrides,
+  };
 }
 
 function controllerHarness(initialPhase = "playing") {
@@ -107,6 +194,36 @@ test("primary action starts, resumes, and replays the appropriate session state"
   const over = controllerHarness("game-over");
   over.view.action();
   assert.equal(over.calls.replayed, 1);
+});
+
+test("view preserves the lifecycle action label node across unchanged renders", () => {
+  const harness = viewHarness();
+  const snapshot = viewSnapshot("ready");
+  harness.view.render(snapshot);
+  const labelNode = harness.action.firstChild;
+
+  harness.view.render(snapshot);
+
+  assert.equal(harness.action.firstChild, labelNode);
+  assert.equal(harness.action.textContent, "Start mission");
+});
+
+test("view updates lifecycle labels and dispatches each native activation once", () => {
+  const harness = viewHarness();
+  let activations = 0;
+  harness.view.setActionHandler(() => { activations += 1; });
+
+  for (const [phase, label] of [
+    ["ready", "Start mission"],
+    ["paused", "Resume mission"],
+    ["game-over", "Play again"],
+  ]) {
+    harness.view.render(viewSnapshot(phase));
+    assert.equal(harness.action.textContent, label);
+    harness.action.click();
+  }
+
+  assert.equal(activations, 3);
 });
 
 test("overlay descriptions expose start, pause, transition, and complete results states", () => {
