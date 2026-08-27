@@ -75,7 +75,11 @@ enum KeyboardHandle {
     Macos(ble_layer_macos::ConnectedKeyboard),
 }
 
-pub fn start_sync(app_handle: AppHandle, state: Arc<BleLayerSyncState>, config: BleLayerSyncConfig) {
+pub fn start_sync(
+    app_handle: AppHandle,
+    state: Arc<BleLayerSyncState>,
+    config: BleLayerSyncConfig,
+) {
     let generation = state.next_generation();
     std::thread::spawn(move || {
         let runtime = tokio::runtime::Builder::new_current_thread()
@@ -88,7 +92,12 @@ pub fn start_sync(app_handle: AppHandle, state: Arc<BleLayerSyncState>, config: 
             generation,
             config.clone(),
         )) {
-            let _ = emit_status(&app_handle, &config.layout_key, "error", Some(error.to_string()));
+            let _ = emit_status(
+                &app_handle,
+                &config.layout_key,
+                "error",
+                Some(error.to_string()),
+            );
         }
     });
 }
@@ -108,8 +117,12 @@ async fn run_sync(
 
     let service_uuid = Uuid::parse_str(&config.service_uuid)
         .with_context(|| format!("invalid service UUID: {}", config.service_uuid))?;
-    let characteristic_uuid = Uuid::parse_str(&config.characteristic_uuid)
-        .with_context(|| format!("invalid characteristic UUID: {}", config.characteristic_uuid))?;
+    let characteristic_uuid = Uuid::parse_str(&config.characteristic_uuid).with_context(|| {
+        format!(
+            "invalid characteristic UUID: {}",
+            config.characteristic_uuid
+        )
+    })?;
 
     let keyboard = find_keyboard(
         config.device_name.as_deref(),
@@ -186,11 +199,9 @@ async fn watch_layers(
         KeyboardHandle::Macos(keyboard) => {
             keyboard.start_notifications()?;
             while state.is_current(generation) {
-                if let Some(layer) = keyboard
-                    .wait_for_notification_layer_timeout(Duration::from_millis(
-                        NOTIFICATION_POLL_TIMEOUT_MS,
-                    ))?
-                {
+                if let Some(layer) = keyboard.wait_for_notification_layer_timeout(
+                    Duration::from_millis(NOTIFICATION_POLL_TIMEOUT_MS),
+                )? {
                     if layer != last_layer {
                         emit_layer(app_handle, layout_key, layer)?;
                         last_layer = layer;
@@ -340,7 +351,9 @@ async fn connect_btle_keyboard(
     let chars = peripheral.characteristics();
     let has_service = chars.iter().any(|c| c.service_uuid == service_uuid);
     if !has_service {
-        return Err(anyhow!("Connected device does not expose the expected custom service"));
+        return Err(anyhow!(
+            "Connected device does not expose the expected custom service"
+        ));
     }
 
     let layer_char = chars
@@ -376,8 +389,14 @@ async fn read_active_layer(handle: &KeyboardHandle) -> Result<u32> {
 async fn notification_stream(
     keyboard: &BtleKeyboard,
 ) -> Result<impl futures_util::Stream<Item = ValueNotification> + Send> {
-    if !keyboard.layer_char.properties.contains(CharPropFlags::NOTIFY) {
-        return Err(anyhow!("Layer characteristic does not support notifications"));
+    if !keyboard
+        .layer_char
+        .properties
+        .contains(CharPropFlags::NOTIFY)
+    {
+        return Err(anyhow!(
+            "Layer characteristic does not support notifications"
+        ));
     }
 
     let stream = keyboard.peripheral.notifications().await?;

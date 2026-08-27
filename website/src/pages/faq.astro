@@ -42,10 +42,11 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <p>Keyboard Helper needs <strong>Input Monitoring</strong> to observe keys globally. Accessibility alone is not enough.</p>
       <p>If the permission switch is already on but highlighting still does not work, refresh the app entry instead of only toggling it:</p>
       <ol>
-        <li>Move the current <em>Keyboard Layout.app</em> to <code>/Applications</code>.</li>
+        <li>Quit and remove an older <em>Keyboard Layout.app</em>, if it is still installed.</li>
+        <li>Move the current <em>Keyboard Helper.app</em> to <code>/Applications</code>.</li>
         <li>Open <strong>System Settings → Privacy &amp; Security → Input Monitoring</strong>.</li>
-        <li>Remove any existing <em>Keyboard Layout</em> entry with the minus button.</li>
-        <li>Add the current application bundle again and enable it.</li>
+        <li>Remove any stale <em>Keyboard Layout</em> or <em>Keyboard Helper</em> entry with the minus button.</li>
+        <li>Add <em>Keyboard Helper.app</em> again and enable it.</li>
         <li>Quit Keyboard Helper from the tray menu, then launch it again.</li>
       </ol>
       <p>This can be necessary after rebuilding the app or switching to another downloaded copy, because macOS can retain permission state for the earlier bundle.</p>
@@ -58,7 +59,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
     <article>
       <h2>How do I select a different layout or use my own?</h2>
-      <p>Use the in-app layout menu for built-in layouts. For a personal layout, create <code>~/.keyri.json</code>, point a layout entry at your JSON file, and choose it as <code>defaultLayout</code>. The <a href={`${base}/setup/`}>setup guide</a> includes examples.</p>
+      <p>Open <strong>Settings</strong> from the application menu, choose <strong>Add layout file…</strong>, and select your JSON file. You can then make it the startup layout and save. Direct <code>~/.keyri.json</code> editing remains available for advanced use; the <a href={`${base}/setup/`}>setup guide</a> includes examples.</p>
     </article>
 
     <article>

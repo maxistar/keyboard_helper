@@ -4,15 +4,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Keyboard Layout</title>
+  <title>Keyboard Helper</title>
   <link rel="stylesheet" href="menu.css" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div id="menuRoot"></div>
-  <div class="shell">
-    <div class="layout" id="layoutRoot">
-      
+  <div class="mini-surface" id="miniSurface" data-tauri-drag-region>
+    <button
+      class="restore-full-size"
+      id="restoreFullSize"
+      type="button"
+      aria-label="Restore full size"
+      title="Restore full size"
+      hidden
+    >
+      <span aria-hidden="true">↗</span>
+    </button>
+    <div class="stage-frame" id="stageFrame" data-tauri-drag-region>
+      <div class="overlay-stage" id="overlayStage">
+        <div class="shell">
+          <div class="layout" id="layoutRoot"></div>
+        </div>
+      </div>
     </div>
   </div>
   <script src="window_mode.js"></script>

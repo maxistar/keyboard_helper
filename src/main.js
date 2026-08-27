@@ -1,63 +1,22 @@
 import { createMenu } from "./menu.js";
+import { createAppMenuStateController } from "./app_menu_state.js";
+import { reloadActiveExternalLayout } from "./app_menu_actions.js";
 import {
   createBleLayerSyncController,
   normalizeBleLayerSource,
 } from "./ble_layer_sync.js";
 import { createPressedKeyTracker, resolveKeyElement } from "./key_highlight.js";
+import { BUILTIN_LAYOUT_FILES, normalizeConfig, pickAvailableLayout } from "./app_config.js";
+import { reloadOverlayAfterSettingsSave } from "./settings_runtime.js";
+import {
+  createOverlayModeController,
+  createOverlayModeView,
+} from "./overlay_mode.js";
+import { buildLayout, normalizeKeyEntry, normalizeLayerData } from "./layout_catalog.js";
+import { calcBounds, calcKeyBounds, renderKeyLabel } from "./keyboard_renderer.js";
+import { createSelfTestOverlayPresentation } from "./self_test/overlay_presentation.js";
 
-function buildKeysFromBase(keyPositions, layers) {
-  const baseLayer = layers?.[0] ?? [];
-  return keyPositions.map((k, index) => {
-    const [label, code, image] = baseLayer[index] ?? [];
-    return { ...k, label, code, image };
-  });
-}
-
-function buildLayout(config, layers) {
-  return {
-    name: config.name,
-    keySize: config.keySize,
-    keys: buildKeysFromBase(config.keyPositions, layers),
-  };
-}
-
-function formatLayerName(rawName, index) {
-  if (!rawName) return `Layer ${index + 1}`;
-  const spaced = String(rawName).replace(/[_-]+/g, " ");
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
-}
-
-function normalizeLayerData(layerSource) {
-  if (!layerSource) return { layers: [], names: [] };
-
-  if (Array.isArray(layerSource)) {
-    return {
-      layers: layerSource,
-      names: layerSource.map((_, index) => `Layer ${index + 1}`),
-    };
-  }
-
-  const { default: defaultLayer, ...rest } = layerSource;
-  const entries = [];
-  if (defaultLayer) entries.push(["default", defaultLayer]);
-  for (const [key, value] of Object.entries(rest)) {
-    if (value) entries.push([key, value]);
-  }
-
-  return {
-    layers: entries.map(([, layer]) => layer),
-    names: entries.map(([name], index) => formatLayerName(name, index)),
-  };
-}
-
-const builtinLayoutFiles = {
-  qwerty: "layout_qwerty.json",
-  qwertz: "layout_qwertz.json",
-  corne: "layout_corne.json",
-  dactyl: "layout_dactyl.json",
-  magic: "layout_magic.json",
-  mac: "layout_mac.json",
-};
+const builtinLayoutFiles = BUILTIN_LAYOUT_FILES;
 let layoutDefinitions = {};
 let normalizedLayoutLayers = {};
 let layouts = {};
@@ -68,6 +27,7 @@ let layoutBleSources = {};
 let comboDefinitionsByLayout = {};
 let comboBordersByCode = new Map();
 let comboBorderEls = [];
+let layoutLoadErrors = [];
 
 async function loadLayoutDefinition(key, source) {
   // source: true (builtin) or string path
@@ -121,13 +81,15 @@ async function loadLayoutDefinition(key, source) {
 
 async function loadLayoutDefinitions(config) {
   const entries = [];
+  layoutLoadErrors = [];
   const layoutConfig = config?.layouts;
   layoutSources = {};
   if (layoutConfig && typeof layoutConfig === "object") {
     for (const [key, source] of Object.entries(layoutConfig)) {
       layoutSources[key] = source;
-      const { def } = await loadLayoutDefinition(key, source);
+      const { def, error } = await loadLayoutDefinition(key, source);
       if (def) entries.push([key, def]);
+      else if (error) layoutLoadErrors.push(error);
     }
   } else {
     // fallback: load all built-in layouts
@@ -136,6 +98,15 @@ async function loadLayoutDefinitions(config) {
       layoutSources[key] = true;
       const { def } = await loadLayoutDefinition(key, true);
       if (def) entries.push([key, def]);
+    }
+  }
+
+  if (entries.length === 0) {
+    for (const key of Object.keys(builtinLayoutFiles)) {
+      layoutSources[key] = true;
+      const { def, error } = await loadLayoutDefinition(key, true);
+      if (def) entries.push([key, def]);
+      else if (error) layoutLoadErrors.push(error);
     }
   }
 
@@ -165,6 +136,7 @@ function rebuildLayoutData() {
 }
 
 const layoutRoot = document.getElementById("layoutRoot");
+const selfTestOverlayPresentation = createSelfTestOverlayPresentation({ root: layoutRoot });
 let currentLayerIndex = 0;
 let layerIndicatorEl = null;
 let hudContainer = null;
@@ -173,6 +145,9 @@ let keyEventHideTimer = null;
 let layoutErrorEl = null;
 let layoutErrorTimer = null;
 let menuControls = null;
+let menuStateController = null;
+let overlayModeController = null;
+let windowModeControls = null;
 let currentLayoutKey = "qwerty";
 let bleLayerSync = null;
 let shiftHeld = false;
@@ -192,25 +167,23 @@ function getAllowedLayoutKeys(config) {
 function pickDefaultLayout(config, allowedKeys) {
   const preferred = config?.defaultLayout;
   console.log("Preferred layout from config:", preferred);
-  if (preferred && allowedKeys.includes(preferred)) {
-    return preferred;
-  }
-  if (allowedKeys.includes(currentLayoutKey)) {
-    return currentLayoutKey;
-  }
-  return allowedKeys[0] ?? currentLayoutKey;
+  return pickAvailableLayout(config, allowedKeys, currentLayoutKey) ?? currentLayoutKey;
 }
 
 async function loadConfig() {
   const tauri = window.__TAURI__;
-  if (!tauri?.core?.invoke) return null;
+  if (!tauri?.core?.invoke) return normalizeConfig(null);
   try {
-    const raw = await tauri.core.invoke("read_config_file");
-    if (typeof raw !== "string") return null;
-    return JSON.parse(raw);
+    const result = await tauri.core.invoke("read_config_state");
+    if (result?.status === "valid") return normalizeConfig(result.data);
+    if (result?.status === "invalid") {
+      showLayoutError(`Configuration error in ${result.sourcePath ?? result.path}. Using defaults.`);
+    }
+    return normalizeConfig(null);
   } catch (err) {
     console.warn("Failed to load config file, using defaults", err);
-    return null;
+    showLayoutError("Could not read settings. Using built-in layouts.");
+    return normalizeConfig(null);
   }
 }
 
@@ -228,26 +201,6 @@ function applyKeySizes({ w, h, gap }) {
   root.style.setProperty("--key-w", `${w}px`);
   root.style.setProperty("--key-h", `${h}px`);
   root.style.setProperty("--gap", `${gap}px`);
-}
-
-function calcBounds(keys) {
-  let maxCol = 0;
-  let maxRow = 0;
-  keys.forEach((k) => {
-    const keyWidth = k.w ?? 1;
-    const keyHeight = k.h ?? 1;
-    if (k.col + keyWidth > maxCol) maxCol = k.col + keyWidth;
-    if (k.row + keyHeight > maxRow) maxRow = k.row + keyHeight;
-  });
-  return { maxCol, maxRow };
-}
-
-function calcKeyBounds(key, keySize) {
-  const width = keySize.w * (key.w ?? 1) + keySize.gap * ((key.w ?? 1) - 1);
-  const height = keySize.h * (key.h ?? 1) + keySize.gap * ((key.h ?? 1) - 1);
-  const left = key.col * (keySize.w + keySize.gap);
-  const top = key.row * (keySize.h + keySize.gap);
-  return { left, top, width, height };
 }
 
 function clearComboBorders() {
@@ -301,54 +254,6 @@ function setComboActive(code, active) {
   borders.forEach((border) => border.classList.toggle("active", active));
 }
 
-function normalizeKeyEntry(entry) {
-  if (!entry) return { label: null, code: null };
-
-  if (Array.isArray(entry)) {
-    const [text, code, image] = entry;
-    if (image) {
-      return { label: { text, image }, code };
-    }
-    return { label: text, code };
-  }
-
-  if (typeof entry === "object") {
-    const label = entry.label ?? entry.text ?? entry;
-    const code = entry.code ?? null;
-    if (entry.image) {
-      return { label: { text: entry.text ?? entry.label, image: entry.image, alt: entry.alt }, code };
-    }
-    return { label, code };
-  }
-
-  return { label: entry, code: null };
-}
-
-function renderKeyLabel(el, entry) {
-  const { label, code } = normalizeKeyEntry(entry);
-  el.innerHTML = "";
-  if (code) {
-    el.dataset.key = code;
-  }
-  if (!label) return;
-
-  if (typeof label === "object" && label.image) {
-    const img = document.createElement("img");
-    img.src = label.image;
-    img.alt = label.alt ?? label.text ?? "";
-    img.className = "key-icon";
-    el.appendChild(img);
-    return;
-  }
-
-  if (typeof label === "object" && "text" in label) {
-    el.textContent = label.text ?? "";
-    return;
-  }
-
-  el.textContent = label;
-}
-
 function renderKeyboard(layout) {
   layoutRoot.innerHTML = "";
   pressedKeyTracker.clear();
@@ -380,6 +285,8 @@ function renderKeyboard(layout) {
   });
 
   renderLayerIndicator();
+  selfTestOverlayPresentation.refresh();
+  overlayModeController?.refreshMiniGeometry();
 }
 
 function ensureHudContainer() {
@@ -410,6 +317,8 @@ function ensureLayoutError() {
   if (!layoutErrorEl) {
     layoutErrorEl = document.createElement("div");
     layoutErrorEl.className = "layout-error";
+    layoutErrorEl.setAttribute("role", "alert");
+    layoutErrorEl.setAttribute("aria-live", "assertive");
   }
   if (!hudContainer.contains(layoutErrorEl)) {
     hudContainer.appendChild(layoutErrorEl);
@@ -600,45 +509,155 @@ function handleKey(code, type) {
 
 async function refreshExternalLayout(key) {
   const source = layoutSources[key];
-  if (typeof source !== "string") return true;
+  if (typeof source !== "string") return { ok: true, error: null };
   const { def, error } = await loadLayoutDefinition(key, source);
   if (!def) {
-    showLayoutError(error ?? `Failed to reload layout "${key}".`);
-    return false;
+    return { ok: false, error: error ?? `Failed to reload layout "${key}".` };
   }
   layoutDefinitions = { ...layoutDefinitions, [key]: def };
   rebuildLayoutData();
+  return { ok: true, error: null };
+}
+
+async function reloadCurrentLayout(key) {
+  return reloadActiveExternalLayout({
+    key,
+    getCurrentLayoutKey: () => currentLayoutKey,
+    getLayoutSource: (layoutKey) => layoutSources[layoutKey],
+    loadLayoutDefinition,
+    applyLayoutDefinition: (layoutKey, definition) => {
+      layoutDefinitions = { ...layoutDefinitions, [layoutKey]: definition };
+      rebuildLayoutData();
+    },
+    renderBaseLayout: (layoutKey) => {
+      currentLayerIndex = 0;
+      renderKeyboard(layouts[layoutKey]);
+    },
+    restartBle: async (layoutKey) => {
+      if (bleLayerSync) {
+        await bleLayerSync.start(layoutKey, layoutBleSources[layoutKey] ?? null);
+      }
+      menuStateController?.refresh();
+    },
+  });
+}
+
+async function reconnectCurrentBle(key) {
+  if (key !== currentLayoutKey || !bleLayerSync || !layoutBleSources[key]) return false;
+  return bleLayerSync.start(key, layoutBleSources[key]);
+}
+
+async function openHelpPage(url) {
+  if (tauriHandle) {
+    if (typeof tauriHandle.opener?.openUrl !== "function") {
+      throw new Error("The system browser opener is unavailable.");
+    }
+    await tauriHandle.opener.openUrl(url);
+    return true;
+  }
+
+  if (typeof window.open !== "function") {
+    throw new Error("The browser cannot open the Help page.");
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
   return true;
+}
+
+async function openTypingInvaders() {
+  if (!tauriHandle?.core?.invoke) {
+    throw new Error("Shift-Space Invaders requires the desktop application.");
+  }
+  await tauriHandle.core.invoke("open_typing_invaders");
+  return true;
+}
+
+async function openSettingsWindow() {
+  if (!tauriHandle?.core?.invoke) {
+    throw new Error("Settings require the desktop application.");
+  }
+  await tauriHandle.core.invoke("open_settings");
+  return true;
+}
+
+async function openKeyboardSelfTest() {
+  if (!tauriHandle?.core?.invoke) {
+    throw new Error("Keyboard Self-test requires the desktop application.");
+  }
+  await tauriHandle.core.invoke("open_keyboard_self_test", { currentLayout: currentLayoutKey });
+  return true;
+}
+
+async function enterMiniMode() {
+  if (!overlayModeController) {
+    throw new Error("Mini Mode is not ready yet.");
+  }
+  return overlayModeController.enterMini();
 }
 
 async function setLayout(key) {
   const previousKey = currentLayoutKey;
-  const refreshed = await refreshExternalLayout(key);
-  if (!refreshed) {
+  const { ok, error } = await refreshExternalLayout(key);
+  if (!ok) {
     currentLayoutKey = previousKey;
-    if (menuControls && typeof menuControls.updateActive === "function") {
-      menuControls.updateActive();
-    }
-    return;
+    showLayoutError(error);
+    menuStateController?.reportError(error);
+    return false;
   }
   const layout = layouts[key];
-  if (!layout) return;
+  if (!layout) return false;
   currentLayoutKey = key;
   currentLayerIndex = 0;
   renderKeyboard(layout);
+  menuStateController?.setActiveLayout();
 
   if (bleLayerSync) {
     await bleLayerSync.start(key, layoutBleSources[key] ?? null);
   }
 
-  if (menuControls && typeof menuControls.updateActive === "function") {
-    menuControls.updateActive();
-  }
+  menuStateController?.refresh();
+  return true;
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
   const tauri = window.__TAURI__;
   tauriHandle = tauri;
+  if (tauri?.core?.invoke && tauri?.event?.listen) {
+    let startupGeometry = { decorations: true };
+    try {
+      startupGeometry = await tauri.core.invoke("restore_full_geometry");
+    } catch (error) {
+      console.error("Failed to initialize full overlay geometry:", error);
+      showLayoutError(error?.message ?? String(error));
+    }
+    if (typeof window.setupWindowModeToggle === "function") {
+      windowModeControls = window.setupWindowModeToggle(tauri);
+      windowModeControls?.setDisplayMode("full", startupGeometry);
+    }
+    const modeView = createOverlayModeView({
+      body: document.body,
+      stage: document.getElementById("overlayStage"),
+      layout: layoutRoot,
+      restoreButton: document.getElementById("restoreFullSize"),
+    });
+    overlayModeController = createOverlayModeController({
+      enterNative: (request) => tauri.core.invoke("enter_mini_geometry", { request }),
+      updateNative: (request) => tauri.core.invoke("update_mini_geometry", { request }),
+      restoreNative: () => tauri.core.invoke("restore_full_geometry"),
+      measureContent: modeView.measureContent,
+      applyMode: modeView.applyMode,
+      setDecorationMode: (mode, geometry) => windowModeControls?.setDisplayMode(mode, geometry),
+      reportError: (message) => {
+        showLayoutError(message);
+        menuStateController?.reportError(message);
+      },
+    });
+    document.getElementById("restoreFullSize").addEventListener("click", () => {
+      overlayModeController.restoreFull();
+    });
+    tauri.event
+      .listen("enter-mini-mode-requested", () => overlayModeController.enterMini())
+      .catch((err) => console.error("Failed to listen enter-mini-mode-requested:", err));
+  }
   const config = await loadConfig();
   parsedToggleHotkey = parseToggleHotkey(config?.toggleHotkey ?? null);
   await loadLayoutDefinitions(config);
@@ -653,21 +672,45 @@ window.addEventListener("DOMContentLoaded", async () => {
   }));
   currentLayoutKey = pickDefaultLayout(config, allowedLayoutKeys);
 
-  menuControls = createMenu({
-    onLayoutSelect: setLayout,
-    getCurrentLayoutKey: () => currentLayoutKey,
-    layoutOptions: layoutMenuOptions,
-  });
-
   bleLayerSync = createBleLayerSyncController({
     tauri,
     onLayerChange: (layer) => applyLayer(layer),
     onStatusChange: (status) => {
+      menuStateController?.handleBleStatus(status);
       if (status.state === "error" && status.message) {
         console.warn("BLE layer sync unavailable:", status.message);
       }
     },
   });
+
+  menuStateController = createAppMenuStateController({
+    getCurrentLayoutKey: () => currentLayoutKey,
+    getCurrentLayoutLabel: (key) => layoutDefinitions[key]?.name ?? key,
+    getCurrentLayoutSource: () => layoutSources[currentLayoutKey],
+    getCurrentBleSource: () => layoutBleSources[currentLayoutKey] ?? null,
+    hasNativeBridge: () => Boolean(tauriHandle?.core?.invoke && tauriHandle?.event?.listen),
+    reloadLayout: reloadCurrentLayout,
+    reconnectBle: reconnectCurrentBle,
+    openTypingInvaders,
+    openKeyboardSelfTest,
+    enterMiniMode,
+    openSettings: openSettingsWindow,
+    openHelp: openHelpPage,
+    onChange: (state) => menuControls?.update(state),
+  });
+
+  menuControls = createMenu({
+    onLayoutSelect: setLayout,
+    onReloadLayout: () => menuStateController.reload(),
+    onKeyboardSelfTest: () => menuStateController.selfTest(),
+    onReconnectBle: () => menuStateController.reconnect(),
+    onMiniMode: () => menuStateController.mini(),
+    onStartGame: () => menuStateController.launchGame(),
+    onSettings: () => menuStateController.settings(),
+    onHelp: () => menuStateController.help(),
+    layoutOptions: layoutMenuOptions,
+  });
+  menuStateController.refresh();
 
   if (tauri) {
     tauri.core
@@ -682,6 +725,12 @@ window.addEventListener("DOMContentLoaded", async () => {
       .catch((err) => console.error("Failed to listen key_event:", err));
 
     tauri.event
+      .listen("self-test-overlay-state", (event) => {
+        selfTestOverlayPresentation.update(event.payload);
+      })
+      .catch((err) => console.error("Failed to listen self-test-overlay-state:", err));
+
+    tauri.event
       .listen("layout_selected", (e) => {
         const key = e.payload?.layout;
         if (typeof key === "string") {
@@ -690,15 +739,16 @@ window.addEventListener("DOMContentLoaded", async () => {
       })
       .catch((err) => console.error("Failed to listen layout_selected:", err));
 
-    if (typeof window.setupWindowModeToggle === "function") {
-      window.setupWindowModeToggle(tauri);
-    }
+    tauri.event
+      .listen("app-settings-saved", () => reloadOverlayAfterSettingsSave(window.location))
+      .catch((err) => console.error("Failed to listen app-settings-saved:", err));
+
   } else {
     console.warn("Tauri global API (window.__TAURI__) is not available");
   }
 
-  setLayout(currentLayoutKey);
-  if (menuControls && typeof menuControls.updateActive === "function") {
-    menuControls.updateActive();
+  await setLayout(currentLayoutKey);
+  if (layoutLoadErrors.length) {
+    showLayoutError(`${layoutLoadErrors[0]} A built-in fallback is active.`);
   }
 });

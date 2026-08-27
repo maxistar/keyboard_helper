@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Keyboard Self-test</title>
+  <link rel="stylesheet" href="self-test.css" />
+</head>
+<body>
+  <main class="test-shell" aria-labelledby="pageTitle">
+    <header class="hero">
+      <div><span class="eyebrow">Keyboard Helper</span><h1 id="pageTitle">Keyboard Self-test</h1></div>
+      <button id="closeButton" class="button ghost" type="button">Close</button>
+    </header>
+
+    <section id="setupView" class="panel" aria-labelledby="setupTitle">
+      <h2 id="setupTitle">Choose what to test</h2>
+      <div class="selectors">
+        <label>Keyboard layout<select id="layoutSelect" disabled></select></label>
+        <label>Layer<select id="layerSelect" disabled></select></label>
+      </div>
+      <div id="catalogErrors" class="error-list" role="alert"></div>
+      <p id="testability" class="testability" role="status" aria-live="polite">Loading layouts…</p>
+      <div class="notice"><strong>Activate the selected layer and release all keys before starting.</strong> This test observes global HID events from any attached keyboard. Modifier chords pass only after the trigger and every modifier are released. It cannot diagnose the ZMK matrix, combos, macros, or hold-tap timing.</div>
+      <button id="startButton" class="button primary" type="button" disabled>Start guided test</button>
+    </section>
+
+    <section id="activeView" class="panel guidance" aria-labelledby="guideTitle" hidden>
+      <div class="progress-row"><span id="progressText"></span><progress id="progressBar" max="1" value="0"></progress></div>
+      <h2 id="guideTitle">Follow the highlighted key</h2>
+      <p id="instruction" class="instruction"></p>
+      <dl class="descriptors"><div><dt>Expected</dt><dd id="expectedCode"></dd></div><div><dt>Received</dt><dd id="receivedCode">—</dd></div></dl>
+      <div id="mismatchActions" class="actions" hidden>
+        <button id="retryButton" class="button primary" type="button">Retry</button>
+        <button id="problemButton" class="button danger" type="button">Mark as problem and continue</button>
+      </div>
+      <div id="waitingActions" class="actions">
+        <button id="skipButton" class="button secondary" type="button">Skip this position</button>
+        <button id="stopButton" class="button ghost" type="button">Stop test</button>
+      </div>
+    </section>
+
+    <aside class="overlay-note" aria-label="Overlay visualization">
+      <div><strong id="selectionLabel">Choose a layout and layer</strong><span>The existing Keyboard Helper overlay shows the guided outlines and normal pressed-key highlighting together.</span></div>
+      <div class="legend"><span>▶ Expected</span><span>✓ Passed</span><span>! Problem</span><span>S Skipped</span><span>— Not testable</span></div>
+    </aside>
+
+    <section id="resultsView" class="panel" aria-labelledby="resultsTitle" hidden>
+      <h2 id="resultsTitle">Test complete</h2>
+      <div id="resultCounts" class="result-counts"></div>
+      <ul id="problemList" class="problem-list"></ul>
+      <p class="notice">These results verify configured HID output only. Events may come from any attached keyboard and do not prove raw switch or matrix health.</p>
+      <div class="actions">
+        <button id="retestButton" class="button primary" type="button">Retest problems</button>
+        <button id="anotherLayerButton" class="button secondary" type="button">Test another layer</button>
+        <button id="closeResultsButton" class="button ghost" type="button">Close</button>
+      </div>
+    </section>
+    <p id="liveStatus" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
+  </main>
+  <script type="module" src="self-test.js"></script>
+</body>
+</html>

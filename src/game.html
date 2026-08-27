@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shift-Space Invaders</title>
+  <link rel="stylesheet" href="typing_invaders/game.css" />
+</head>
+<body class="game-page">
+  <main class="game-shell" aria-labelledby="gameTitle">
+    <header class="game-header">
+      <div class="game-brand">
+        <span class="game-kicker">Keyboard Helper Arcade</span>
+        <h1 id="gameTitle">Shift-Space Invaders</h1>
+      </div>
+      <dl class="game-hud" aria-label="Current mission status">
+        <div><dt>Score</dt><dd id="scoreValue">000000</dd></div>
+        <div><dt>Wave</dt><dd id="waveValue">01</dd></div>
+        <div><dt>Lives</dt><dd id="livesValue" aria-label="3 lives">◆ ◆ ◆</dd></div>
+        <div><dt>Streak</dt><dd id="streakValue">x1</dd></div>
+      </dl>
+    </header>
+
+    <section id="playfield" class="playfield" aria-label="Shift-Space Invaders playfield">
+      <div class="star-field star-field-far" aria-hidden="true"></div>
+      <div class="star-field star-field-near" aria-hidden="true"></div>
+      <div id="targetLayer" class="target-layer"></div>
+      <div id="effectLayer" class="effect-layer" aria-hidden="true"></div>
+      <div class="defense-line" aria-hidden="true"><span>DEFENSE GRID</span></div>
+      <div class="player-ship" aria-hidden="true">
+        <span class="ship-wing ship-wing-left"></span>
+        <span class="ship-core"></span>
+        <span class="ship-wing ship-wing-right"></span>
+      </div>
+
+      <section id="stateOverlay" class="state-overlay" aria-live="polite">
+        <div class="state-card">
+          <span class="state-kicker" id="stateKicker">Incoming transmission</span>
+          <h2 id="stateTitle">Shift-Space Invaders</h2>
+          <p id="stateDescription">Type the words. Stop the descent.</p>
+          <dl id="resultGrid" class="result-grid" hidden>
+            <div><dt>Final score</dt><dd id="resultScore">0</dd></div>
+            <div><dt>Highest wave</dt><dd id="resultWave">1</dd></div>
+            <div><dt>Targets</dt><dd id="resultTargets">0</dd></div>
+            <div><dt>Accuracy</dt><dd id="resultAccuracy">100%</dd></div>
+            <div><dt>Words/min</dt><dd id="resultWpm">0</dd></div>
+          </dl>
+          <button id="stateAction" class="state-action" type="button">Start mission</button>
+          <p class="state-hint" id="stateHint">Type any visible word. Esc pauses.</p>
+        </div>
+      </section>
+
+      <div id="gameAnnouncement" class="sr-only" aria-live="assertive"></div>
+    </section>
+
+    <footer class="game-footer">
+      <span><kbd>Type</kbd> fire</span>
+      <span><kbd>Esc</kbd> pause</span>
+      <span id="accuracyValue">Accuracy 100%</span>
+      <span id="wpmValue">0 WPM</span>
+    </footer>
+  </main>
+  <script type="module" src="typing_invaders/game.js"></script>
+</body>
+</html>

@@ -51,7 +51,9 @@ impl ConnectedKeyboard {
     pub fn start_notifications(&self) -> Result<()> {
         let properties = unsafe { self.layer_char.properties() };
         if !properties.contains(CBCharacteristicProperties::CBCharacteristicPropertyNotify) {
-            return Err(anyhow!("Layer characteristic does not support notifications"));
+            return Err(anyhow!(
+                "Layer characteristic does not support notifications"
+            ));
         }
 
         if unsafe { self.layer_char.isNotifying() } {
@@ -88,7 +90,8 @@ impl ConnectedKeyboard {
 
         match event {
             DelegateEvent::CharacteristicValue(peripheral_id, characteristic_uuid, result)
-                if peripheral_id == self.peripheral_id && characteristic_uuid == self.layer_char_uuid =>
+                if peripheral_id == self.peripheral_id
+                    && characteristic_uuid == self.layer_char_uuid =>
             {
                 let data = result.map_err(|error| anyhow!(error))?;
                 Ok(Some(decode_active_layer(&data)?))
@@ -187,8 +190,9 @@ pub fn find_connected_keyboard(
         })?
         .map_err(|error| anyhow!(error))?;
 
-        let layer_char = find_characteristic(&service, char_uuid)
-            .with_context(|| format!("Characteristic {char_uuid} not found on connected keyboard"))?;
+        let layer_char = find_characteristic(&service, char_uuid).with_context(|| {
+            format!("Characteristic {char_uuid} not found on connected keyboard")
+        })?;
 
         let properties = unsafe { layer_char.properties() };
         if !properties.contains(CBCharacteristicProperties::CBCharacteristicPropertyRead) {
@@ -393,7 +397,8 @@ where
 }
 
 fn find_service(peripheral: &CBPeripheral, expected: Uuid) -> Result<Retained<CBService>> {
-    let services = unsafe { peripheral.services() }.ok_or_else(|| anyhow!("No services discovered"))?;
+    let services =
+        unsafe { peripheral.services() }.ok_or_else(|| anyhow!("No services discovered"))?;
     for service in services {
         if cbuuid_to_uuid(unsafe { service.UUID() }.as_ref())? == expected {
             return Ok(service);

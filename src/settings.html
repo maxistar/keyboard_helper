@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Keyboard Helper Settings</title>
+  <link rel="stylesheet" href="settings.css" />
+</head>
+<body>
+  <main class="settings-shell" aria-labelledby="settingsTitle">
+    <header class="settings-header">
+      <div>
+        <span class="eyebrow">Keyboard Helper</span>
+        <h1 id="settingsTitle">Settings</h1>
+        <p>Choose what appears at startup and how the overlay behaves.</p>
+      </div>
+      <span id="configPath" class="config-path"></span>
+    </header>
+
+    <section id="recoveryPanel" class="recovery-panel" aria-labelledby="recoveryTitle" hidden>
+      <h2 id="recoveryTitle">Configuration needs attention</h2>
+      <p id="recoveryMessage"></p>
+      <button id="replaceInvalidButton" class="button danger" type="button">Replace damaged file with these settings</button>
+      <p class="field-help">A timestamped backup will be created before anything is replaced.</p>
+    </section>
+
+    <form id="settingsForm" aria-describedby="formError" novalidate>
+      <fieldset id="layoutFieldset" disabled>
+        <legend>Keyboard layouts</legend>
+        <p class="section-copy">Enable the keyboards you want in the application menu.</p>
+        <div id="builtinLayouts" class="layout-grid"></div>
+        <p id="layoutsError" class="field-error" aria-live="polite"></p>
+      </fieldset>
+
+      <section class="settings-section" aria-labelledby="startupHeading">
+        <label id="startupHeading" for="defaultLayout">Layout at startup</label>
+        <select id="defaultLayout" disabled aria-describedby="defaultLayoutError"></select>
+        <p id="defaultLayoutError" class="field-error"></p>
+      </section>
+
+      <section class="settings-section" aria-labelledby="externalHeading">
+        <div class="section-heading-row">
+          <div>
+            <h2 id="externalHeading">Custom layouts</h2>
+            <p>Choose a compatible JSON layout file. Removing it here never deletes the file.</p>
+          </div>
+          <button id="addLayoutButton" class="button secondary" type="button" disabled>Add layout file…</button>
+        </div>
+        <ul id="externalLayouts" class="external-layouts"></ul>
+        <p id="externalError" class="field-error" aria-live="polite"></p>
+      </section>
+
+      <section class="settings-section" aria-labelledby="hotkeyHeading">
+        <h2 id="hotkeyHeading">Show or hide shortcut</h2>
+        <p>Record an optional global shortcut for toggling the overlay.</p>
+        <div class="hotkey-row">
+          <output id="hotkeyValue" class="hotkey-value" aria-live="polite">Not set</output>
+          <button id="recordHotkeyButton" class="button secondary" type="button" disabled>Record shortcut</button>
+          <button id="clearHotkeyButton" class="button ghost" type="button" disabled>Clear</button>
+        </div>
+        <p id="hotkeyError" class="field-error"></p>
+        <p id="hotkeyWarning" class="field-warning"></p>
+      </section>
+
+      <div id="settingsStatus" class="status settings-status" role="status" aria-live="polite" aria-atomic="true">Loading settings…</div>
+      <button id="reloadSettingsButton" class="button secondary reload-settings" type="button" hidden>Reload current settings</button>
+      <p id="formError" class="form-error" role="alert"></p>
+      <footer class="settings-actions">
+        <button id="cancelButton" class="button ghost" type="button" disabled>Cancel</button>
+        <button id="saveButton" class="button primary" type="submit" disabled>Save changes</button>
+      </footer>
+    </form>
+  </main>
+  <script type="module" src="settings.js"></script>
+</body>
+</html>

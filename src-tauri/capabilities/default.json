@@ -5,6 +5,13 @@
   "windows": ["main", "overlay"],
   "permissions": [
     "core:default",
-    "opener:default"
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "https://projects.maxistar.me/keyboard_helper/setup/"
+        }
+      ]
+    }
   ]
 }
