@@ -231,7 +231,7 @@ function createEnvironment(callbacks = {}) {
   globalThis.document = document;
   globalThis.window = window;
   let controls;
-  const calls = { layout: [], reload: 0, reconnect: 0, mini: 0, game: 0, settings: 0, help: 0 };
+  const calls = { layout: [], reload: 0, selfTest: 0, reconnect: 0, mini: 0, game: 0, settings: 0, help: 0 };
   const layoutOptions = [
     { key: "alpha", label: "Alpha" },
     { key: "beta", label: "Beta" },
@@ -246,6 +246,10 @@ function createEnvironment(callbacks = {}) {
     }),
     onReloadLayout: callbacks.onReloadLayout ?? (async () => {
       calls.reload += 1;
+      return true;
+    }),
+    onKeyboardSelfTest: callbacks.onKeyboardSelfTest ?? (async () => {
+      calls.selfTest += 1;
       return true;
     }),
     onReconnectBle: callbacks.onReconnectBle ?? (async () => {
@@ -301,6 +305,7 @@ test("menu renders the root hierarchy, synchronized summaries, and contextual co
       miniAvailable: true,
       gameAvailable: true,
       settingsAvailable: true,
+      selfTestAvailable: true,
     });
 
     const root = env.document.querySelector(".menu-root");
@@ -321,14 +326,16 @@ test("menu renders the root hierarchy, synchronized summaries, and contextual co
     assert.equal(env.document.querySelector(".menu-action-mini").disabled, false);
     assert.equal(env.document.querySelector(".menu-action-game").disabled, false);
     assert.equal(env.document.querySelector(".menu-action-settings").disabled, false);
+    assert.equal(env.document.querySelector(".menu-action-self-test").disabled, false);
 
-    env.controls.update({ reloadPending: true, reconnectAvailable: true, reconnectPending: true, miniPending: true, gamePending: true, settingsPending: true });
+    env.controls.update({ reloadPending: true, selfTestPending: true, reconnectAvailable: true, reconnectPending: true, miniPending: true, gamePending: true, settingsPending: true });
     assert.equal(env.document.querySelector(".menu-action-reload").textContent, "Reloading…");
     assert.equal(env.document.querySelector(".menu-action-reload").disabled, true);
     assert.equal(env.document.querySelector(".menu-action-reconnect").textContent, "Reconnecting…");
     assert.equal(env.document.querySelector(".menu-action-mini").textContent, "Entering Mini Mode…");
     assert.equal(env.document.querySelector(".menu-action-game").textContent, "Launching…");
     assert.equal(env.document.querySelector(".menu-action-settings").textContent, "Opening Settings…");
+    assert.equal(env.document.querySelector(".menu-action-self-test").textContent, "Opening Self-test…");
   } finally {
     env.restore();
   }

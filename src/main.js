@@ -12,51 +12,9 @@ import {
   createOverlayModeController,
   createOverlayModeView,
 } from "./overlay_mode.js";
-
-function buildKeysFromBase(keyPositions, layers) {
-  const baseLayer = layers?.[0] ?? [];
-  return keyPositions.map((k, index) => {
-    const [label, code, image] = baseLayer[index] ?? [];
-    return { ...k, label, code, image };
-  });
-}
-
-function buildLayout(config, layers) {
-  return {
-    name: config.name,
-    keySize: config.keySize,
-    keys: buildKeysFromBase(config.keyPositions, layers),
-  };
-}
-
-function formatLayerName(rawName, index) {
-  if (!rawName) return `Layer ${index + 1}`;
-  const spaced = String(rawName).replace(/[_-]+/g, " ");
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
-}
-
-function normalizeLayerData(layerSource) {
-  if (!layerSource) return { layers: [], names: [] };
-
-  if (Array.isArray(layerSource)) {
-    return {
-      layers: layerSource,
-      names: layerSource.map((_, index) => `Layer ${index + 1}`),
-    };
-  }
-
-  const { default: defaultLayer, ...rest } = layerSource;
-  const entries = [];
-  if (defaultLayer) entries.push(["default", defaultLayer]);
-  for (const [key, value] of Object.entries(rest)) {
-    if (value) entries.push([key, value]);
-  }
-
-  return {
-    layers: entries.map(([, layer]) => layer),
-    names: entries.map(([name], index) => formatLayerName(name, index)),
-  };
-}
+import { buildLayout, normalizeKeyEntry, normalizeLayerData } from "./layout_catalog.js";
+import { calcBounds, calcKeyBounds, renderKeyLabel } from "./keyboard_renderer.js";
+import { createSelfTestOverlayPresentation } from "./self_test/overlay_presentation.js";
 
 const builtinLayoutFiles = BUILTIN_LAYOUT_FILES;
 let layoutDefinitions = {};
@@ -178,6 +136,7 @@ function rebuildLayoutData() {
 }
 
 const layoutRoot = document.getElementById("layoutRoot");
+const selfTestOverlayPresentation = createSelfTestOverlayPresentation({ root: layoutRoot });
 let currentLayerIndex = 0;
 let layerIndicatorEl = null;
 let hudContainer = null;
@@ -244,26 +203,6 @@ function applyKeySizes({ w, h, gap }) {
   root.style.setProperty("--gap", `${gap}px`);
 }
 
-function calcBounds(keys) {
-  let maxCol = 0;
-  let maxRow = 0;
-  keys.forEach((k) => {
-    const keyWidth = k.w ?? 1;
-    const keyHeight = k.h ?? 1;
-    if (k.col + keyWidth > maxCol) maxCol = k.col + keyWidth;
-    if (k.row + keyHeight > maxRow) maxRow = k.row + keyHeight;
-  });
-  return { maxCol, maxRow };
-}
-
-function calcKeyBounds(key, keySize) {
-  const width = keySize.w * (key.w ?? 1) + keySize.gap * ((key.w ?? 1) - 1);
-  const height = keySize.h * (key.h ?? 1) + keySize.gap * ((key.h ?? 1) - 1);
-  const left = key.col * (keySize.w + keySize.gap);
-  const top = key.row * (keySize.h + keySize.gap);
-  return { left, top, width, height };
-}
-
 function clearComboBorders() {
   comboBordersByCode.clear();
   comboBorderEls.forEach((el) => el.remove());
@@ -315,54 +254,6 @@ function setComboActive(code, active) {
   borders.forEach((border) => border.classList.toggle("active", active));
 }
 
-function normalizeKeyEntry(entry) {
-  if (!entry) return { label: null, code: null };
-
-  if (Array.isArray(entry)) {
-    const [text, code, image] = entry;
-    if (image) {
-      return { label: { text, image }, code };
-    }
-    return { label: text, code };
-  }
-
-  if (typeof entry === "object") {
-    const label = entry.label ?? entry.text ?? entry;
-    const code = entry.code ?? null;
-    if (entry.image) {
-      return { label: { text: entry.text ?? entry.label, image: entry.image, alt: entry.alt }, code };
-    }
-    return { label, code };
-  }
-
-  return { label: entry, code: null };
-}
-
-function renderKeyLabel(el, entry) {
-  const { label, code } = normalizeKeyEntry(entry);
-  el.innerHTML = "";
-  if (code) {
-    el.dataset.key = code;
-  }
-  if (!label) return;
-
-  if (typeof label === "object" && label.image) {
-    const img = document.createElement("img");
-    img.src = label.image;
-    img.alt = label.alt ?? label.text ?? "";
-    img.className = "key-icon";
-    el.appendChild(img);
-    return;
-  }
-
-  if (typeof label === "object" && "text" in label) {
-    el.textContent = label.text ?? "";
-    return;
-  }
-
-  el.textContent = label;
-}
-
 function renderKeyboard(layout) {
   layoutRoot.innerHTML = "";
   pressedKeyTracker.clear();
@@ -394,6 +285,7 @@ function renderKeyboard(layout) {
   });
 
   renderLayerIndicator();
+  selfTestOverlayPresentation.refresh();
   overlayModeController?.refreshMiniGeometry();
 }
 
@@ -687,6 +579,14 @@ async function openSettingsWindow() {
   return true;
 }
 
+async function openKeyboardSelfTest() {
+  if (!tauriHandle?.core?.invoke) {
+    throw new Error("Keyboard Self-test requires the desktop application.");
+  }
+  await tauriHandle.core.invoke("open_keyboard_self_test", { currentLayout: currentLayoutKey });
+  return true;
+}
+
 async function enterMiniMode() {
   if (!overlayModeController) {
     throw new Error("Mini Mode is not ready yet.");
@@ -792,6 +692,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     reloadLayout: reloadCurrentLayout,
     reconnectBle: reconnectCurrentBle,
     openTypingInvaders,
+    openKeyboardSelfTest,
     enterMiniMode,
     openSettings: openSettingsWindow,
     openHelp: openHelpPage,
@@ -801,6 +702,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   menuControls = createMenu({
     onLayoutSelect: setLayout,
     onReloadLayout: () => menuStateController.reload(),
+    onKeyboardSelfTest: () => menuStateController.selfTest(),
     onReconnectBle: () => menuStateController.reconnect(),
     onMiniMode: () => menuStateController.mini(),
     onStartGame: () => menuStateController.launchGame(),
@@ -821,6 +723,12 @@ window.addEventListener("DOMContentLoaded", async () => {
         handleKey(key, event_type);
       })
       .catch((err) => console.error("Failed to listen key_event:", err));
+
+    tauri.event
+      .listen("self-test-overlay-state", (event) => {
+        selfTestOverlayPresentation.update(event.payload);
+      })
+      .catch((err) => console.error("Failed to listen self-test-overlay-state:", err));
 
     tauri.event
       .listen("layout_selected", (e) => {

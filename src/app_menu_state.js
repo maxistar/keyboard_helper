@@ -19,6 +19,7 @@ export function createAppMenuStateController({
   reloadLayout,
   reconnectBle,
   openTypingInvaders,
+  openKeyboardSelfTest = async () => false,
   enterMiniMode = async () => false,
   openSettings,
   openHelp,
@@ -29,6 +30,7 @@ export function createAppMenuStateController({
   let reloadPending = false;
   let reconnectPending = false;
   let gamePending = false;
+  let selfTestPending = false;
   let miniPending = false;
   let settingsPending = false;
   let feedback = null;
@@ -57,6 +59,8 @@ export function createAppMenuStateController({
       reconnectPending,
       gameAvailable: hasNativeBridge(),
       gamePending,
+      selfTestAvailable: hasNativeBridge(),
+      selfTestPending,
       miniAvailable: hasNativeBridge(),
       miniPending,
       settingsAvailable: hasNativeBridge(),
@@ -203,6 +207,24 @@ export function createAppMenuStateController({
     }
   }
 
+  async function selfTest() {
+    if (selfTestPending || !hasNativeBridge()) return false;
+    selfTestPending = true;
+    feedback = null;
+    notify();
+    try {
+      const result = await openKeyboardSelfTest(currentKey());
+      if (result === false) throw new Error("Keyboard Self-test could not be opened.");
+      return true;
+    } catch (error) {
+      feedback = { kind: "error", message: errorMessage(error, "Failed to open Keyboard Self-test.") };
+      return false;
+    } finally {
+      selfTestPending = false;
+      notify();
+    }
+  }
+
   async function mini() {
     if (miniPending || !hasNativeBridge()) return false;
     miniPending = true;
@@ -259,6 +281,7 @@ export function createAppMenuStateController({
     reload,
     reconnect,
     launchGame,
+    selfTest,
     mini,
     settings,
     help,

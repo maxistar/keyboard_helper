@@ -16,6 +16,7 @@ function clamp(value, minimum, maximum) {
 export function createMenu({
   onLayoutSelect,
   onReloadLayout,
+  onKeyboardSelfTest,
   onReconnectBle,
   onMiniMode,
   onStartGame,
@@ -36,6 +37,8 @@ export function createMenu({
     bleMessage: null,
     reloadAvailable: false,
     reloadPending: false,
+    selfTestAvailable: false,
+    selfTestPending: false,
     reconnectAvailable: false,
     reconnectPending: false,
     gameAvailable: false,
@@ -64,6 +67,7 @@ export function createMenu({
   let bleStatus;
   let bleStatusDetail;
   let reloadButton;
+  let selfTestButton;
   let reconnectButton;
   let gameButton;
   let miniButton;
@@ -493,8 +497,18 @@ export function createMenu({
         await onReloadLayout();
       },
     );
+    selfTestButton = createFlyoutAction(
+      "Keyboard Self-test",
+      "menu-action-self-test",
+      "keyboard",
+      async () => {
+        feedbackContext = "keyboard";
+        const opened = await onKeyboardSelfTest();
+        if (opened !== false) closeMenu();
+      },
+    );
     keyboardFeedback = createFeedback("menu-feedback-keyboard");
-    keyboardFlyout.append(keyboardHeader, layoutList, reloadButton, keyboardFeedback);
+    keyboardFlyout.append(keyboardHeader, layoutList, reloadButton, selfTestButton, keyboardFeedback);
 
     connectionFlyout = createFlyout("connection", "connectionMenuFlyout", "connectionMenuParent");
     const connectionHeader = document.createElement("header");
@@ -532,7 +546,7 @@ export function createMenu({
   }
 
   function renderFeedback() {
-    if (state.reloadPending) feedbackContext = "keyboard";
+    if (state.reloadPending || state.selfTestPending) feedbackContext = "keyboard";
     else if (state.reconnectPending) feedbackContext = "connection";
     else if (state.miniPending || state.gamePending || state.settingsPending) feedbackContext = "root";
 
@@ -578,6 +592,12 @@ export function createMenu({
     reloadButton.title = state.reloadAvailable
       ? "Reload the active external layout"
       : "Available for external layouts";
+
+    selfTestButton.disabled = !state.selfTestAvailable || state.selfTestPending;
+    selfTestButton.textContent = state.selfTestPending ? "Opening Self-test…" : "Keyboard Self-test";
+    selfTestButton.title = state.selfTestAvailable
+      ? "Open a guided HID test in a separate window"
+      : "Available in the desktop application";
 
     reconnectButton.disabled = !state.reconnectAvailable || state.reconnectPending;
     reconnectButton.textContent = state.reconnectPending ? "Reconnecting…" : "Reconnect BLE";

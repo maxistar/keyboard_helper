@@ -80,6 +80,7 @@ struct BleLayerSyncConfig {
 
 const TYPING_INVADERS_WINDOW_LABEL: &str = "typing-invaders";
 const SETTINGS_WINDOW_LABEL: &str = "settings";
+const KEYBOARD_SELF_TEST_WINDOW_LABEL: &str = "keyboard-self-test";
 const APP_NAME: &str = "Keyboard Helper";
 const HELP_URL: &str = "https://projects.maxistar.me/keyboard_helper/setup/";
 const SETTINGS_MENU_ID: &str = "app.settings";
@@ -201,6 +202,14 @@ fn secondary_window_action(window_exists: bool) -> SecondaryWindowAction {
     } else {
         SecondaryWindowAction::Create
     }
+}
+
+fn self_test_url(current_layout: &str) -> String {
+    let safe_layout: String = current_layout
+        .chars()
+        .filter(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '_'))
+        .collect();
+    format!("self-test.html?layout={safe_layout}")
 }
 
 fn overlay_visibility_action(is_visible: bool) -> OverlayVisibilityAction {
@@ -604,6 +613,60 @@ fn open_settings_window(app_handle: &tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn open_keyboard_self_test(
+    app_handle: tauri::AppHandle,
+    current_layout: String,
+) -> Result<(), String> {
+    open_keyboard_self_test_window(&app_handle, &current_layout)
+}
+
+fn open_keyboard_self_test_window(
+    app_handle: &tauri::AppHandle,
+    current_layout: &str,
+) -> Result<(), String> {
+    let existing = app_handle.get_webview_window(KEYBOARD_SELF_TEST_WINDOW_LABEL);
+    match secondary_window_action(existing.is_some()) {
+        SecondaryWindowAction::FocusExisting => {
+            let window = existing.expect("existing self-test window checked above");
+            window.show().map_err(|error| error.to_string())?;
+            if window.is_minimized().map_err(|error| error.to_string())? {
+                window.unminimize().map_err(|error| error.to_string())?;
+            }
+            window.set_focus().map_err(|error| error.to_string())
+        }
+        SecondaryWindowAction::Create => {
+            let url = self_test_url(current_layout);
+            let window = WebviewWindowBuilder::new(
+                app_handle,
+                KEYBOARD_SELF_TEST_WINDOW_LABEL,
+                WebviewUrl::App(url.into()),
+            )
+            .title("Keyboard Self-test")
+            .inner_size(680.0, 720.0)
+            .min_inner_size(500.0, 520.0)
+            .resizable(true)
+            .decorations(true)
+            .transparent(false)
+            .always_on_top(false)
+            .center()
+            .build()
+            .map_err(|error| format!("failed to create Keyboard Self-test window: {error}"))?;
+            let cleanup_handle = app_handle.clone();
+            window.on_window_event(move |event| {
+                if matches!(event, tauri::WindowEvent::Destroyed) {
+                    let _ = cleanup_handle.emit_to(
+                        "overlay",
+                        "self-test-overlay-state",
+                        serde_json::json!({ "active": false, "states": {} }),
+                    );
+                }
+            });
+            window.set_focus().map_err(|error| error.to_string())
+        }
+    }
+}
+
+#[tauri::command]
 fn start_keyboard_listener(app_handle: tauri::AppHandle, state: State<KeyboardListenerState>) {
     // Если уже запущен — второй раз не стартуем
     if state.is_running.swap(true, Ordering::SeqCst) {
@@ -859,6 +922,7 @@ fn main() {
             restore_full_geometry,
             open_typing_invaders,
             open_settings,
+            open_keyboard_self_test,
             read_config_state,
             save_config,
             read_layout_file,
@@ -871,11 +935,11 @@ fn main() {
 mod tests {
     use super::{
         centered_rect, clamp_rect_to_work_area, dispatch_app_menu_action, fit_mini_scale,
-        overlay_visibility_action, secondary_window_action, settings_window_creation_error,
-        AppMenuAction, AppMenuActionHandler, GeometryRect, OverlayGeometryState,
-        OverlayVisibilityAction, OverlayWindowSnapshot, SecondaryWindowAction,
-        ENTER_MINI_MODE_MENU_ID, HELP_MENU_ID, SETTINGS_MENU_ID, TOGGLE_OVERLAY_MENU_ID,
-        TYPING_INVADERS_MENU_ID,
+        overlay_visibility_action, secondary_window_action, self_test_url,
+        settings_window_creation_error, AppMenuAction, AppMenuActionHandler, GeometryRect,
+        OverlayGeometryState, OverlayVisibilityAction, OverlayWindowSnapshot,
+        SecondaryWindowAction, ENTER_MINI_MODE_MENU_ID, HELP_MENU_ID, SETTINGS_MENU_ID,
+        TOGGLE_OVERLAY_MENU_ID, TYPING_INVADERS_MENU_ID,
     };
     use tauri::{PhysicalPosition, PhysicalSize};
 
@@ -939,6 +1003,18 @@ mod tests {
         assert_eq!(
             secondary_window_action(true),
             SecondaryWindowAction::FocusExisting
+        );
+    }
+
+    #[test]
+    fn self_test_window_seed_uses_a_safe_layout_key() {
+        assert_eq!(
+            self_test_url("my-layout_2"),
+            "self-test.html?layout=my-layout_2"
+        );
+        assert_eq!(
+            self_test_url("bad?layout=other"),
+            "self-test.html?layout=badlayoutother"
         );
     }
 

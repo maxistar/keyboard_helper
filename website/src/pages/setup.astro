@@ -81,6 +81,25 @@ import Layout from '../layouts/Layout.astro';
     Existing JSON configurations remain supported. If the file is malformed, Settings will not overwrite it silently and creates a timestamped backup before a confirmed replacement.
   </div>
 
+  <h2>Guided keyboard self-test</h2>
+  <p>
+    Expand <strong>Keyboard</strong> in the overlay menu and choose <strong>Keyboard Self-test</strong>. Select a configured layout and one layer; the base layer is selected initially. Activate the chosen layer on your keyboard yourself, release all keys, then start the guided test and press and release each highlighted physical position.
+  </p>
+  <ul>
+    <li><strong>Passed</strong> means the configured HID code completed the expected press-and-release cycle.</li>
+    <li><strong>Unexpected</strong> records a different received code after you choose to continue.</li>
+    <li><strong>Skipped</strong> means you explicitly continued because no usable event arrived.</li>
+    <li><strong>Not testable</strong> covers empty, unsupported, or multi-step layout behaviors.</li>
+  </ul>
+  <p>Use <strong>Retest problems</strong> to repeat unexpected and skipped positions, or <strong>Test another layer</strong> to return to selection. Results are discarded when the window closes.</p>
+  <p>Modifier descriptors such as <code>Shift+KeyQ</code> are checked as complete HID chords. The required modifiers must match exactly when the trigger is pressed, and the position passes only after the trigger and every contributing modifier have been released; either release order is accepted.</p>
+  <p>
+    The self-test window acts as a compact controller. Guided outlines appear on the existing overlay alongside its normal live pressed-key highlighting; no second keyboard is rendered. The selectors do not change the overlay or firmware layer, so choose the layout and layer that are already visible and active.
+  </p>
+  <div class="note">
+    This is a global HID-output check, not a raw ZMK matrix diagnostic. Events can come from any attached keyboard; the app does not activate firmware layers and does not verify combos, macros, hold-tap timing, or electrical switch health.
+  </div>
+
   <h3>Advanced JSON configuration</h3>
   <p>
     To manage the file directly, edit <code>~/.keyri.json</code>. The legacy <code>~/keyri.json</code> location is still read, while saves from Settings use the primary path. Without either file the app enables every built-in layout and starts with QWERTY.

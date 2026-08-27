@@ -18,6 +18,7 @@ function createHarness(overrides = {}) {
     reconnectCalls: [],
     helpCalls: [],
     gameCalls: 0,
+    selfTestCalls: [],
     miniCalls: 0,
     settingsCalls: 0,
     snapshots: [],
@@ -40,6 +41,10 @@ function createHarness(overrides = {}) {
     },
     openTypingInvaders: async () => {
       data.gameCalls += 1;
+      return true;
+    },
+    openKeyboardSelfTest: async (key) => {
+      data.selfTestCalls.push(key);
       return true;
     },
     enterMiniMode: async () => {
@@ -350,4 +355,34 @@ test("Settings requires native availability, prevents duplicates, and reports fa
   });
   assert.equal(await failing.settings(), false);
   assert.equal(failing.getSnapshot().feedback.message, "Settings window unavailable");
+});
+
+test("Keyboard Self-test is desktop-only, seeded from the active layout, and idempotent while pending", async () => {
+  let finishOpen;
+  const pending = new Promise((resolve) => { finishOpen = resolve; });
+  const base = createHarness({ currentKey: "external" });
+  const controller = createAppMenuStateController({
+    getCurrentLayoutKey: () => base.data.currentKey,
+    getCurrentLayoutLabel: (key) => key,
+    getCurrentLayoutSource: () => true,
+    getCurrentBleSource: () => null,
+    hasNativeBridge: () => true,
+    reloadLayout: async () => true,
+    reconnectBle: async () => true,
+    openTypingInvaders: async () => true,
+    openKeyboardSelfTest: async (key) => { base.data.selfTestCalls.push(key); return pending; },
+    openHelp: async () => true,
+  });
+  const first = controller.selfTest();
+  assert.equal(controller.getSnapshot().selfTestPending, true);
+  assert.equal(await controller.selfTest(), false);
+  assert.deepEqual(base.data.selfTestCalls, ["external"]);
+  finishOpen(true);
+  assert.equal(await first, true);
+  assert.equal(controller.getSnapshot().selfTestPending, false);
+
+  const browser = createHarness({ native: false });
+  assert.equal(browser.controller.getSnapshot().selfTestAvailable, false);
+  assert.equal(await browser.controller.selfTest(), false);
+  assert.deepEqual(browser.data.selfTestCalls, []);
 });

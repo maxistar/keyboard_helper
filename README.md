@@ -71,6 +71,19 @@ The desktop application includes a word-typing arcade game. Open the application
 
 The first release uses curated English words and keeps results only for the current session. It does not save profiles, achievements, or high scores. The game window is available through the native Tauri application; the standalone browser frontend does not create desktop windows.
 
+## Guided Keyboard Self-test
+
+Open the overlay menu, expand **Keyboard**, and choose **Keyboard Self-test**. The desktop app opens one separate test window (or focuses the existing one), initially selecting the overlay's current layout and its base layer.
+
+1. Choose a configured built-in or external layout and the layer you want to verify.
+2. Activate that layer on the physical keyboard yourself, then choose **Start guided test**.
+3. Press and release the highlighted physical position. An unexpected output can be retried or recorded as a problem; use **Skip this position** when a key produces no event.
+4. Review passed, unexpected, skipped, and not-testable positions. You can retest only the problems or return to choose another layer.
+
+The self-test window is a compact controller; the existing overlay remains the only keyboard visualization. Guided outlines are added by physical position while normal live pressed-key highlighting continues, so the expected position and the received key can be seen together. The controller does not switch the overlay or firmware layer—make sure its layout/layer selectors match what the overlay and keyboard currently show.
+
+The report exists only until the self-test window closes. It verifies the configured global HID output, not raw ZMK switch or matrix health: events can come from any attached keyboard, and combos, macros, hold-tap timing, layer activation, and unsupported/multi-step codes are outside the first version.
+
 ## Release process
 
 Releases are cut from `master` with semantic version tags.
