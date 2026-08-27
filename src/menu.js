@@ -17,6 +17,7 @@ export function createMenu({
   onLayoutSelect,
   onReloadLayout,
   onReconnectBle,
+  onMiniMode,
   onStartGame,
   onSettings,
   onHelp,
@@ -39,6 +40,8 @@ export function createMenu({
     reconnectPending: false,
     gameAvailable: false,
     gamePending: false,
+    miniAvailable: false,
+    miniPending: false,
     settingsAvailable: false,
     settingsPending: false,
     feedback: null,
@@ -63,6 +66,7 @@ export function createMenu({
   let reloadButton;
   let reconnectButton;
   let gameButton;
+  let miniButton;
   let settingsButton;
   let rootFeedback;
   let keyboardFeedback;
@@ -398,6 +402,14 @@ export function createMenu({
     ));
     connectionButton.id = "connectionMenuParent";
 
+    miniButton = createRootItem("Mini Mode", "menu-action-mini");
+    miniButton.addEventListener("click", async () => {
+      feedbackContext = "root";
+      const entered = await onMiniMode();
+      if (entered !== false) closeMenu();
+    });
+    attachItemKeyboard(miniButton, rootItems);
+
     gameButton = createRootItem("Shift-Space Invaders", "menu-action-game");
     gameButton.addEventListener("click", async () => {
       feedbackContext = "root";
@@ -423,7 +435,15 @@ export function createMenu({
     attachItemKeyboard(helpButton, rootItems);
 
     rootFeedback = createFeedback("menu-feedback-root");
-    rootMenu.append(keyboardButton, connectionButton, gameButton, settingsButton, helpButton, rootFeedback);
+    rootMenu.append(
+      keyboardButton,
+      connectionButton,
+      miniButton,
+      gameButton,
+      settingsButton,
+      helpButton,
+      rootFeedback,
+    );
 
     keyboardFlyout = createFlyout("keyboard", "keyboardMenuFlyout", "keyboardMenuParent");
     const keyboardHeader = document.createElement("header");
@@ -514,7 +534,7 @@ export function createMenu({
   function renderFeedback() {
     if (state.reloadPending) feedbackContext = "keyboard";
     else if (state.reconnectPending) feedbackContext = "connection";
-    else if (state.gamePending || state.settingsPending) feedbackContext = "root";
+    else if (state.miniPending || state.gamePending || state.settingsPending) feedbackContext = "root";
 
     const targets = {
       root: rootFeedback,
@@ -564,6 +584,12 @@ export function createMenu({
     reconnectButton.title = state.reconnectAvailable
       ? "Restart BLE synchronization"
       : "BLE synchronization is unavailable";
+
+    miniButton.disabled = !state.miniAvailable || state.miniPending;
+    miniButton.textContent = state.miniPending ? "Entering Mini Mode…" : "Mini Mode";
+    miniButton.title = state.miniAvailable
+      ? "Shrink the keyboard overlay until the application restarts"
+      : "Available in the desktop application";
 
     gameButton.disabled = !state.gameAvailable || state.gamePending;
     gameButton.textContent = state.gamePending ? "Launching…" : "Shift-Space Invaders";

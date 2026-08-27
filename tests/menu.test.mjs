@@ -231,7 +231,7 @@ function createEnvironment(callbacks = {}) {
   globalThis.document = document;
   globalThis.window = window;
   let controls;
-  const calls = { layout: [], reload: 0, reconnect: 0, game: 0, settings: 0, help: 0 };
+  const calls = { layout: [], reload: 0, reconnect: 0, mini: 0, game: 0, settings: 0, help: 0 };
   const layoutOptions = [
     { key: "alpha", label: "Alpha" },
     { key: "beta", label: "Beta" },
@@ -250,6 +250,10 @@ function createEnvironment(callbacks = {}) {
     }),
     onReconnectBle: callbacks.onReconnectBle ?? (async () => {
       calls.reconnect += 1;
+      return true;
+    }),
+    onMiniMode: callbacks.onMiniMode ?? (async () => {
+      calls.mini += 1;
       return true;
     }),
     onStartGame: callbacks.onStartGame ?? (async () => {
@@ -294,6 +298,7 @@ test("menu renders the root hierarchy, synchronized summaries, and contextual co
       bleState: "connected",
       reloadAvailable: true,
       reconnectAvailable: false,
+      miniAvailable: true,
       gameAvailable: true,
       settingsAvailable: true,
     });
@@ -301,7 +306,7 @@ test("menu renders the root hierarchy, synchronized summaries, and contextual co
     const root = env.document.querySelector(".menu-root");
     const rootItems = root.querySelectorAll('[role="menuitem"]');
     assert.equal(root.getAttribute("role"), "menu");
-    assert.equal(rootItems.length, 5);
+    assert.equal(rootItems.length, 6);
     assert.equal(env.document.querySelector(".menu-parent-keyboard").getAttribute("aria-haspopup"), "menu");
     assert.equal(env.document.querySelector(".menu-parent-connection").getAttribute("aria-haspopup"), "menu");
     assert.equal(env.document.querySelector(".menu-parent-keyboard").querySelector(".menu-root-summary").textContent, "Beta board");
@@ -313,13 +318,15 @@ test("menu renders the root hierarchy, synchronized summaries, and contextual co
     assert.deepEqual(radios.map((radio) => radio.getAttribute("aria-checked")), ["false", "true", "false"]);
     assert.equal(env.document.querySelector(".menu-action-reload").disabled, false);
     assert.equal(env.document.querySelector(".menu-action-reconnect").disabled, true);
+    assert.equal(env.document.querySelector(".menu-action-mini").disabled, false);
     assert.equal(env.document.querySelector(".menu-action-game").disabled, false);
     assert.equal(env.document.querySelector(".menu-action-settings").disabled, false);
 
-    env.controls.update({ reloadPending: true, reconnectAvailable: true, reconnectPending: true, gamePending: true, settingsPending: true });
+    env.controls.update({ reloadPending: true, reconnectAvailable: true, reconnectPending: true, miniPending: true, gamePending: true, settingsPending: true });
     assert.equal(env.document.querySelector(".menu-action-reload").textContent, "Reloading…");
     assert.equal(env.document.querySelector(".menu-action-reload").disabled, true);
     assert.equal(env.document.querySelector(".menu-action-reconnect").textContent, "Reconnecting…");
+    assert.equal(env.document.querySelector(".menu-action-mini").textContent, "Entering Mini Mode…");
     assert.equal(env.document.querySelector(".menu-action-game").textContent, "Launching…");
     assert.equal(env.document.querySelector(".menu-action-settings").textContent, "Opening Settings…");
   } finally {
@@ -387,6 +394,7 @@ test("contextual flyouts switch exclusively and actions preserve their close beh
       currentLayoutLabel: "Alpha",
       reloadAvailable: true,
       reconnectAvailable: true,
+      miniAvailable: true,
       gameAvailable: true,
     });
     const toggle = env.document.querySelector(".menu-toggle");
@@ -424,6 +432,12 @@ test("contextual flyouts switch exclusively and actions preserve their close beh
     await env.document.querySelector(".menu-action-reconnect").click();
     assert.equal(env.calls.reconnect, 1);
     assert.equal(connectionFlyout.classList.contains("open"), true);
+
+    env.controls.closeMenu();
+    await toggle.click();
+    await env.document.querySelector(".menu-action-mini").click();
+    assert.equal(env.calls.mini, 1);
+    assert.equal(root.classList.contains("open"), false);
 
     await env.document.querySelector(".menu-action-game").click();
     assert.equal(env.calls.game, 1);
@@ -508,15 +522,21 @@ test("flyouts prefer left placement, fall back right, and clamp inside the viewp
 
 test("failed direct actions keep the root open and route accessible feedback there", async () => {
   const env = createEnvironment({
+    onMiniMode: async () => false,
     onStartGame: async () => false,
     onSettings: async () => false,
     onHelp: async () => false,
   });
   try {
-    env.controls.update({ gameAvailable: true, settingsAvailable: true });
+    env.controls.update({ miniAvailable: true, gameAvailable: true, settingsAvailable: true });
     const toggle = env.document.querySelector(".menu-toggle");
     const root = env.document.querySelector(".menu-root");
     await toggle.click();
+
+    await env.document.querySelector(".menu-action-mini").click();
+    env.controls.update({ feedback: { kind: "error", message: "Mini geometry unavailable" } });
+    assert.equal(root.classList.contains("open"), true);
+    assert.equal(env.document.querySelector(".menu-feedback-root").textContent, "Mini geometry unavailable");
 
     await env.document.querySelector(".menu-action-game").click();
     env.controls.update({ feedback: { kind: "error", message: "Window unavailable" } });

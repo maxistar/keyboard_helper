@@ -18,6 +18,7 @@ function createHarness(overrides = {}) {
     reconnectCalls: [],
     helpCalls: [],
     gameCalls: 0,
+    miniCalls: 0,
     settingsCalls: 0,
     snapshots: [],
     ...overrides,
@@ -39,6 +40,10 @@ function createHarness(overrides = {}) {
     },
     openTypingInvaders: async () => {
       data.gameCalls += 1;
+      return true;
+    },
+    enterMiniMode: async () => {
+      data.miniCalls += 1;
       return true;
     },
     openSettings: async () => {
@@ -82,6 +87,36 @@ test("menu state exposes not-configured, connecting, connected, and error BLE st
   controller.handleBleStatus({ layoutKey: "ble", state: "error", message: "Radio unavailable" });
   assert.equal(controller.getSnapshot().bleState, "error");
   assert.equal(controller.getSnapshot().bleMessage, "Radio unavailable");
+});
+
+test("Mini Mode requires the desktop bridge and serializes requests", async () => {
+  let finish;
+  const pending = new Promise((resolve) => { finish = resolve; });
+  const native = createHarness();
+  const controller = createAppMenuStateController({
+    getCurrentLayoutKey: () => native.data.currentKey,
+    getCurrentLayoutLabel: (key) => key,
+    getCurrentLayoutSource: () => true,
+    getCurrentBleSource: () => null,
+    hasNativeBridge: () => true,
+    reloadLayout: async () => true,
+    reconnectBle: async () => true,
+    openTypingInvaders: async () => true,
+    enterMiniMode: async () => pending,
+    openHelp: async () => true,
+  });
+
+  const first = controller.mini();
+  assert.equal(controller.getSnapshot().miniPending, true);
+  assert.equal(await controller.mini(), false);
+  finish(true);
+  assert.equal(await first, true);
+  assert.equal(controller.getSnapshot().miniPending, false);
+
+  const browser = createHarness({ native: false });
+  assert.equal(browser.controller.getSnapshot().miniAvailable, false);
+  assert.equal(await browser.controller.mini(), false);
+  assert.equal(browser.data.miniCalls, 0);
 });
 
 test("reconnect prevents duplicates while pending and targets the active BLE layout", async () => {

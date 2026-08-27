@@ -19,6 +19,7 @@ export function createAppMenuStateController({
   reloadLayout,
   reconnectBle,
   openTypingInvaders,
+  enterMiniMode = async () => false,
   openSettings,
   openHelp,
   onChange = () => {},
@@ -28,6 +29,7 @@ export function createAppMenuStateController({
   let reloadPending = false;
   let reconnectPending = false;
   let gamePending = false;
+  let miniPending = false;
   let settingsPending = false;
   let feedback = null;
   let activeRevision = 0;
@@ -55,6 +57,8 @@ export function createAppMenuStateController({
       reconnectPending,
       gameAvailable: hasNativeBridge(),
       gamePending,
+      miniAvailable: hasNativeBridge(),
+      miniPending,
       settingsAvailable: hasNativeBridge(),
       settingsPending,
       feedback,
@@ -199,6 +203,32 @@ export function createAppMenuStateController({
     }
   }
 
+  async function mini() {
+    if (miniPending || !hasNativeBridge()) return false;
+    miniPending = true;
+    feedback = null;
+    notify();
+    try {
+      const result = await enterMiniMode();
+      if (result === false) {
+        if (!feedback) {
+          feedback = { kind: "error", message: "Mini Mode could not be entered." };
+        }
+        return false;
+      }
+      return true;
+    } catch (error) {
+      feedback = {
+        kind: "error",
+        message: errorMessage(error, "Failed to enter Mini Mode."),
+      };
+      return false;
+    } finally {
+      miniPending = false;
+      notify();
+    }
+  }
+
   async function settings() {
     if (settingsPending || !hasNativeBridge()) return false;
     settingsPending = true;
@@ -229,6 +259,7 @@ export function createAppMenuStateController({
     reload,
     reconnect,
     launchGame,
+    mini,
     settings,
     help,
   };

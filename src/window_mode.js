@@ -5,6 +5,7 @@
         if (!tauri) return;
 
         let decorationsEnabled = true;
+        let displayMode = "full";
         let hideTimeoutId = null;
 
         const clearHideTimer = () => {
@@ -16,6 +17,7 @@
 
         const scheduleHideTimer = () => {
             clearHideTimer();
+            if (displayMode !== "full") return;
             hideTimeoutId = setTimeout(() => {
                 if (!decorationsEnabled) return;
                 setDecorations(false);
@@ -46,12 +48,32 @@
         };
 
         document.addEventListener("click", () => {
+            if (displayMode !== "full") return;
             if (decorationsEnabled) return;
             setDecorations(true);
         });
 
+        const setDisplayMode = (nextMode, geometry = null) => {
+            displayMode = nextMode === "mini" || nextMode === "entering-mini"
+                || nextMode === "restoring-full"
+                ? nextMode
+                : "full";
+            if (displayMode !== "full") {
+                decorationsEnabled = false;
+                document.body.classList.remove("windowed");
+                clearHideTimer();
+                return;
+            }
+
+            decorationsEnabled = geometry?.decorations !== false;
+            document.body.classList.toggle("windowed", decorationsEnabled);
+            if (decorationsEnabled) scheduleHideTimer();
+            else clearHideTimer();
+        };
+
         document.body.classList.add("windowed");
         scheduleHideTimer();
+        return { setDisplayMode };
     }
 
     window.setupWindowModeToggle = setupWindowModeToggle;

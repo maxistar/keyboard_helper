@@ -25,6 +25,90 @@ body.windowed {
   background: #ffffff5d;
 }
 
+.mini-surface,
+.stage-frame,
+.overlay-stage {
+  position: relative;
+}
+
+.mini-surface {
+  display: contents;
+}
+
+.overlay-stage {
+  transform-origin: top left;
+}
+
+.restore-full-size {
+  display: none;
+}
+
+body.mini-transition {
+  overflow: hidden;
+}
+
+body.mini-mode {
+  min-height: 0;
+  align-items: flex-start;
+  justify-content: flex-start;
+  overflow: hidden;
+  background: transparent;
+}
+
+body.mini-mode .mini-surface {
+  display: block;
+  width: calc(var(--mini-stage-width) + 24px);
+  height: calc(var(--mini-stage-height) + 24px);
+  padding: 12px;
+}
+
+body.mini-mode .stage-frame {
+  width: var(--mini-stage-width);
+  height: var(--mini-stage-height);
+}
+
+body.mini-mode .overlay-stage {
+  transform: scale(var(--mini-scale, 0.65));
+}
+
+body.mini-mode #menuRoot,
+body.mini-mode .layers-indicator,
+body.mini-mode .key-event-indicator {
+  display: none;
+}
+
+body.mini-mode .restore-full-size {
+  position: absolute;
+  z-index: 22000;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 9px;
+  background: rgba(17, 22, 40, 0.88);
+  color: #e4e7ef;
+  font: 700 18px/1 "Segoe UI Symbol", sans-serif;
+  cursor: pointer;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.3);
+}
+
+body.mini-mode .restore-full-size:hover,
+body.mini-mode .restore-full-size:focus-visible {
+  color: #081018;
+  background: var(--accent);
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+body.mini-mode .hud {
+  right: 8px;
+  top: 40px;
+}
+
 .shell {
   display: flex;
   flex-direction: column;

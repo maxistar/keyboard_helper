@@ -48,6 +48,17 @@ The application bundle name is user-facing; the internal executable remains `key
 
 Closing the window hides the app to the system tray instead of quitting. Use the tray menu to restore the window or quit the app.
 
+## Mini Mode
+
+Choose **Mini Mode** from the overlay menu to shrink the current keyboard into a compact, frameless window. On macOS, the same action is available as **View → Enter Mini Mode**. Mini Mode keeps the active layer, live key highlights, combo borders, and BLE updates running while hiding the regular menu and status indicators.
+
+- Drag the compact overlay from the empty padding around the keyboard.
+- Choose the arrow icon in the upper-right corner (labelled **Restore full size**) to return to the exact full-size window geometry.
+- Layout changes and external layout reloads resize the compact window automatically.
+- Mini Mode is temporary: every fresh application launch starts in full mode.
+
+If entering or restoring Mini Mode fails, the overlay shows a temporary error and keeps a usable recovery control on screen.
+
 ## Shift-Space Invaders
 
 The desktop application includes a word-typing arcade game. Open the application menu and choose **Shift-Space Invaders** to launch it in a separate window; choosing the action again focuses the existing game window.

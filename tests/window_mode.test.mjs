@@ -62,6 +62,12 @@ function createEnvironment() {
       add(name) {
         this.values.add(name);
       },
+      remove(name) {
+        this.values.delete(name);
+      },
+      contains(name) {
+        return this.values.has(name);
+      },
       toggle(name, force) {
         if (force === undefined) {
           if (this.values.has(name)) {
@@ -172,4 +178,21 @@ test("document click is ignored while window is already visible", async () => {
   await flushAsyncWork();
 
   assert.equal(invokeCalls.length, 0);
+});
+
+test("mini display mode cancels auto-hide and ignores ordinary clicks", async () => {
+  const { document, invokeCalls, tauri, timers, window } = createEnvironment();
+  const controls = window.setupWindowModeToggle(tauri);
+
+  controls.setDisplayMode("mini", { decorations: false });
+  assert.equal(timers.size, 0);
+  assert.equal(document.body.classList.contains("windowed"), false);
+
+  document.trigger("click", {});
+  await flushAsyncWork();
+  assert.equal(invokeCalls.length, 0);
+
+  controls.setDisplayMode("full", { decorations: true });
+  assert.equal(document.body.classList.contains("windowed"), true);
+  assert.equal(timers.size, 1);
 });

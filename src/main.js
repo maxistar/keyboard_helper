@@ -8,6 +8,10 @@ import {
 import { createPressedKeyTracker, resolveKeyElement } from "./key_highlight.js";
 import { BUILTIN_LAYOUT_FILES, normalizeConfig, pickAvailableLayout } from "./app_config.js";
 import { reloadOverlayAfterSettingsSave } from "./settings_runtime.js";
+import {
+  createOverlayModeController,
+  createOverlayModeView,
+} from "./overlay_mode.js";
 
 function buildKeysFromBase(keyPositions, layers) {
   const baseLayer = layers?.[0] ?? [];
@@ -183,6 +187,8 @@ let layoutErrorEl = null;
 let layoutErrorTimer = null;
 let menuControls = null;
 let menuStateController = null;
+let overlayModeController = null;
+let windowModeControls = null;
 let currentLayoutKey = "qwerty";
 let bleLayerSync = null;
 let shiftHeld = false;
@@ -388,6 +394,7 @@ function renderKeyboard(layout) {
   });
 
   renderLayerIndicator();
+  overlayModeController?.refreshMiniGeometry();
 }
 
 function ensureHudContainer() {
@@ -418,6 +425,8 @@ function ensureLayoutError() {
   if (!layoutErrorEl) {
     layoutErrorEl = document.createElement("div");
     layoutErrorEl.className = "layout-error";
+    layoutErrorEl.setAttribute("role", "alert");
+    layoutErrorEl.setAttribute("aria-live", "assertive");
   }
   if (!hudContainer.contains(layoutErrorEl)) {
     hudContainer.appendChild(layoutErrorEl);
@@ -678,6 +687,13 @@ async function openSettingsWindow() {
   return true;
 }
 
+async function enterMiniMode() {
+  if (!overlayModeController) {
+    throw new Error("Mini Mode is not ready yet.");
+  }
+  return overlayModeController.enterMini();
+}
+
 async function setLayout(key) {
   const previousKey = currentLayoutKey;
   const { ok, error } = await refreshExternalLayout(key);
@@ -705,6 +721,43 @@ async function setLayout(key) {
 window.addEventListener("DOMContentLoaded", async () => {
   const tauri = window.__TAURI__;
   tauriHandle = tauri;
+  if (tauri?.core?.invoke && tauri?.event?.listen) {
+    let startupGeometry = { decorations: true };
+    try {
+      startupGeometry = await tauri.core.invoke("restore_full_geometry");
+    } catch (error) {
+      console.error("Failed to initialize full overlay geometry:", error);
+      showLayoutError(error?.message ?? String(error));
+    }
+    if (typeof window.setupWindowModeToggle === "function") {
+      windowModeControls = window.setupWindowModeToggle(tauri);
+      windowModeControls?.setDisplayMode("full", startupGeometry);
+    }
+    const modeView = createOverlayModeView({
+      body: document.body,
+      stage: document.getElementById("overlayStage"),
+      layout: layoutRoot,
+      restoreButton: document.getElementById("restoreFullSize"),
+    });
+    overlayModeController = createOverlayModeController({
+      enterNative: (request) => tauri.core.invoke("enter_mini_geometry", { request }),
+      updateNative: (request) => tauri.core.invoke("update_mini_geometry", { request }),
+      restoreNative: () => tauri.core.invoke("restore_full_geometry"),
+      measureContent: modeView.measureContent,
+      applyMode: modeView.applyMode,
+      setDecorationMode: (mode, geometry) => windowModeControls?.setDisplayMode(mode, geometry),
+      reportError: (message) => {
+        showLayoutError(message);
+        menuStateController?.reportError(message);
+      },
+    });
+    document.getElementById("restoreFullSize").addEventListener("click", () => {
+      overlayModeController.restoreFull();
+    });
+    tauri.event
+      .listen("enter-mini-mode-requested", () => overlayModeController.enterMini())
+      .catch((err) => console.error("Failed to listen enter-mini-mode-requested:", err));
+  }
   const config = await loadConfig();
   parsedToggleHotkey = parseToggleHotkey(config?.toggleHotkey ?? null);
   await loadLayoutDefinitions(config);
@@ -739,6 +792,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     reloadLayout: reloadCurrentLayout,
     reconnectBle: reconnectCurrentBle,
     openTypingInvaders,
+    enterMiniMode,
     openSettings: openSettingsWindow,
     openHelp: openHelpPage,
     onChange: (state) => menuControls?.update(state),
@@ -748,6 +802,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     onLayoutSelect: setLayout,
     onReloadLayout: () => menuStateController.reload(),
     onReconnectBle: () => menuStateController.reconnect(),
+    onMiniMode: () => menuStateController.mini(),
     onStartGame: () => menuStateController.launchGame(),
     onSettings: () => menuStateController.settings(),
     onHelp: () => menuStateController.help(),
@@ -780,9 +835,6 @@ window.addEventListener("DOMContentLoaded", async () => {
       .listen("app-settings-saved", () => reloadOverlayAfterSettingsSave(window.location))
       .catch((err) => console.error("Failed to listen app-settings-saved:", err));
 
-    if (typeof window.setupWindowModeToggle === "function") {
-      window.setupWindowModeToggle(tauri);
-    }
   } else {
     console.warn("Tauri global API (window.__TAURI__) is not available");
   }
