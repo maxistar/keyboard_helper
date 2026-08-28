@@ -2,6 +2,11 @@ function paddedNumber(value, width) {
   return String(Math.max(0, Math.floor(value))).padStart(width, "0");
 }
 
+function setTextContent(element, value) {
+  const content = String(value);
+  if (element.textContent !== content) element.textContent = content;
+}
+
 export function describeOverlay(snapshot) {
   switch (snapshot.phase) {
     case "playing":
@@ -120,8 +125,8 @@ export function createTypingInvadersView(doc = document) {
     snapshot.targets.forEach((target) => {
       const element = targetElements.get(target.id) ?? createTargetElement(target);
       const segments = splitWord(target.word, target.progress);
-      element.querySelector(".word-completed").textContent = segments.completed;
-      element.querySelector(".word-remaining").textContent = segments.remaining;
+      setTextContent(element.querySelector(".word-completed"), segments.completed);
+      setTextContent(element.querySelector(".word-remaining"), segments.remaining);
       element.style.setProperty("--target-x", `${target.x * 100}%`);
       element.style.setProperty("--target-y", `${target.y * 100}%`);
       element.classList.toggle("locked", target.id === snapshot.lockedTargetId);
@@ -148,9 +153,9 @@ export function createTypingInvadersView(doc = document) {
       if (["hit", "mistake", "target-destroyed", "target-impact"].includes(event.type)) {
         addEffect(event);
       }
-      if (event.type === "target-destroyed") refs.announcement.textContent = `${event.word} destroyed`;
-      if (event.type === "target-impact") refs.announcement.textContent = "Defense grid hit";
-      if (event.type === "wave-started") refs.announcement.textContent = `Wave ${event.wave}`;
+      if (event.type === "target-destroyed") setTextContent(refs.announcement, `${event.word} destroyed`);
+      if (event.type === "target-impact") setTextContent(refs.announcement, "Defense grid hit");
+      if (event.type === "wave-started") setTextContent(refs.announcement, `Wave ${event.wave}`);
     }
   }
 
@@ -159,31 +164,31 @@ export function createTypingInvadersView(doc = document) {
     refs.overlay.hidden = !overlay.visible;
     refs.overlay.classList.toggle("visible", overlay.visible);
     if (!overlay.visible) return;
-    refs.kicker.textContent = overlay.kicker;
-    refs.title.textContent = overlay.title;
-    refs.description.textContent = overlay.description;
-    refs.hint.textContent = overlay.hint;
+    setTextContent(refs.kicker, overlay.kicker);
+    setTextContent(refs.title, overlay.title);
+    setTextContent(refs.description, overlay.description);
+    setTextContent(refs.hint, overlay.hint);
     refs.action.hidden = !overlay.action;
-    refs.action.textContent = overlay.action ?? "";
+    setTextContent(refs.action, overlay.action ?? "");
     refs.results.hidden = !overlay.results;
     if (overlay.results) {
-      refs.resultScore.textContent = paddedNumber(snapshot.score, 6);
-      refs.resultWave.textContent = String(snapshot.highestWave);
-      refs.resultTargets.textContent = String(snapshot.destroyedTargets);
-      refs.resultAccuracy.textContent = `${Math.round(snapshot.accuracy)}%`;
-      refs.resultWpm.textContent = String(Math.round(snapshot.wpm));
+      setTextContent(refs.resultScore, paddedNumber(snapshot.score, 6));
+      setTextContent(refs.resultWave, snapshot.highestWave);
+      setTextContent(refs.resultTargets, snapshot.destroyedTargets);
+      setTextContent(refs.resultAccuracy, `${Math.round(snapshot.accuracy)}%`);
+      setTextContent(refs.resultWpm, Math.round(snapshot.wpm));
     }
   }
 
   function render(snapshot, events = []) {
     refs.body.dataset.gamePhase = snapshot.phase;
-    refs.score.textContent = paddedNumber(snapshot.score, 6);
-    refs.wave.textContent = paddedNumber(snapshot.wave, 2);
-    refs.lives.textContent = Array.from({ length: snapshot.lives }, () => "◆").join(" ") || "—";
+    setTextContent(refs.score, paddedNumber(snapshot.score, 6));
+    setTextContent(refs.wave, paddedNumber(snapshot.wave, 2));
+    setTextContent(refs.lives, Array.from({ length: snapshot.lives }, () => "◆").join(" ") || "—");
     refs.lives.setAttribute("aria-label", `${snapshot.lives} lives`);
-    refs.streak.textContent = `x${snapshot.multiplier}`;
-    refs.accuracy.textContent = `Accuracy ${Math.round(snapshot.accuracy)}%`;
-    refs.wpm.textContent = `${Math.round(snapshot.wpm)} WPM`;
+    setTextContent(refs.streak, `x${snapshot.multiplier}`);
+    setTextContent(refs.accuracy, `Accuracy ${Math.round(snapshot.accuracy)}%`);
+    setTextContent(refs.wpm, `${Math.round(snapshot.wpm)} WPM`);
     renderTargets(snapshot);
     renderEvents(events);
     renderOverlay(snapshot);

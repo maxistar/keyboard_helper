@@ -231,7 +231,7 @@ function createEnvironment(callbacks = {}) {
   globalThis.document = document;
   globalThis.window = window;
   let controls;
-  const calls = { layout: [], reload: 0, selfTest: 0, reconnect: 0, mini: 0, game: 0, settings: 0, help: 0 };
+  const calls = { layout: [], language: [], reload: 0, selfTest: 0, reconnect: 0, mini: 0, game: 0, settings: 0, help: 0 };
   const layoutOptions = [
     { key: "alpha", label: "Alpha" },
     { key: "beta", label: "Beta" },
@@ -270,6 +270,10 @@ function createEnvironment(callbacks = {}) {
     }),
     onHelp: callbacks.onHelp ?? (async () => {
       calls.help += 1;
+      return true;
+    }),
+    onLanguageSelect: callbacks.onLanguageSelect ?? (async (sourceId) => {
+      calls.language.push(sourceId);
       return true;
     }),
   });
@@ -311,7 +315,7 @@ test("menu renders the root hierarchy, synchronized summaries, and contextual co
     const root = env.document.querySelector(".menu-root");
     const rootItems = root.querySelectorAll('[role="menuitem"]');
     assert.equal(root.getAttribute("role"), "menu");
-    assert.equal(rootItems.length, 6);
+    assert.equal(rootItems.length, 7);
     assert.equal(env.document.querySelector(".menu-parent-keyboard").getAttribute("aria-haspopup"), "menu");
     assert.equal(env.document.querySelector(".menu-parent-connection").getAttribute("aria-haspopup"), "menu");
     assert.equal(env.document.querySelector(".menu-parent-keyboard").querySelector(".menu-root-summary").textContent, "Beta board");
@@ -336,6 +340,48 @@ test("menu renders the root hierarchy, synchronized summaries, and contextual co
     assert.equal(env.document.querySelector(".menu-action-game").textContent, "Launching…");
     assert.equal(env.document.querySelector(".menu-action-settings").textContent, "Opening Settings…");
     assert.equal(env.document.querySelector(".menu-action-self-test").textContent, "Opening Self-test…");
+  } finally {
+    env.restore();
+  }
+});
+
+test("Language flyout is conditional, accessible, and keeps unavailable sources inert", async () => {
+  const env = createEnvironment();
+  try {
+    const languageParent = env.document.querySelector(".menu-parent-language");
+    const flyout = env.document.querySelector(".menu-flyout-language");
+    assert.equal(languageParent.hidden, true);
+    assert.equal(flyout.hidden, true);
+
+    env.controls.update({
+      languageAvailable: true,
+      languageOptions: [
+        { label: "Deutsch", inputSourceId: "de.source", available: true },
+        { label: "Русский", inputSourceId: "ru.source", available: false },
+      ],
+      currentInputSourceId: "de.source",
+      languageStatus: "synced",
+      languageStatusLabel: "Synced",
+    });
+
+    assert.equal(languageParent.hidden, false);
+    assert.equal(languageParent.querySelector(".menu-root-summary").textContent, "Deutsch");
+    assert.equal(env.document.querySelector(".menu-language-status").textContent, "Synced");
+    const languageItems = flyout.querySelectorAll('[role="menuitemradio"]');
+    assert.equal(languageItems.length, 2);
+    assert.equal(languageItems[0].getAttribute("aria-checked"), "true");
+    assert.equal(languageItems[1].disabled, true);
+    await languageItems[1].click();
+    assert.deepEqual(env.calls.language, []);
+    await languageItems[0].click();
+    assert.deepEqual(env.calls.language, ["de.source"]);
+
+    env.controls.update({ languageStatus: "error", languageStatusLabel: "Synchronization error" });
+    assert.equal(env.document.querySelector(".menu-language-status").getAttribute("role"), "status");
+    assert.equal(env.document.querySelector(".menu-language-status").textContent, "Synchronization error");
+
+    env.controls.update({ languageAvailable: false });
+    assert.equal(languageParent.hidden, true);
   } finally {
     env.restore();
   }

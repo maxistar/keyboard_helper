@@ -22,6 +22,7 @@ export function createMenu({
   onStartGame,
   onSettings,
   onHelp,
+  onLanguageSelect = async () => false,
   layoutOptions = [],
 }) {
   const mount = document.getElementById("menuRoot");
@@ -48,6 +49,12 @@ export function createMenu({
     settingsAvailable: false,
     settingsPending: false,
     feedback: null,
+    languageAvailable: false,
+    languageOptions: [],
+    currentInputSourceId: null,
+    languageStatus: "waiting",
+    languageMessage: null,
+    languagePendingId: null,
   };
   let activeSubmenu = null;
   let feedbackContext = null;
@@ -59,10 +66,16 @@ export function createMenu({
   let rootMenu;
   let keyboardButton;
   let connectionButton;
+  let languageButton;
   let keyboardSummary;
   let connectionSummary;
+  let languageSummary;
   let keyboardFlyout;
   let connectionFlyout;
+  let languageFlyout;
+  let languageList;
+  let languageStatus;
+  let languageStatusDetail;
   let currentLayoutName;
   let bleStatus;
   let bleStatusDetail;
@@ -77,8 +90,9 @@ export function createMenu({
   let connectionFeedback;
 
   const layoutButtons = new Map();
+  const languageButtons = new Map();
   const rootItems = [];
-  const flyoutItems = { keyboard: [], connection: [] };
+  const flyoutItems = { keyboard: [], language: [], connection: [] };
   const submenuButtons = {};
   const submenus = {};
 
@@ -399,6 +413,12 @@ export function createMenu({
       "keyboardMenuFlyout",
     ));
     keyboardButton.id = "keyboardMenuParent";
+    ({ button: languageButton, summary: languageSummary } = createSubmenuParent(
+      "language",
+      "Language",
+      "languageMenuFlyout",
+    ));
+    languageButton.id = "languageMenuParent";
     ({ button: connectionButton, summary: connectionSummary } = createSubmenuParent(
       "connection",
       "Connection",
@@ -441,6 +461,7 @@ export function createMenu({
     rootFeedback = createFeedback("menu-feedback-root");
     rootMenu.append(
       keyboardButton,
+      languageButton,
       connectionButton,
       miniButton,
       gameButton,
@@ -510,6 +531,23 @@ export function createMenu({
     keyboardFeedback = createFeedback("menu-feedback-keyboard");
     keyboardFlyout.append(keyboardHeader, layoutList, reloadButton, selfTestButton, keyboardFeedback);
 
+    languageFlyout = createFlyout("language", "languageMenuFlyout", "languageMenuParent");
+    const languageHeader = document.createElement("header");
+    languageHeader.className = "menu-flyout-header";
+    const languageEyebrow = document.createElement("span");
+    languageEyebrow.className = "menu-eyebrow";
+    languageEyebrow.textContent = "macOS input source";
+    languageStatus = document.createElement("div");
+    languageStatus.className = "menu-language-status";
+    languageStatus.setAttribute("role", "status");
+    languageStatus.setAttribute("aria-live", "polite");
+    languageStatusDetail = document.createElement("p");
+    languageStatusDetail.className = "menu-status-detail";
+    languageHeader.append(languageEyebrow, languageStatus, languageStatusDetail);
+    languageList = document.createElement("div");
+    languageList.className = "menu-items menu-language-items";
+    languageFlyout.append(languageHeader, languageList);
+
     connectionFlyout = createFlyout("connection", "connectionMenuFlyout", "connectionMenuParent");
     const connectionHeader = document.createElement("header");
     connectionHeader.className = "menu-flyout-header";
@@ -541,8 +579,49 @@ export function createMenu({
     connectionFeedback = createFeedback("menu-feedback-connection");
     connectionFlyout.append(connectionHeader, reconnectButton, connectionFeedback);
 
-    appMenu.append(menuToggle, rootMenu, keyboardFlyout, connectionFlyout);
+    appMenu.append(menuToggle, rootMenu, keyboardFlyout, languageFlyout, connectionFlyout);
     mount.appendChild(appMenu);
+  }
+
+  function renderLanguageOptions() {
+    const options = Array.isArray(state.languageOptions) ? state.languageOptions : [];
+    const signature = JSON.stringify(options.map(({ inputSourceId, label, available }) => [
+      inputSourceId,
+      label,
+      available,
+    ]));
+    if (languageList.dataset.signature === signature) return;
+    languageList.dataset.signature = signature;
+    languageList.innerHTML = "";
+    languageButtons.clear();
+    flyoutItems.language.length = 0;
+    for (const option of options) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "menu-item menu-language-item";
+      button.setAttribute("role", "menuitemradio");
+      button.setAttribute("aria-checked", "false");
+      button.disabled = !option.available;
+      button.tabIndex = -1;
+      const pill = document.createElement("span");
+      pill.className = "pill";
+      pill.setAttribute("aria-hidden", "true");
+      const label = document.createElement("span");
+      label.className = "menu-item-label";
+      label.textContent = option.label;
+      const availability = document.createElement("span");
+      availability.className = "menu-item-note";
+      availability.textContent = option.available ? "" : "Unavailable";
+      button.append(pill, label, availability);
+      button.addEventListener("click", async () => {
+        if (!option.available) return;
+        await onLanguageSelect(option.inputSourceId);
+      });
+      flyoutItems.language.push(button);
+      attachItemKeyboard(button, flyoutItems.language, { inFlyout: true });
+      languageButtons.set(option.inputSourceId, button);
+      languageList.appendChild(button);
+    }
   }
 
   function renderFeedback() {
@@ -572,6 +651,27 @@ export function createMenu({
     const layoutLabel = state.currentLayoutLabel || state.currentLayoutKey || "Keyboard";
     currentLayoutName.textContent = layoutLabel;
     keyboardSummary.textContent = layoutLabel;
+
+    languageButton.hidden = !state.languageAvailable;
+    languageButton.disabled = !state.languageAvailable;
+    languageFlyout.hidden = !state.languageAvailable;
+    if (!state.languageAvailable && activeSubmenu === "language") closeSubmenu();
+    renderLanguageOptions();
+    const selectedLanguage = state.languageOptions.find(
+      (option) => option.inputSourceId === state.currentInputSourceId,
+    );
+    languageSummary.textContent = selectedLanguage?.label ?? "Unknown";
+    languageStatus.textContent = state.languageStatusLabel ?? "Waiting for keyboard";
+    languageStatus.dataset.state = state.languageStatus;
+    languageStatusDetail.textContent = state.languageMessage ?? "";
+    languageStatusDetail.classList.toggle("visible", Boolean(state.languageMessage));
+    languageButtons.forEach((button, inputSourceId) => {
+      const active = inputSourceId === state.currentInputSourceId;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-checked", String(active));
+      const option = state.languageOptions.find((entry) => entry.inputSourceId === inputSourceId);
+      button.disabled = !option?.available || Boolean(state.languagePendingId);
+    });
 
     const normalizedBleState = BLE_LABELS[state.bleState] ? state.bleState : "not-configured";
     connectionSummary.textContent = BLE_LABELS[normalizedBleState];
@@ -626,6 +726,10 @@ export function createMenu({
     const selected = layoutButtons.get(state.currentLayoutKey);
     setRovingItem(flyoutItems.keyboard, selected ?? enabledItems(flyoutItems.keyboard)[0]);
     setRovingItem(flyoutItems.connection, enabledItems(flyoutItems.connection)[0]);
+    setRovingItem(
+      flyoutItems.language,
+      languageButtons.get(state.currentInputSourceId) ?? enabledItems(flyoutItems.language)[0],
+    );
     if (!rootItems.includes(document.activeElement)) {
       setRovingItem(rootItems, enabledItems(rootItems)[0]);
     }

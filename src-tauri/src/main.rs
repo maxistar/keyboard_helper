@@ -6,6 +6,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 mod ble_layer_sync;
 mod config_store;
+#[cfg(target_os = "macos")]
+mod input_source_macos;
 use rdev::{listen, Event, EventType, Key};
 use serde::{Deserialize, Serialize};
 #[cfg(target_os = "macos")]
@@ -26,6 +28,12 @@ struct KeyboardListenerState {
 #[derive(Default)]
 struct BleLayerSyncTauriState {
     inner: Arc<ble_layer_sync::BleLayerSyncState>,
+}
+
+#[derive(Default)]
+struct MacosInputSourceTauriState {
+    #[cfg(target_os = "macos")]
+    inner: Arc<input_source_macos::MacosInputSourceState>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -68,6 +76,7 @@ struct KeyEventPayload {
     event_type: String, // "down" или "up"
 }
 
+#[cfg(target_os = "macos")]
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 struct BleLayerSyncConfig {
@@ -76,6 +85,13 @@ struct BleLayerSyncConfig {
     service_uuid: String,
     characteristic_uuid: String,
     format: String,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+struct MacosInputSourceSyncConfig {
+    layout_key: String,
+    source_ids: Vec<String>,
 }
 
 const TYPING_INVADERS_WINDOW_LABEL: &str = "typing-invaders";
@@ -727,6 +743,98 @@ fn stop_ble_layer_sync(state: State<BleLayerSyncTauriState>) {
     ble_layer_sync::stop_sync(state.inner.clone());
 }
 
+#[tauri::command]
+fn write_ble_layer(
+    state: State<BleLayerSyncTauriState>,
+    layout_key: String,
+    layer: u32,
+    acceptable_layers: Vec<u32>,
+) -> Result<(), String> {
+    state
+        .inner
+        .request_layer(&layout_key, layer, acceptable_layers)
+        .map_err(|error| error.to_string())
+}
+
+#[cfg(target_os = "macos")]
+#[tauri::command]
+async fn start_macos_input_source_sync(
+    app_handle: tauri::AppHandle,
+    state: State<'_, MacosInputSourceTauriState>,
+    config: MacosInputSourceSyncConfig,
+) -> Result<input_source_macos::InputSourceSnapshot, String> {
+    let input_source_state = state.inner.clone();
+    let observer_app_handle = app_handle.clone();
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    app_handle
+        .run_on_main_thread(move || {
+            let _ = sender.send(input_source_state.start(
+                observer_app_handle,
+                config.layout_key,
+                config.source_ids,
+            ));
+        })
+        .map_err(|error| format!("failed to access the macOS main thread: {error}"))?;
+    receiver
+        .await
+        .map_err(|_| "macOS input-source bootstrap was cancelled".to_string())?
+}
+
+#[cfg(target_os = "macos")]
+#[tauri::command]
+async fn stop_macos_input_source_sync(
+    app_handle: tauri::AppHandle,
+    state: State<'_, MacosInputSourceTauriState>,
+) -> Result<(), String> {
+    let input_source_state = state.inner.clone();
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    app_handle
+        .run_on_main_thread(move || {
+            let _ = sender.send(input_source_state.stop());
+        })
+        .map_err(|error| format!("failed to access the macOS main thread: {error}"))?;
+    receiver
+        .await
+        .map_err(|_| "macOS input-source cleanup was cancelled".to_string())?
+}
+
+#[cfg(target_os = "macos")]
+#[tauri::command]
+async fn select_macos_input_source(
+    app_handle: tauri::AppHandle,
+    state: State<'_, MacosInputSourceTauriState>,
+    source_id: String,
+) -> Result<(), String> {
+    let input_source_state = state.inner.clone();
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    app_handle
+        .run_on_main_thread(move || {
+            let _ = sender.send(input_source_state.select(&source_id));
+        })
+        .map_err(|error| format!("failed to access the macOS main thread: {error}"))?;
+    receiver
+        .await
+        .map_err(|_| "macOS input-source selection was cancelled".to_string())?
+}
+
+#[cfg(target_os = "macos")]
+#[tauri::command]
+async fn refresh_macos_input_source_sync(
+    app_handle: tauri::AppHandle,
+    state: State<'_, MacosInputSourceTauriState>,
+) -> Result<input_source_macos::InputSourceSnapshot, String> {
+    let input_source_state = state.inner.clone();
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    app_handle
+        .run_on_main_thread(move || {
+            let _ = sender.send(input_source_state.snapshot());
+        })
+        .map_err(|error| format!("failed to access the macOS main thread: {error}"))?;
+    receiver
+        .await
+        .map_err(|_| "macOS input-source refresh was cancelled".to_string())?
+}
+
 /// Преобразуем rdev::Event в удобный для фронта формат
 fn convert_event(ev: Event) -> Option<KeyEventPayload> {
     //if let Some(name) = ev.name.as_deref() {
@@ -895,6 +1003,7 @@ fn main() {
         }))
         .manage(KeyboardListenerState::default())
         .manage(BleLayerSyncTauriState::default())
+        .manage(MacosInputSourceTauriState::default())
         .manage(OverlayGeometryState::default())
         .setup(|app| {
             build_tray(app.handle())?;
@@ -915,6 +1024,15 @@ fn main() {
             start_keyboard_listener,
             start_ble_layer_sync,
             stop_ble_layer_sync,
+            write_ble_layer,
+            #[cfg(target_os = "macos")]
+            start_macos_input_source_sync,
+            #[cfg(target_os = "macos")]
+            stop_macos_input_source_sync,
+            #[cfg(target_os = "macos")]
+            select_macos_input_source,
+            #[cfg(target_os = "macos")]
+            refresh_macos_input_source_sync,
             toggle_window,
             set_window_decorations,
             enter_mini_geometry,

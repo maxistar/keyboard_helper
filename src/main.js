@@ -13,6 +13,9 @@ import {
   createOverlayModeView,
 } from "./overlay_mode.js";
 import { buildLayout, normalizeKeyEntry, normalizeLayerData } from "./layout_catalog.js";
+import { normalizeInputSourceSync } from "./input_source_sync_config.js";
+import { createMacosInputSourceController } from "./macos_input_source.js";
+import { createInputSourceLayerReconciler } from "./input_source_layer_reconciler.js";
 import { calcBounds, calcKeyBounds, renderKeyLabel } from "./keyboard_renderer.js";
 import { createSelfTestOverlayPresentation } from "./self_test/overlay_presentation.js";
 
@@ -24,6 +27,7 @@ let layoutLayers = {};
 let layoutLayerNames = {};
 let layoutSources = {};
 let layoutBleSources = {};
+let layoutInputSourceSync = {};
 let comboDefinitionsByLayout = {};
 let comboBordersByCode = new Map();
 let comboBorderEls = [];
@@ -119,6 +123,7 @@ function rebuildLayoutData() {
   layoutLayerNames = {};
   layouts = {};
   layoutBleSources = {};
+  layoutInputSourceSync = {};
   comboDefinitionsByLayout = {};
 
   for (const [key, def] of Object.entries(layoutDefinitions)) {
@@ -127,6 +132,11 @@ function rebuildLayoutData() {
     layoutLayerNames[key] = names;
     layouts[key] = buildLayout(def, layers);
     layoutBleSources[key] = normalizeBleLayerSource(def);
+    const inputSourceSync = normalizeInputSourceSync(def, layers.length);
+    layoutInputSourceSync[key] = inputSourceSync.config;
+    if (inputSourceSync.error) {
+      layoutLoadErrors.push(`${def.name ?? key}: ${inputSourceSync.error}`);
+    }
     if (Array.isArray(def.combos)) {
       comboDefinitionsByLayout[key] = def.combos.map(normalizeCombo).filter(Boolean);
     }
@@ -150,6 +160,17 @@ let overlayModeController = null;
 let windowModeControls = null;
 let currentLayoutKey = "qwerty";
 let bleLayerSync = null;
+let macosInputSource = null;
+let sourceLayerReconciler = null;
+let languageMenuState = {
+  languageAvailable: false,
+  languageOptions: [],
+  currentInputSourceId: null,
+  languageStatus: "waiting",
+  languageStatusLabel: "Waiting for keyboard",
+  languageMessage: null,
+  languagePendingId: null,
+};
 let shiftHeld = false;
 let altGrHeld = false;
 let metaHeld = false;
@@ -158,6 +179,100 @@ let altHeld = false;
 let parsedToggleHotkey = null;
 let tauriHandle = null;
 const pressedKeyTracker = createPressedKeyTracker();
+
+function languageStatusLabel(status) {
+  if (status === "synced") return "Synced";
+  if (["settling", "synchronizing", "waiting-confirmation"].includes(status)) {
+    return "Synchronizing";
+  }
+  if (["waiting", "waiting-keyboard", "deferred"].includes(status)) {
+    return "Waiting for keyboard";
+  }
+  if (["offline", "read-only"].includes(status)) return "Offline";
+  if (status === "unsupported-source") return "Unavailable source";
+  if (status === "unmapped-layer") return "Layer mismatch";
+  if (status === "error") return "Synchronization error";
+  return "Waiting for keyboard";
+}
+
+function updateLanguageMenu(patch) {
+  languageMenuState = { ...languageMenuState, ...patch };
+  menuControls?.update(languageMenuState);
+}
+
+function configuredLanguageOptions(config, availableIds = new Set()) {
+  return (config?.sources ?? []).map((source) => ({
+    id: source.id,
+    label: source.label,
+    inputSourceId: source.inputSourceId,
+    available: availableIds.has(source.inputSourceId),
+  }));
+}
+
+async function startLanguageSync(layoutKey) {
+  sourceLayerReconciler?.dispose();
+  sourceLayerReconciler = null;
+  const syncConfig = layoutInputSourceSync[layoutKey] ?? null;
+  if (!syncConfig || !macosInputSource || !bleLayerSync) {
+    await macosInputSource?.stop();
+    updateLanguageMenu({
+      languageAvailable: false,
+      languageOptions: [],
+      currentInputSourceId: null,
+      languageStatus: "waiting",
+      languageStatusLabel: "Waiting for keyboard",
+      languageMessage: null,
+      languagePendingId: null,
+    });
+    return false;
+  }
+
+  sourceLayerReconciler = createInputSourceLayerReconciler({
+    config: syncConfig,
+    settleMs: syncConfig.settleMs,
+    writeLayer: (layer, acceptableLayers) => bleLayerSync.writeLayer(layer, acceptableLayers),
+    onStateChange: (syncState) => updateLanguageMenu({
+      languageStatus: syncState.status,
+      languageStatusLabel: languageStatusLabel(syncState.status),
+      languageMessage: syncState.message,
+    }),
+  });
+  updateLanguageMenu({
+    languageAvailable: true,
+    languageOptions: configuredLanguageOptions(syncConfig),
+    currentInputSourceId: null,
+    languageStatus: "waiting",
+    languageStatusLabel: "Waiting for keyboard",
+    languageMessage: null,
+    languagePendingId: null,
+  });
+  const started = await macosInputSource.start(layoutKey, syncConfig);
+  if (!started && currentLayoutKey === layoutKey) {
+    updateLanguageMenu({
+      languageStatus: "error",
+      languageStatusLabel: "Synchronization error",
+    });
+  }
+  return started;
+}
+
+async function selectLanguage(inputSourceId) {
+  if (!macosInputSource || languageMenuState.languagePendingId) return false;
+  updateLanguageMenu({ languagePendingId: inputSourceId, languageMessage: null });
+  try {
+    await macosInputSource.select(inputSourceId);
+    return true;
+  } catch (error) {
+    updateLanguageMenu({
+      languageStatus: "error",
+      languageStatusLabel: "Synchronization error",
+      languageMessage: error?.message ?? String(error),
+    });
+    return false;
+  } finally {
+    updateLanguageMenu({ languagePendingId: null });
+  }
+}
 
 function getAllowedLayoutKeys(config) {
   const availableKeys = Object.keys(layoutDefinitions);
@@ -534,6 +649,7 @@ async function reloadCurrentLayout(key) {
       renderKeyboard(layouts[layoutKey]);
     },
     restartBle: async (layoutKey) => {
+      await startLanguageSync(layoutKey);
       if (bleLayerSync) {
         await bleLayerSync.start(layoutKey, layoutBleSources[layoutKey] ?? null);
       }
@@ -610,6 +726,7 @@ async function setLayout(key) {
   renderKeyboard(layout);
   menuStateController?.setActiveLayout();
 
+  await startLanguageSync(key);
   if (bleLayerSync) {
     await bleLayerSync.start(key, layoutBleSources[key] ?? null);
   }
@@ -674,14 +791,48 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   bleLayerSync = createBleLayerSyncController({
     tauri,
-    onLayerChange: (layer) => applyLayer(layer),
+    onLayerChange: (layer) => {
+      applyLayer(layer);
+      sourceLayerReconciler?.setLayer(layer);
+    },
     onStatusChange: (status) => {
       menuStateController?.handleBleStatus(status);
+      if (status.layoutKey === currentLayoutKey) {
+        sourceLayerReconciler?.setBleStatus(status.state, status.writable);
+      }
       if (status.state === "error" && status.message) {
         console.warn("BLE layer sync unavailable:", status.message);
       }
     },
   });
+
+  if (tauri?.core?.invoke && tauri?.event?.listen) {
+    macosInputSource = createMacosInputSourceController({
+      tauri,
+      onSourceChange: (sourceId) => {
+        updateLanguageMenu({ currentInputSourceId: sourceId });
+        sourceLayerReconciler?.setSource(sourceId);
+      },
+      onAvailabilityChange: (availableIds) => {
+        const syncConfig = layoutInputSourceSync[currentLayoutKey];
+        updateLanguageMenu({
+          languageOptions: configuredLanguageOptions(syncConfig, availableIds),
+        });
+      },
+      onError: (error) => updateLanguageMenu({
+        languageStatus: "error",
+        languageStatusLabel: "Synchronization error",
+        languageMessage: error?.message ?? String(error),
+      }),
+    });
+    const refreshLanguageSync = () => {
+      macosInputSource?.refresh().then(() => sourceLayerReconciler?.resume());
+    };
+    window.addEventListener("focus", refreshLanguageSync);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) refreshLanguageSync();
+    });
+  }
 
   menuStateController = createAppMenuStateController({
     getCurrentLayoutKey: () => currentLayoutKey,
@@ -708,6 +859,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     onStartGame: () => menuStateController.launchGame(),
     onSettings: () => menuStateController.settings(),
     onHelp: () => menuStateController.help(),
+    onLanguageSelect: selectLanguage,
     layoutOptions: layoutMenuOptions,
   });
   menuStateController.refresh();

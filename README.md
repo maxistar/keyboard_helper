@@ -38,6 +38,23 @@ Artifacts will be written to `src-tauri/target/release/` (per-platform bundles s
 
 On macOS, the packaged application is named `Keyboard Helper.app`. When upgrading from an older `Keyboard Layout.app` release, quit the old application and remove that bundle before installing the new one. Existing `~/.keyri.json` settings remain compatible. If key highlighting stops after the replacement, remove the stale application entry from **System Settings → Privacy & Security → Input Monitoring**, add `Keyboard Helper.app`, and launch it again.
 
+## Install a macOS CI preview
+
+GitHub releases provide separate `macos-apple-silicon` downloads for M-series Macs and `macos-intel` downloads for Intel Macs. Each DMG has a neighboring `.sha256` file; place both in the same directory and verify the download before opening it:
+
+```bash
+shasum -a 256 -c Keyboard-Helper_*.dmg.sha256
+```
+
+These macOS packages use an ad-hoc code signature so they can be built without Apple Developer credentials. They are **unnotarized preview builds**: Apple has not verified them, and Gatekeeper is expected to block the first launch.
+
+1. Open the DMG, drag `Keyboard Helper.app` to Applications, and try to launch it once.
+2. Open **System Settings → Privacy & Security**, scroll to **Security**, and choose **Open Anyway** for Keyboard Helper.
+3. Confirm **Open** in the warning dialog and enter your Mac login password if requested.
+4. Grant **Input Monitoring** when needed so global key highlighting can work.
+
+This approves only Keyboard Helper; there is no need to disable Gatekeeper or remove download quarantine metadata. Because an ad-hoc identity is specific to a build, macOS may ask for privacy permissions again after an update. If highlighting stops, quit the app, remove its stale entry from **System Settings → Privacy & Security → Input Monitoring**, add `/Applications/Keyboard Helper.app`, and relaunch it. Bluetooth or other privacy prompts may also reappear.
+
 The application bundle name is user-facing; the internal executable remains `keyboard-app`. External shortcut tools can toggle the running overlay with:
 
 ```bash
@@ -89,13 +106,13 @@ The report exists only until the self-test window closes. It verifies the config
 Releases are cut from `master` with semantic version tags.
 
 - Version source: keep `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml` on the same semver (e.g., `0.2.0`). Update all three before tagging so the JS package, Tauri config, and Rust crate stay aligned.
-- Trigger: create an annotated tag `vMAJOR.MINOR.PATCH` on `master` and push it; CI will build macOS/Windows/Linux bundles and publish a GitHub release with the assets attached. The job should fail if the tag does not match the version in both files.
+- Trigger: create an annotated tag `vMAJOR.MINOR.PATCH` on `master` and push it; CI will build macOS/Windows/Linux bundles and publish a GitHub release with the assets attached. macOS release downloads are explicitly labelled `macos-apple-silicon` or `macos-intel`, include SHA-256 files, and remain unnotarized previews. The job should fail if the tag does not match the version in both files.
 - Steps:
   1. Bump the version in `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml`, commit, and merge to `master`.
   2. Draft release notes (highlights, fixes, platform notes). Keep them short and paste them into the GitHub release description after CI creates it.
   3. Tag the merge commit (`git tag -a v0.2.0 -m "Release v0.2.0"`) and push the tag (`git push origin v0.2.0`).
   4. Watch the release workflow in GitHub Actions; when it finishes, open the generated GitHub release for `v0.2.0`, paste the release notes into the description, and publish/save.
-- Non-tag pushes to `master` still run the build and upload artifacts to the workflow run but do not create a GitHub release entry.
+- Non-tag pushes to `master` still run the build and upload architecture-specific artifacts to the workflow run but do not create a GitHub release entry or stable release downloads.
 
 ## App configuration & external layouts
 
@@ -107,7 +124,7 @@ Advanced users can still edit the compatible JSON configuration directly. The ap
   - `defaultLayout`: key of the layout to select at startup (must exist in `layouts`).
   - `layouts`: object mapping layout keys to either `true` (use built-in) or a filesystem path (load external JSON).
 - Layout combos (layout-specific): add a `combos` array inside a layout file with entries like `{ "key1": { "row": 1, "col": 4 }, "key2": { "row": 1, "col": 5 }, "code": "Enter" }`.
-- Layout file format: JSON with `name`, optional `bleLayerSource`, `keySize` (`w`, `h`, `gap` in px), `keyPositions` (array of `{row,col}` with optional `w`/`h` overrides), and `keyLayers`. `keyLayers` can be an object with `default`, `shift`, etc., or an array where index 0 is the base layer. Each layer entry is `[label, code]` (or an object with `text`/`image` for custom labels).
+- Layout file format: JSON with `name`, optional `bleLayerSource`, optional `inputSourceSync`, `keySize` (`w`, `h`, `gap` in px), `keyPositions` (array of `{row,col}` with optional `w`/`h` overrides), and `keyLayers`. `keyLayers` can be an object with `default`, `shift`, etc., or an array where index 0 is the base layer. Each layer entry is `[label, code]` (or an object with `text`/`image` for custom labels).
 - `bleLayerSource` is optional and enables BLE-authoritative layer updates for the selected keyboard only. Shape:
   - `deviceName`: BLE keyboard name to match
   - `serviceUuid`: custom GATT service UUID
@@ -123,3 +140,38 @@ If the selected layout defines `bleLayerSource`, the app attempts to connect to 
 - If BLE sync starts successfully, the app bootstraps the current layer and then updates immediately from notifications.
 - If BLE metadata is absent, BLE startup fails, or the BLE feed disconnects, the app falls back to the existing non-BLE behavior.
 - BLE sync starts and stops automatically when you switch layouts.
+
+### macOS input-source and ZMK layer synchronization
+
+A layout may add `inputSourceSync.macos` to make the selected macOS input source authoritative for its ZMK language family. This capability is macOS-only and requires the same `bleLayerSource` characteristic to support encrypted **Write with response** and Notify. Windows, Linux, browser execution, layouts without metadata, and malformed metadata retain ordinary read-only BLE observation and local layer preview.
+
+Each source has a unique app ID and label, the exact installed macOS `inputSourceId`, one stable `baseLayer`, and all related language layers. `neutralLayers` lists utility layers that belong to neither language. Family and neutral layer indexes must exist and must not overlap. Non-base family layers and neutral layers defer correction; the app only corrects a stable foreign base layer after `settleMs`. This optional interval defaults to `1000` milliseconds and accepts integers from `0` through `60000`.
+
+```json
+{
+  "inputSourceSync": {
+    "macos": {
+      "settleMs": 1000,
+      "sources": [
+        {
+          "id": "de",
+          "label": "Deutsch",
+          "inputSourceId": "com.apple.keylayout.German",
+          "baseLayer": 4,
+          "layers": [4, 5, 6, 16]
+        },
+        {
+          "id": "ru",
+          "label": "Русский",
+          "inputSourceId": "com.apple.keylayout.Russian",
+          "baseLayer": 9,
+          "layers": [9, 10, 12, 17]
+        }
+      ],
+      "neutralLayers": [13, 18]
+    }
+  }
+}
+```
+
+Use `defaults read ~/Library/Preferences/com.apple.HIToolbox.plist AppleEnabledInputSources` to inspect enabled sources. The configured value must be the exact Text Input Source Services `kTISPropertyInputSourceID`; plist fields vary by source type, so treat names and bundle fields as discovery hints rather than transforming them. A configured but uninstalled ID is shown as unavailable and is never replaced by a guessed or cycled source. See `../corney/layout_corney.json` for the full Corney layout example.

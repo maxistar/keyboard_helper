@@ -50,18 +50,27 @@ import Layout from '../layouts/Layout.astro';
     Builds are available for macOS (Apple Silicon &amp; Intel), Windows, and Linux.
   </p>
   <ol>
-    <li>Download the appropriate archive for your OS.</li>
-    <li>On macOS: open the <code>.dmg</code> and drag <em>Keyboard Helper.app</em> to Applications.</li>
+    <li>Download the appropriate archive for your OS. On macOS choose <code>macos-apple-silicon</code> for an M-series Mac or <code>macos-intel</code> for an Intel Mac.</li>
+    <li>On macOS: download the neighboring <code>.sha256</code> file, open the <code>.dmg</code>, and drag <em>Keyboard Helper.app</em> to Applications.</li>
     <li>On Windows: run the <code>.msi</code> installer.</li>
     <li>On Linux: extract the archive and run the binary.</li>
   </ol>
+
+  <p>Verify a macOS download with both files in the same directory:</p>
+  <pre><code>shasum -a 256 -c Keyboard-Helper_*.dmg.sha256</code></pre>
+
+  <div class="note">
+    macOS downloads are ad-hoc-signed, <strong>unnotarized preview builds</strong> produced without Apple Developer credentials. Apple has not verified them, so Gatekeeper is expected to block the first launch.
+  </div>
 
   <div class="note">
     Upgrading from an older release? Quit and remove <em>Keyboard Layout.app</em> before installing <em>Keyboard Helper.app</em>. Your existing <code>~/.keyri.json</code> settings remain compatible. If key highlighting stops afterward, remove the stale app entry from <strong>System Settings → Privacy &amp; Security → Input Monitoring</strong>, add <em>Keyboard Helper.app</em>, and launch it again.
   </div>
 
   <h2>2. First launch</h2>
+  <p>On macOS, try to launch the installed app once. If Gatekeeper blocks it, open <strong>System Settings → Privacy &amp; Security</strong>, scroll to <strong>Security</strong>, choose <strong>Open Anyway</strong> for Keyboard Helper, then confirm <strong>Open</strong>. This approves only this app; do not disable Gatekeeper globally or remove its quarantine metadata.</p>
   <p>Launch the app. A transparent overlay appears showing the default QWERTY layout. Start typing — keys will highlight in real-time.</p>
+  <p>Grant <strong>Input Monitoring</strong> when requested. Because every ad-hoc-signed preview has a build-specific identity, a later update may require this permission again. If highlighting stops, quit Keyboard Helper, remove its stale entry from <strong>System Settings → Privacy &amp; Security → Input Monitoring</strong>, add <code>/Applications/Keyboard Helper.app</code>, and relaunch it. Bluetooth or other privacy prompts may also reappear.</p>
   <p>Closing the window hides it to the system tray. Restore it from the tray icon menu.</p>
 
   <h2>Use the compact overlay</h2>
@@ -136,6 +145,41 @@ import Layout from '../layouts/Layout.astro';
   </p>
   <div class="note">
     The hotkey is processed by the app's own global keyboard listener — no OS-level shortcut registration needed.
+  </div>
+
+  <h3>Synchronize a ZMK language layer on macOS</h3>
+  <p>
+    An external layout can map installed macOS input-source IDs to ZMK language families. When the metadata is valid, the overlay shows a <strong>Language</strong> flyout. Choosing a language selects that exact macOS source first; the app then corrects a stable mismatched ZMK base layer through the layout's existing writable BLE characteristic. Changes made by another keyboard or the macOS input menu are observed too.
+  </p>
+  <pre><code>{`{
+  "inputSourceSync": {
+    "macos": {
+      "settleMs": 1000,
+      "sources": [
+        {
+          "id": "de",
+          "label": "Deutsch",
+          "inputSourceId": "com.apple.keylayout.German",
+          "baseLayer": 4,
+          "layers": [4, 5, 6, 16]
+        },
+        {
+          "id": "ru",
+          "label": "Русский",
+          "inputSourceId": "com.apple.keylayout.Russian",
+          "baseLayer": 9,
+          "layers": [9, 10, 12, 17]
+        }
+      ],
+      "neutralLayers": [13, 18]
+    }
+  }
+}`}</code></pre>
+  <p>
+    Run <code>defaults read ~/Library/Preferences/com.apple.HIToolbox.plist AppleEnabledInputSources</code> to inspect enabled sources. The configured value must be the exact Text Input Source Services <code>kTISPropertyInputSourceID</code>; plist fields vary by source type, so use their names and bundle fields as discovery hints rather than transforming them. An unavailable configured source is disabled instead of being guessed. Every family layer and neutral layer must be a valid, non-overlapping <code>keyLayers</code> index, and each <code>baseLayer</code> must belong to its family. Optional <code>settleMs</code> controls how long the app waits before correcting a stable mismatch; it defaults to <code>1000</code> and accepts integer milliseconds from <code>0</code> through <code>60000</code>.
+  </p>
+  <div class="note">
+    This feature is macOS-only. It also requires <code>bleLayerSource</code> to point to a characteristic supporting encrypted Write with response and Notify. Transient Shift/AltGr/Character layers and configured neutral Functional/Mouse layers are preserved until a stable base layer returns. Other platforms, invalid metadata, and missing sources keep the existing overlay and BLE observation behavior.
   </div>
 
   <h2>4. CLI toggle flag</h2>
