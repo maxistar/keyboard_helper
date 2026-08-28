@@ -76,17 +76,6 @@ struct KeyEventPayload {
     event_type: String, // "down" или "up"
 }
 
-#[cfg(target_os = "macos")]
-#[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-struct BleLayerSyncConfig {
-    layout_key: String,
-    device_name: Option<String>,
-    service_uuid: String,
-    characteristic_uuid: String,
-    format: String,
-}
-
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 struct MacosInputSourceSyncConfig {
@@ -722,19 +711,9 @@ fn start_keyboard_listener(app_handle: tauri::AppHandle, state: State<KeyboardLi
 fn start_ble_layer_sync(
     app_handle: tauri::AppHandle,
     state: State<BleLayerSyncTauriState>,
-    config: BleLayerSyncConfig,
+    config: ble_layer_sync::BleLayerSyncConfig,
 ) -> Result<(), String> {
-    ble_layer_sync::start_sync(
-        app_handle,
-        state.inner.clone(),
-        ble_layer_sync::BleLayerSyncConfig {
-            layout_key: config.layout_key,
-            device_name: config.device_name,
-            service_uuid: config.service_uuid,
-            characteristic_uuid: config.characteristic_uuid,
-            format: config.format,
-        },
-    );
+    ble_layer_sync::start_sync(app_handle, state.inner.clone(), config);
     Ok(())
 }
 
