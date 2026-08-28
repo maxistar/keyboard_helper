@@ -112,3 +112,29 @@ test("BLE controller falls back cleanly when no source is provided", async () =>
   assert.deepEqual(tauri.invokeCalls.map((call) => call.command), ["stop_ble_layer_sync"]);
   assert.equal(seenStatuses.at(-1).state, "idle");
 });
+
+test("BLE controller validates and forwards a generation-bound layer write", async () => {
+  const tauri = createTauriStub();
+  const controller = createBleLayerSyncController({
+    tauri,
+    onLayerChange: () => {},
+  });
+  await controller.start("corney", {
+    deviceName: "Corney",
+    serviceUuid: "12341234-1234-5678-7856-123412345678",
+    characteristicUuid: "12341234-1234-5678-7856-123412345679",
+    format: "int32-le",
+  });
+
+  await controller.writeLayer(9, [9, 10, 9]);
+  assert.deepEqual(tauri.invokeCalls.at(-1), {
+    command: "write_ble_layer",
+    payload: {
+      layoutKey: "corney",
+      layer: 9,
+      acceptableLayers: [9, 10],
+    },
+  });
+  await assert.rejects(controller.writeLayer(-1), /non-negative/);
+  await assert.rejects(controller.writeLayer(9, [10]), /must include/);
+});

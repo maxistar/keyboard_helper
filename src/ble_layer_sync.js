@@ -64,6 +64,7 @@ export function createBleLayerSyncController({ tauri, onLayerChange, onStatusCha
       emitStatus({
         state: payload.state ?? "idle",
         message: payload.message ?? null,
+        writable: Boolean(payload.writable),
       });
     });
   };
@@ -132,10 +133,31 @@ export function createBleLayerSyncController({ tauri, onLayerChange, onStatusCha
     await stop();
   };
 
+  const writeLayer = async (layer, acceptableLayers = [layer]) => {
+    if (!activeLayoutKey || !activeSource || !tauri?.core?.invoke) {
+      throw new Error("BLE layer session is unavailable");
+    }
+    if (!Number.isInteger(layer) || layer < 0) {
+      throw new Error("BLE layer index must be a non-negative integer");
+    }
+    const normalizedAcceptable = [...new Set(acceptableLayers)].filter(
+      (candidate) => Number.isInteger(candidate) && candidate >= 0,
+    );
+    if (!normalizedAcceptable.includes(layer)) {
+      throw new Error("acceptableLayers must include the requested layer");
+    }
+    await tauri.core.invoke("write_ble_layer", {
+      layoutKey: activeLayoutKey,
+      layer,
+      acceptableLayers: normalizedAcceptable,
+    });
+  };
+
   return {
     start,
     stop,
     dispose,
+    writeLayer,
     getActiveLayoutKey: () => activeLayoutKey,
     getActiveSource: () => activeSource,
   };

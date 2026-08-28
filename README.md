@@ -107,7 +107,7 @@ Advanced users can still edit the compatible JSON configuration directly. The ap
   - `defaultLayout`: key of the layout to select at startup (must exist in `layouts`).
   - `layouts`: object mapping layout keys to either `true` (use built-in) or a filesystem path (load external JSON).
 - Layout combos (layout-specific): add a `combos` array inside a layout file with entries like `{ "key1": { "row": 1, "col": 4 }, "key2": { "row": 1, "col": 5 }, "code": "Enter" }`.
-- Layout file format: JSON with `name`, optional `bleLayerSource`, `keySize` (`w`, `h`, `gap` in px), `keyPositions` (array of `{row,col}` with optional `w`/`h` overrides), and `keyLayers`. `keyLayers` can be an object with `default`, `shift`, etc., or an array where index 0 is the base layer. Each layer entry is `[label, code]` (or an object with `text`/`image` for custom labels).
+- Layout file format: JSON with `name`, optional `bleLayerSource`, optional `inputSourceSync`, `keySize` (`w`, `h`, `gap` in px), `keyPositions` (array of `{row,col}` with optional `w`/`h` overrides), and `keyLayers`. `keyLayers` can be an object with `default`, `shift`, etc., or an array where index 0 is the base layer. Each layer entry is `[label, code]` (or an object with `text`/`image` for custom labels).
 - `bleLayerSource` is optional and enables BLE-authoritative layer updates for the selected keyboard only. Shape:
   - `deviceName`: BLE keyboard name to match
   - `serviceUuid`: custom GATT service UUID
@@ -123,3 +123,38 @@ If the selected layout defines `bleLayerSource`, the app attempts to connect to 
 - If BLE sync starts successfully, the app bootstraps the current layer and then updates immediately from notifications.
 - If BLE metadata is absent, BLE startup fails, or the BLE feed disconnects, the app falls back to the existing non-BLE behavior.
 - BLE sync starts and stops automatically when you switch layouts.
+
+### macOS input-source and ZMK layer synchronization
+
+A layout may add `inputSourceSync.macos` to make the selected macOS input source authoritative for its ZMK language family. This capability is macOS-only and requires the same `bleLayerSource` characteristic to support encrypted **Write with response** and Notify. Windows, Linux, browser execution, layouts without metadata, and malformed metadata retain ordinary read-only BLE observation and local layer preview.
+
+Each source has a unique app ID and label, the exact installed macOS `inputSourceId`, one stable `baseLayer`, and all related language layers. `neutralLayers` lists utility layers that belong to neither language. Family and neutral layer indexes must exist and must not overlap. Non-base family layers and neutral layers defer correction; the app only corrects a stable foreign base layer after `settleMs`. This optional interval defaults to `1000` milliseconds and accepts integers from `0` through `60000`.
+
+```json
+{
+  "inputSourceSync": {
+    "macos": {
+      "settleMs": 1000,
+      "sources": [
+        {
+          "id": "de",
+          "label": "Deutsch",
+          "inputSourceId": "com.apple.keylayout.German",
+          "baseLayer": 4,
+          "layers": [4, 5, 6, 16]
+        },
+        {
+          "id": "ru",
+          "label": "Русский",
+          "inputSourceId": "com.apple.keylayout.Russian",
+          "baseLayer": 9,
+          "layers": [9, 10, 12, 17]
+        }
+      ],
+      "neutralLayers": [13, 18]
+    }
+  }
+}
+```
+
+Use `defaults read ~/Library/Preferences/com.apple.HIToolbox.plist AppleEnabledInputSources` to inspect enabled sources. The configured value must be the exact Text Input Source Services `kTISPropertyInputSourceID`; plist fields vary by source type, so treat names and bundle fields as discovery hints rather than transforming them. A configured but uninstalled ID is shown as unavailable and is never replaced by a guessed or cycled source. See `../corney/layout_corney.json` for the full Corney layout example.

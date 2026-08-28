@@ -4,12 +4,15 @@ use objc2::runtime::{AnyObject, ProtocolObject};
 use objc2::{declare_class, msg_send_id, mutability, ClassType, DeclaredClass};
 use objc2_core_bluetooth::{
     CBCentralManager, CBCentralManagerDelegate, CBCharacteristic, CBCharacteristicProperties,
-    CBManagerState, CBPeripheral, CBPeripheralDelegate, CBPeripheralState, CBService, CBUUID,
+    CBCharacteristicWriteType, CBManagerState, CBPeripheral, CBPeripheralDelegate,
+    CBPeripheralState, CBService, CBUUID,
 };
 use objc2_foundation::{NSArray, NSData, NSError, NSObject, NSObjectProtocol, NSString};
+use std::collections::VecDeque;
 use std::ffi::CString;
 use std::os::raw::{c_char, c_void};
 use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use uuid::Uuid;
 
@@ -17,6 +20,7 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 const DISCOVERY_TIMEOUT: Duration = Duration::from_secs(5);
 const READ_TIMEOUT: Duration = Duration::from_secs(3);
 const NOTIFY_STATE_TIMEOUT: Duration = Duration::from_secs(3);
+const WRITE_TIMEOUT: Duration = Duration::from_secs(3);
 
 pub struct ConnectedKeyboard {
     _delegate: Retained<CoreBluetoothDelegate>,
@@ -24,25 +28,72 @@ pub struct ConnectedKeyboard {
     peripheral: Retained<CBPeripheral>,
     layer_char: Retained<CBCharacteristic>,
     events: Receiver<DelegateEvent>,
+    deferred_events: Mutex<VecDeque<DelegateEvent>>,
     peripheral_id: Uuid,
     layer_char_uuid: Uuid,
 }
 
 impl ConnectedKeyboard {
+    pub fn supports_write_with_response(&self) -> bool {
+        unsafe { self.layer_char.properties() }
+            .contains(CBCharacteristicProperties::CBCharacteristicPropertyWrite)
+    }
+
+    pub fn write_active_layer(&self, layer: u32) -> Result<()> {
+        if !self.supports_write_with_response() {
+            return Err(anyhow!(
+                "Layer characteristic does not support Write with response"
+            ));
+        }
+        let bytes = layer.to_le_bytes();
+        let data =
+            unsafe { NSData::dataWithBytes_length(bytes.as_ptr().cast_mut().cast(), bytes.len()) };
+        unsafe {
+            self.peripheral.writeValue_forCharacteristic_type(
+                &data,
+                &self.layer_char,
+                CBCharacteristicWriteType::CBCharacteristicWriteWithResponse,
+            );
+        }
+        wait_for_event_preserving(
+            &self.events,
+            &self.deferred_events,
+            WRITE_TIMEOUT,
+            |event| match event {
+                DelegateEvent::CharacteristicWritten(
+                    peripheral_id,
+                    characteristic_uuid,
+                    result,
+                ) if *peripheral_id == self.peripheral_id
+                    && *characteristic_uuid == self.layer_char_uuid =>
+                {
+                    Some(result.clone())
+                }
+                _ => None,
+            },
+        )?
+        .map_err(|error| anyhow!(error))
+    }
+
     pub fn read_active_layer(&self) -> Result<u32> {
         unsafe {
             self.peripheral.readValueForCharacteristic(&self.layer_char);
         }
 
-        let data: Vec<u8> = wait_for_event(&self.events, READ_TIMEOUT, |event| match event {
-            DelegateEvent::CharacteristicValue(peripheral_id, characteristic_uuid, result)
-                if *peripheral_id == self.peripheral_id
-                    && *characteristic_uuid == self.layer_char_uuid =>
-            {
-                Some(result.clone())
-            }
-            _ => None,
-        })?
+        let data: Vec<u8> = wait_for_event_preserving(
+            &self.events,
+            &self.deferred_events,
+            READ_TIMEOUT,
+            |event| match event {
+                DelegateEvent::CharacteristicValue(peripheral_id, characteristic_uuid, result)
+                    if *peripheral_id == self.peripheral_id
+                        && *characteristic_uuid == self.layer_char_uuid =>
+                {
+                    Some(result.clone())
+                }
+                _ => None,
+            },
+        )?
         .map_err(|error| anyhow!(error))?;
 
         decode_active_layer(&data)
@@ -65,22 +116,35 @@ impl ConnectedKeyboard {
                 .setNotifyValue_forCharacteristic(true, &self.layer_char);
         }
 
-        wait_for_event(&self.events, NOTIFY_STATE_TIMEOUT, |event| match event {
-            DelegateEvent::NotificationState(peripheral_id, characteristic_uuid, result)
-                if *peripheral_id == self.peripheral_id
-                    && *characteristic_uuid == self.layer_char_uuid =>
-            {
-                Some(result.clone())
-            }
-            _ => None,
-        })?
+        wait_for_event_preserving(
+            &self.events,
+            &self.deferred_events,
+            NOTIFY_STATE_TIMEOUT,
+            |event| match event {
+                DelegateEvent::NotificationState(peripheral_id, characteristic_uuid, result)
+                    if *peripheral_id == self.peripheral_id
+                        && *characteristic_uuid == self.layer_char_uuid =>
+                {
+                    Some(result.clone())
+                }
+                _ => None,
+            },
+        )?
         .map_err(|error| anyhow!(error))?;
 
         Ok(())
     }
 
     pub fn wait_for_notification_layer_timeout(&self, timeout: Duration) -> Result<Option<u32>> {
-        let event = match self.events.recv_timeout(timeout) {
+        let deferred = self
+            .deferred_events
+            .lock()
+            .map_err(|error| anyhow!(error.to_string()))?
+            .pop_front();
+        let event = match deferred
+            .map(Ok)
+            .unwrap_or_else(|| self.events.recv_timeout(timeout))
+        {
             Ok(event) => event,
             Err(std::sync::mpsc::RecvTimeoutError::Timeout) => return Ok(None),
             Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
@@ -205,6 +269,7 @@ pub fn find_connected_keyboard(
             peripheral,
             layer_char,
             events: receiver,
+            deferred_events: Mutex::new(VecDeque::new()),
             peripheral_id,
             layer_char_uuid: char_uuid,
         }));
@@ -228,6 +293,7 @@ enum DelegateEvent {
     ServicesDiscovered(Uuid, Result<(), String>),
     CharacteristicsDiscovered(Uuid, Uuid, Result<(), String>),
     NotificationState(Uuid, Uuid, Result<(), String>),
+    CharacteristicWritten(Uuid, Uuid, Result<(), String>),
     CharacteristicValue(Uuid, Uuid, Result<Vec<u8>, String>),
 }
 
@@ -360,6 +426,28 @@ declare_class!(
                 ));
             }
         }
+
+        #[method(peripheral:didWriteValueForCharacteristic:error:)]
+        fn peripheral_did_write_value_for_characteristic_error(
+            &self,
+            peripheral: &CBPeripheral,
+            characteristic: &CBCharacteristic,
+            error: Option<&NSError>,
+        ) {
+            if let (Ok(id), Ok(characteristic_uuid)) = (
+                nsuuid_to_uuid(unsafe { peripheral.identifier() }.as_ref()),
+                cbuuid_to_uuid(unsafe { characteristic.UUID() }.as_ref()),
+            ) {
+                self.send(DelegateEvent::CharacteristicWritten(
+                    id,
+                    characteristic_uuid,
+                    match error {
+                        Some(error) => Err(error.localizedDescription().to_string()),
+                        None => Ok(()),
+                    },
+                ));
+            }
+        }
     }
 );
 
@@ -393,6 +481,42 @@ where
         if let Some(result) = matcher(&event) {
             return Ok(result);
         }
+    }
+}
+
+fn wait_for_event_preserving<T, F>(
+    receiver: &Receiver<DelegateEvent>,
+    deferred: &Mutex<VecDeque<DelegateEvent>>,
+    timeout: Duration,
+    mut matcher: F,
+) -> Result<T>
+where
+    F: FnMut(&DelegateEvent) -> Option<T>,
+{
+    let deadline = Instant::now() + timeout;
+    loop {
+        {
+            let mut backlog = deferred
+                .lock()
+                .map_err(|error| anyhow!(error.to_string()))?;
+            if let Some(index) = backlog.iter().position(|event| matcher(event).is_some()) {
+                let event = backlog.remove(index).expect("deferred event index exists");
+                return matcher(&event).ok_or_else(|| anyhow!("Bluetooth event no longer matched"));
+            }
+        }
+        let remaining = deadline
+            .checked_duration_since(Instant::now())
+            .ok_or_else(|| anyhow!("Timed out waiting for Bluetooth response"))?;
+        let event = receiver
+            .recv_timeout(remaining)
+            .map_err(|_| anyhow!("Timed out waiting for Bluetooth response"))?;
+        if let Some(result) = matcher(&event) {
+            return Ok(result);
+        }
+        deferred
+            .lock()
+            .map_err(|error| anyhow!(error.to_string()))?
+            .push_back(event);
     }
 }
 

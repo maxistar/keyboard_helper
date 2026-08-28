@@ -138,6 +138,41 @@ import Layout from '../layouts/Layout.astro';
     The hotkey is processed by the app's own global keyboard listener — no OS-level shortcut registration needed.
   </div>
 
+  <h3>Synchronize a ZMK language layer on macOS</h3>
+  <p>
+    An external layout can map installed macOS input-source IDs to ZMK language families. When the metadata is valid, the overlay shows a <strong>Language</strong> flyout. Choosing a language selects that exact macOS source first; the app then corrects a stable mismatched ZMK base layer through the layout's existing writable BLE characteristic. Changes made by another keyboard or the macOS input menu are observed too.
+  </p>
+  <pre><code>{`{
+  "inputSourceSync": {
+    "macos": {
+      "settleMs": 1000,
+      "sources": [
+        {
+          "id": "de",
+          "label": "Deutsch",
+          "inputSourceId": "com.apple.keylayout.German",
+          "baseLayer": 4,
+          "layers": [4, 5, 6, 16]
+        },
+        {
+          "id": "ru",
+          "label": "Русский",
+          "inputSourceId": "com.apple.keylayout.Russian",
+          "baseLayer": 9,
+          "layers": [9, 10, 12, 17]
+        }
+      ],
+      "neutralLayers": [13, 18]
+    }
+  }
+}`}</code></pre>
+  <p>
+    Run <code>defaults read ~/Library/Preferences/com.apple.HIToolbox.plist AppleEnabledInputSources</code> to inspect enabled sources. The configured value must be the exact Text Input Source Services <code>kTISPropertyInputSourceID</code>; plist fields vary by source type, so use their names and bundle fields as discovery hints rather than transforming them. An unavailable configured source is disabled instead of being guessed. Every family layer and neutral layer must be a valid, non-overlapping <code>keyLayers</code> index, and each <code>baseLayer</code> must belong to its family. Optional <code>settleMs</code> controls how long the app waits before correcting a stable mismatch; it defaults to <code>1000</code> and accepts integer milliseconds from <code>0</code> through <code>60000</code>.
+  </p>
+  <div class="note">
+    This feature is macOS-only. It also requires <code>bleLayerSource</code> to point to a characteristic supporting encrypted Write with response and Notify. Transient Shift/AltGr/Character layers and configured neutral Functional/Mouse layers are preserved until a stable base layer returns. Other platforms, invalid metadata, and missing sources keep the existing overlay and BLE observation behavior.
+  </div>
+
   <h2>4. CLI toggle flag</h2>
   <p>
     You can also toggle the app by launching it with the <code>--toggle</code> flag. If the app is already running, this shows or hides the window rather than opening a second instance.

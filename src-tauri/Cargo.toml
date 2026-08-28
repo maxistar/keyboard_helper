@@ -35,6 +35,7 @@ rdev = { path = "vendor/rdev" }
 
 [target.'cfg(target_vendor = "apple")'.dependencies]
 objc2 = "0.5.2"
+core-foundation-sys = "0.8"
 
 [target.'cfg(target_vendor = "apple")'.dependencies.objc2-core-bluetooth]
 version = "0.2.2"

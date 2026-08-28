@@ -2056,6 +2056,7 @@ version = "0.3.1"
 dependencies = [
  "anyhow",
  "btleplug",
+ "core-foundation-sys 0.8.7",
  "futures-util",
  "objc2 0.5.2",
  "objc2-core-bluetooth",

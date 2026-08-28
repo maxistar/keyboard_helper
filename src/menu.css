@@ -260,6 +260,27 @@
   white-space: nowrap;
 }
 
+.menu-item-note {
+  margin-left: auto;
+  color: rgba(228, 231, 239, 0.62);
+  font-size: 0.72rem;
+}
+
+.menu-language-status {
+  margin-top: 4px;
+  font-weight: 650;
+}
+
+.menu-language-status[data-state="synced"] {
+  color: #7fe0a3;
+}
+
+.menu-language-status[data-state="error"],
+.menu-language-status[data-state="unsupported-source"],
+.menu-language-status[data-state="unmapped-layer"] {
+  color: #ff9a9a;
+}
+
 .menu-item .pill {
   width: 10px;
   height: 10px;
