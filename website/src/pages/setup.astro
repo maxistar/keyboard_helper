@@ -50,18 +50,27 @@ import Layout from '../layouts/Layout.astro';
     Builds are available for macOS (Apple Silicon &amp; Intel), Windows, and Linux.
   </p>
   <ol>
-    <li>Download the appropriate archive for your OS.</li>
-    <li>On macOS: open the <code>.dmg</code> and drag <em>Keyboard Helper.app</em> to Applications.</li>
+    <li>Download the appropriate archive for your OS. On macOS choose <code>macos-apple-silicon</code> for an M-series Mac or <code>macos-intel</code> for an Intel Mac.</li>
+    <li>On macOS: download the neighboring <code>.sha256</code> file, open the <code>.dmg</code>, and drag <em>Keyboard Helper.app</em> to Applications.</li>
     <li>On Windows: run the <code>.msi</code> installer.</li>
     <li>On Linux: extract the archive and run the binary.</li>
   </ol>
+
+  <p>Verify a macOS download with both files in the same directory:</p>
+  <pre><code>shasum -a 256 -c Keyboard-Helper_*.dmg.sha256</code></pre>
+
+  <div class="note">
+    macOS downloads are ad-hoc-signed, <strong>unnotarized preview builds</strong> produced without Apple Developer credentials. Apple has not verified them, so Gatekeeper is expected to block the first launch.
+  </div>
 
   <div class="note">
     Upgrading from an older release? Quit and remove <em>Keyboard Layout.app</em> before installing <em>Keyboard Helper.app</em>. Your existing <code>~/.keyri.json</code> settings remain compatible. If key highlighting stops afterward, remove the stale app entry from <strong>System Settings → Privacy &amp; Security → Input Monitoring</strong>, add <em>Keyboard Helper.app</em>, and launch it again.
   </div>
 
   <h2>2. First launch</h2>
+  <p>On macOS, try to launch the installed app once. If Gatekeeper blocks it, open <strong>System Settings → Privacy &amp; Security</strong>, scroll to <strong>Security</strong>, choose <strong>Open Anyway</strong> for Keyboard Helper, then confirm <strong>Open</strong>. This approves only this app; do not disable Gatekeeper globally or remove its quarantine metadata.</p>
   <p>Launch the app. A transparent overlay appears showing the default QWERTY layout. Start typing — keys will highlight in real-time.</p>
+  <p>Grant <strong>Input Monitoring</strong> when requested. Because every ad-hoc-signed preview has a build-specific identity, a later update may require this permission again. If highlighting stops, quit Keyboard Helper, remove its stale entry from <strong>System Settings → Privacy &amp; Security → Input Monitoring</strong>, add <code>/Applications/Keyboard Helper.app</code>, and relaunch it. Bluetooth or other privacy prompts may also reappear.</p>
   <p>Closing the window hides it to the system tray. Restore it from the tray icon menu.</p>
 
   <h2>Use the compact overlay</h2>
