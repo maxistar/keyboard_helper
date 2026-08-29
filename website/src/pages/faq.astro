@@ -5,66 +5,45 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 <Layout title="FAQ" description="Answers to common Keyboard Helper setup and troubleshooting questions.">
   <style>
     h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
-    .subtitle { color: var(--text-muted); margin-bottom: 36px; font-size: 1rem; }
+    .subtitle { color: var(--text-muted); margin-bottom: 36px; font-size: 1rem; line-height: 1.6; }
     .faq-list { display: grid; gap: 16px; }
-    article {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 22px;
-    }
+    article { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 22px; }
     h2 { color: var(--accent); font-size: 1.05rem; margin-bottom: 12px; }
     p, li { color: var(--text-muted); line-height: 1.65; }
     p + p { margin-top: 10px; }
-    ol { margin-top: 12px; padding-left: 22px; }
+    ol, ul { margin-top: 12px; padding-left: 22px; }
     li + li { margin-top: 6px; }
-    code {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      color: var(--accent);
-      font-family: "Cascadia Code", "Fira Code", "Courier New", monospace;
-      font-size: 0.88em;
-      padding: 1px 5px;
-    }
-    .important {
-      border-color: rgba(60, 201, 199, 0.4);
-      box-shadow: inset 3px 0 0 var(--accent);
-    }
+    code { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--accent); font-family: "Cascadia Code", "Fira Code", "Courier New", monospace; font-size: 0.88em; padding: 1px 5px; }
+    .important { border-color: rgba(60, 201, 199, 0.42); box-shadow: inset 3px 0 0 var(--accent); }
+    .tag { color: var(--text); display: inline-block; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 8px; text-transform: uppercase; }
   </style>
 
   <h1>Frequently Asked Questions</h1>
-  <p class="subtitle">Quick answers for installing, configuring, and troubleshooting Keyboard Helper.</p>
+  <p class="subtitle">Short answers for installation, configuration, synchronization, and recovery.</p>
 
   <section class="faq-list" aria-label="Frequently asked questions">
     <article class="important">
+      <span class="tag">macOS</span>
       <h2>Why are key presses not highlighted on macOS?</h2>
       <p>Keyboard Helper needs <strong>Input Monitoring</strong> to observe keys globally. Accessibility alone is not enough.</p>
-      <p>If the permission switch is already on but highlighting still does not work, refresh the app entry instead of only toggling it:</p>
+      <p>If the permission switch is already on but highlighting still does not work, refresh the app entry:</p>
       <ol>
         <li>Quit and remove an older <em>Keyboard Layout.app</em>, if it is still installed.</li>
         <li>Move the current <em>Keyboard Helper.app</em> to <code>/Applications</code>.</li>
-        <li>Open <strong>System Settings → Privacy &amp; Security → Input Monitoring</strong>.</li>
-        <li>Remove any stale <em>Keyboard Layout</em> or <em>Keyboard Helper</em> entry with the minus button.</li>
-        <li>Add <em>Keyboard Helper.app</em> again and enable it.</li>
-        <li>Quit Keyboard Helper from the tray menu, then launch it again.</li>
+        <li>Open <strong>System Settings -&gt; Privacy &amp; Security -&gt; Input Monitoring</strong>.</li>
+        <li>Remove stale <em>Keyboard Layout</em> or <em>Keyboard Helper</em> entries.</li>
+        <li>Add <em>Keyboard Helper.app</em> again, enable it, and restart the app.</li>
       </ol>
-      <p>This can be necessary after rebuilding the app or switching to another downloaded copy, because macOS can retain permission state for the earlier bundle.</p>
     </article>
 
-    <article>
-      <h2>Where did the window go after I closed it?</h2>
-      <p>Closing the window hides Keyboard Helper to the system tray instead of quitting it. Use the tray icon to restore the overlay, or launch the app with <code>--toggle</code> if you have configured an external shortcut.</p>
-    </article>
-
-    <article>
-      <h2>How do I select a different layout or use my own?</h2>
-      <p>Open <strong>Settings</strong> from the application menu, choose <strong>Add layout file…</strong>, and select your JSON file. You can then make it the startup layout and save. Direct <code>~/.keyri.json</code> editing remains available for advanced use; the <a href={`${base}/setup/`}>setup guide</a> includes examples.</p>
-    </article>
-
-    <article>
-      <h2>Does Keyboard Helper work only with split keyboards?</h2>
-      <p>No. It includes QWERTY, QWERTZ, Mac, and Magic Keyboard layouts as well as Corne and Dactyl. The overlay highlights the key codes reported by the operating system, so it can also visualize compatible custom layouts.</p>
-    </article>
+    <article><span class="tag">macOS</span><h2>Why does macOS block the downloaded app?</h2><p>The macOS downloads are ad-hoc-signed, unnotarized preview builds. Apple has not verified them, so Gatekeeper can block the first launch.</p><p>Open the app once, then use <strong>System Settings -&gt; Privacy &amp; Security -&gt; Open Anyway</strong>. The <a href={`${base}/setup/#first-launch`}>setup guide</a> has the full first-launch flow.</p></article>
+    <article><h2>Where did the window go after I closed it?</h2><p>Closing the overlay hides Keyboard Helper to the system tray instead of quitting it. Restore it from the tray menu, use the configured show/hide hotkey, or launch the executable with <code>--toggle</code>.</p></article>
+    <article><h2>How do I select a different layout or use my own?</h2><p>Open <strong>Settings</strong>, enable the layouts you want, and use <strong>Add layout file...</strong> for an external JSON layout. The <a href={`${base}/setup/#configuration`}>configuration section</a> includes JSON examples for advanced editing.</p></article>
+    <article><span class="tag">BLE-dependent</span><h2>Why is BLE layer sync not connecting?</h2><p>BLE sync appears only when the active layout has valid <code>bleLayerSource</code> metadata and the desktop app can access Bluetooth. Check that the keyboard is advertising, the service and characteristic UUIDs match the layout, and the operating system granted Bluetooth permission.</p><p>Use <strong>Connection -&gt; Reconnect BLE</strong> after fixing the keyboard or permission state.</p></article>
+    <article><span class="tag">macOS + BLE</span><h2>Why is the Language flyout missing or disabled?</h2><p>The Language flyout is macOS-only. It also requires valid <code>inputSourceSync.macos</code> metadata, installed macOS input-source IDs, and a compatible writable BLE layer characteristic.</p><p>If one configured source is unavailable, Keyboard Helper disables that language instead of guessing. See <a href={`${base}/setup/#macos-language-sync`}>macOS language sync setup</a> for the expected metadata.</p></article>
+    <article><span class="tag">Desktop app</span><h2>How do I get out of Mini Mode?</h2><p>Use the <strong>Restore full size</strong> arrow button in the mini overlay. Mini Mode is temporary, so a fresh app launch starts in full mode even if the previous session ended while mini.</p></article>
+    <article><span class="tag">Diagnostic limit</span><h2>What can Keyboard Self-test verify?</h2><p>Self-test verifies that the configured HID output for one layout layer appears in the global key-event stream. It does not identify which physical keyboard sent an event, switch firmware layers for you, or diagnose raw matrix wiring, combos, macros, or hold-tap timing.</p></article>
+    <article><span class="tag">Practice mode</span><h2>Why does Shift-Space Invaders ignore some keys?</h2><p>The game uses focused window input, accepts plain English letters for word progress, and ignores modifiers, repeats, composition input, releases, and unsupported printable characters. The overlay may still highlight global key events while the game is focused, but those events do not advance the game.</p></article>
+    <article><h2>Does Keyboard Helper work only with split keyboards?</h2><p>No. It includes QWERTY, QWERTZ, Mac, and Magic Keyboard layouts as well as Corne and Dactyl. Custom layouts can describe other compatible keyboards with JSON.</p></article>
   </section>
 </Layout>
