@@ -1,6 +1,6 @@
-# Screenshot Placeholders
+# Website Screenshots
 
-These filenames are reserved by the website for follow-up real app screenshots. Until the images exist, the homepage renders styled placeholders instead of broken image elements.
+The homepage uses these stable filenames for product screenshots. If an image is temporarily absent, the page renders a styled placeholder instead of a broken image element.
 
 - `overlay-main.png` - main overlay with live key highlighting.
 - `menu-keyboard.png` - application menu with the Keyboard flyout open.
