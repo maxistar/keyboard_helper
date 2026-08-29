@@ -90,7 +90,13 @@ const screenshotSlots = screenshotDefinitions.map((shot) => ({
       padding: 18px;
       text-align: center;
     }
-    .shot-image { display: block; object-fit: cover; width: 100%; }
+    .shot-image {
+      background: #f4f4f4;
+      display: block;
+      object-fit: contain;
+      padding: 0;
+      width: 100%;
+    }
     .shot-placeholder strong { display: block; margin-bottom: 6px; }
     .shot-placeholder span { color: var(--text-muted); display: block; font-family: "Cascadia Code", "Fira Code", "Courier New", monospace; font-size: 0.8rem; overflow-wrap: anywhere; }
     .workflow { border-left: 3px solid var(--accent); display: grid; gap: 10px; padding-left: 18px; }
@@ -144,10 +150,9 @@ const screenshotSlots = screenshotDefinitions.map((shot) => ({
   </section>
 
   <section class="section" aria-labelledby="screenshots">
-    <h2 id="screenshots">Screenshots To Capture</h2>
+    <h2 id="screenshots">Product Tour</h2>
     <p class="section-intro">
-      These slots reserve the product images for follow-up capture. The filenames are stable, so real screenshots
-      can replace the placeholders later without changing the page structure.
+      See the overlay, application controls, diagnostics, synchronization, and practice tools in the current app.
     </p>
     <div class="shot-grid">
       {screenshotSlots.map((shot) => (
