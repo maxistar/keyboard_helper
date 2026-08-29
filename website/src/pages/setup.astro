@@ -1,118 +1,90 @@
 ---
 import Layout from '../layouts/Layout.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
-<Layout title="Setup" description="How to install and configure Keyboard Helper.">
+<Layout title="Setup" description="How to install, configure, and use Keyboard Helper.">
   <style>
     h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
-    .subtitle { color: var(--text-muted); margin-bottom: 40px; font-size: 1rem; }
-    h2 { font-size: 1.2rem; font-weight: 700; margin: 36px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-    h3 { font-size: 1rem; font-weight: 700; margin: 20px 0 8px; color: var(--accent); }
+    .subtitle { color: var(--text-muted); margin-bottom: 34px; font-size: 1rem; line-height: 1.6; }
+    h2 { border-bottom: 1px solid var(--border); font-size: 1.2rem; font-weight: 700; margin: 38px 0 14px; padding-bottom: 8px; }
+    h3 { color: var(--accent); font-size: 1rem; font-weight: 700; margin: 22px 0 8px; }
     p { color: var(--text-muted); line-height: 1.65; margin-bottom: 12px; }
-    ol, ul { padding-left: 20px; color: var(--text-muted); line-height: 1.7; }
+    ol, ul { color: var(--text-muted); line-height: 1.7; padding-left: 20px; }
     li { margin-bottom: 6px; }
-    pre {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px 18px;
-      overflow-x: auto;
-      font-size: 0.875rem;
-      margin: 12px 0 18px;
-    }
+    pre { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; font-size: 0.875rem; margin: 12px 0 18px; overflow-x: auto; padding: 16px 18px; }
     code { font-family: "Cascadia Code", "Fira Code", "Courier New", monospace; }
     pre code { color: var(--text); }
-    p code, li code {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 1px 5px;
-      font-size: 0.85em;
-      color: var(--accent);
-    }
-    .note {
-      background: rgba(61, 201, 199, 0.08);
-      border-left: 3px solid var(--accent);
-      border-radius: 0 8px 8px 0;
-      padding: 12px 16px;
-      margin: 16px 0;
-      font-size: 0.9rem;
-      color: var(--text-muted);
-    }
+    p code, li code { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; color: var(--accent); font-size: 0.85em; padding: 1px 5px; }
+    .note, .toc { background: rgba(61, 201, 199, 0.08); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; color: var(--text-muted); font-size: 0.9rem; margin: 16px 0; padding: 12px 16px; }
+    .toc ul { columns: 2; list-style: none; padding-left: 0; }
+    .toc li { break-inside: avoid; }
+    .menu-map { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin: 16px 0; }
+    .menu-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+    .menu-card h3 { margin-top: 0; }
+    .tag { color: var(--text); display: inline-block; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 8px; text-transform: uppercase; }
+    @media (max-width: 640px) { .toc ul { columns: 1; } }
   </style>
 
   <h1>Setup Guide</h1>
-  <p class="subtitle">Get Keyboard Helper running in a few minutes.</p>
+  <p class="subtitle">Install Keyboard Helper, grant the permissions it needs, then configure layouts and synchronization from the app menu.</p>
 
-  <h2>1. Download</h2>
+  <nav class="toc" aria-label="Setup sections">
+    <ul>
+      <li><a href="#download">Download</a></li>
+      <li><a href="#first-launch">First launch</a></li>
+      <li><a href="#app-menu">App menu</a></li>
+      <li><a href="#configuration">Configuration</a></li>
+      <li><a href="#mini-mode">Mini Mode</a></li>
+      <li><a href="#self-test">Keyboard Self-test</a></li>
+      <li><a href="#ble-layer-sync">BLE layer sync</a></li>
+      <li><a href="#macos-language-sync">macOS language sync</a></li>
+      <li><a href="#cli-toggle">CLI toggle</a></li>
+      <li><a href="#build-from-source">Build from source</a></li>
+    </ul>
+  </nav>
+
+  <h2 id="download">1. Download</h2>
   <p>
     Grab the latest release for your platform from the
     <a href="https://github.com/maxistar/keyboard_helper/releases" target="_blank" rel="noopener">GitHub releases page</a>.
-    Builds are available for macOS (Apple Silicon &amp; Intel), Windows, and Linux.
+    Builds are available for macOS Apple Silicon, macOS Intel, Windows, and Linux.
   </p>
   <ol>
     <li>Download the appropriate archive for your OS. On macOS choose <code>macos-apple-silicon</code> for an M-series Mac or <code>macos-intel</code> for an Intel Mac.</li>
-    <li>On macOS: download the neighboring <code>.sha256</code> file, open the <code>.dmg</code>, and drag <em>Keyboard Helper.app</em> to Applications.</li>
-    <li>On Windows: run the <code>.msi</code> installer.</li>
-    <li>On Linux: extract the archive and run the binary.</li>
+    <li>On macOS, download the neighboring <code>.sha256</code> file, open the <code>.dmg</code>, and drag <em>Keyboard Helper.app</em> to Applications.</li>
+    <li>On Windows, run the <code>.msi</code> installer.</li>
+    <li>On Linux, extract the archive and run the binary.</li>
   </ol>
-
   <p>Verify a macOS download with both files in the same directory:</p>
   <pre><code>shasum -a 256 -c Keyboard-Helper_*.dmg.sha256</code></pre>
+  <div class="note">macOS downloads are ad-hoc-signed, <strong>unnotarized preview builds</strong>. Apple has not verified them, so Gatekeeper is expected to block the first launch.</div>
+  <div class="note">Upgrading from an older release? Quit and remove <em>Keyboard Layout.app</em> before installing <em>Keyboard Helper.app</em>. Your existing <code>~/.keyri.json</code> settings remain compatible.</div>
 
-  <div class="note">
-    macOS downloads are ad-hoc-signed, <strong>unnotarized preview builds</strong> produced without Apple Developer credentials. Apple has not verified them, so Gatekeeper is expected to block the first launch.
+  <h2 id="first-launch">2. First launch</h2>
+  <ol>
+    <li>On macOS, try to launch the installed app once.</li>
+    <li>If Gatekeeper blocks it, open <strong>System Settings -&gt; Privacy &amp; Security</strong>, scroll to <strong>Security</strong>, choose <strong>Open Anyway</strong> for Keyboard Helper, then confirm <strong>Open</strong>.</li>
+    <li>Grant <strong>Input Monitoring</strong> when requested so global key highlighting can work.</li>
+    <li>Start typing in any app. The transparent overlay should show the default QWERTY layout and highlight pressed keys.</li>
+  </ol>
+  <p>If highlighting stops after an update, quit Keyboard Helper, remove stale Keyboard Helper or Keyboard Layout entries from <strong>System Settings -&gt; Privacy &amp; Security -&gt; Input Monitoring</strong>, add <code>/Applications/Keyboard Helper.app</code>, and relaunch it.</p>
+  <p>Closing the window hides it to the system tray. Restore it from the tray icon menu, the configured hotkey, or the CLI toggle.</p>
+
+  <h2 id="app-menu">3. Use the application menu</h2>
+  <p>The top-right application menu is the main control surface. On macOS, the native menu bar exposes matching commands for common actions.</p>
+  <div class="menu-map">
+    <section class="menu-card"><h3>Keyboard</h3><p>Switch configured layouts, reload the active external layout, and open Keyboard Self-test.</p></section>
+    <section class="menu-card"><h3>Language</h3><p>Appears on macOS when the active layout has valid input-source sync metadata. Shows language status and available sources.</p></section>
+    <section class="menu-card"><h3>Connection</h3><p>Shows BLE synchronization state and provides Reconnect BLE when the active layout supports it.</p></section>
+    <section class="menu-card"><h3>Root actions</h3><p>Open Mini Mode, Shift-Space Invaders, Settings, and Help without changing the active layout.</p></section>
   </div>
 
-  <div class="note">
-    Upgrading from an older release? Quit and remove <em>Keyboard Layout.app</em> before installing <em>Keyboard Helper.app</em>. Your existing <code>~/.keyri.json</code> settings remain compatible. If key highlighting stops afterward, remove the stale app entry from <strong>System Settings → Privacy &amp; Security → Input Monitoring</strong>, add <em>Keyboard Helper.app</em>, and launch it again.
-  </div>
-
-  <h2>2. First launch</h2>
-  <p>On macOS, try to launch the installed app once. If Gatekeeper blocks it, open <strong>System Settings → Privacy &amp; Security</strong>, scroll to <strong>Security</strong>, choose <strong>Open Anyway</strong> for Keyboard Helper, then confirm <strong>Open</strong>. This approves only this app; do not disable Gatekeeper globally or remove its quarantine metadata.</p>
-  <p>Launch the app. A transparent overlay appears showing the default QWERTY layout. Start typing — keys will highlight in real-time.</p>
-  <p>Grant <strong>Input Monitoring</strong> when requested. Because every ad-hoc-signed preview has a build-specific identity, a later update may require this permission again. If highlighting stops, quit Keyboard Helper, remove its stale entry from <strong>System Settings → Privacy &amp; Security → Input Monitoring</strong>, add <code>/Applications/Keyboard Helper.app</code>, and relaunch it. Bluetooth or other privacy prompts may also reappear.</p>
-  <p>Closing the window hides it to the system tray. Restore it from the tray icon menu.</p>
-
-  <h2>Use the compact overlay</h2>
-  <p>
-    Choose <strong>Mini Mode</strong> from the overlay menu when screen space is limited. On macOS you can also choose <strong>View → Enter Mini Mode</strong>. The compact window keeps showing the active keyboard layer and live key highlights, but hides menus and status chrome.
-  </p>
-  <p>
-    Drag Mini Mode from the empty padding around the keyboard. Use the arrow button in the upper-right corner, labelled <strong>Restore full size</strong>, to return to the previous full window size and position. Mini Mode is temporary, so a fresh launch always starts full size.
-  </p>
-
-  <h2>3. Configuration</h2>
-  <p>
-    Open the application menu and choose <strong>Settings</strong>. You can enable built-in layouts, choose the startup layout, record a show/hide shortcut, and add a custom layout with the native file picker. Review your changes, then choose <strong>Save changes</strong>; the running overlay refreshes automatically.
-  </p>
-
-  <div class="note">
-    Existing JSON configurations remain supported. If the file is malformed, Settings will not overwrite it silently and creates a timestamped backup before a confirmed replacement.
-  </div>
-
-  <h2>Guided keyboard self-test</h2>
-  <p>
-    Expand <strong>Keyboard</strong> in the overlay menu and choose <strong>Keyboard Self-test</strong>. Select a configured layout and one layer; the base layer is selected initially. Activate the chosen layer on your keyboard yourself, release all keys, then start the guided test and press and release each highlighted physical position.
-  </p>
-  <ul>
-    <li><strong>Passed</strong> means the configured HID code completed the expected press-and-release cycle.</li>
-    <li><strong>Unexpected</strong> records a different received code after you choose to continue.</li>
-    <li><strong>Skipped</strong> means you explicitly continued because no usable event arrived.</li>
-    <li><strong>Not testable</strong> covers empty, unsupported, or multi-step layout behaviors.</li>
-  </ul>
-  <p>Use <strong>Retest problems</strong> to repeat unexpected and skipped positions, or <strong>Test another layer</strong> to return to selection. Results are discarded when the window closes.</p>
-  <p>Modifier descriptors such as <code>Shift+KeyQ</code> are checked as complete HID chords. The required modifiers must match exactly when the trigger is pressed, and the position passes only after the trigger and every contributing modifier have been released; either release order is accepted.</p>
-  <p>
-    The self-test window acts as a compact controller. Guided outlines appear on the existing overlay alongside its normal live pressed-key highlighting; no second keyboard is rendered. The selectors do not change the overlay or firmware layer, so choose the layout and layer that are already visible and active.
-  </p>
-  <div class="note">
-    This is a global HID-output check, not a raw ZMK matrix diagnostic. Events can come from any attached keyboard; the app does not activate firmware layers and does not verify combos, macros, hold-tap timing, or electrical switch health.
-  </div>
+  <h2 id="configuration">4. Configuration</h2>
+  <p>Open the application menu and choose <strong>Settings</strong>. You can enable built-in layouts, choose the startup layout, record a show/hide shortcut, and add a custom layout with the native file picker. Review your changes, then choose <strong>Save changes</strong>; the running overlay refreshes automatically.</p>
+  <div class="note">Existing JSON configurations remain supported. If the file is malformed, Settings will not overwrite it silently and creates a timestamped backup before a confirmed replacement.</div>
 
   <h3>Advanced JSON configuration</h3>
-  <p>
-    To manage the file directly, edit <code>~/.keyri.json</code>. The legacy <code>~/keyri.json</code> location is still read, while saves from Settings use the primary path. Without either file the app enables every built-in layout and starts with QWERTY.
-  </p>
+  <p>To manage the file directly, edit <code>~/.keyri.json</code>. The legacy <code>~/keyri.json</code> location is still read, while saves from Settings use the primary path. Without either file the app enables every built-in layout and starts with QWERTY.</p>
 
   <h3>Select a default layout</h3>
   <pre><code>{`{
@@ -130,27 +102,41 @@ import Layout from '../layouts/Layout.astro';
     "my-layout": "/home/you/keyboards/my-layout.json"
   }
 }`}</code></pre>
-  <p>Usually, choose <strong>Add layout file…</strong> in Settings. Layout files are JSON — copy one of the built-in layouts from the repo (<code>src/layout_corne.json</code>) as a starting point.</p>
+  <p>Usually, choose <strong>Add layout file...</strong> in Settings. Layout files are JSON. Copy one of the built-in layouts from the repo, such as <code>src/layout_corne.json</code>, as a starting point.</p>
 
   <h3>Global toggle hotkey</h3>
-  <p>
-    Use <strong>Record shortcut</strong> in Settings to configure a system-wide hotkey to show or hide the app. Press it once to restore, press it again to hide. The JSON syntax below remains available for advanced editing.
-  </p>
+  <p>Use <strong>Record shortcut</strong> in Settings to configure a system-wide hotkey to show or hide the app. Press it once to restore, press it again to hide.</p>
   <pre><code>{`{
   "toggleHotkey": "Shift+Meta+K"
 }`}</code></pre>
-  <p>
-    Supported modifiers: <code>Shift</code>, <code>Meta</code> / <code>Cmd</code>, <code>Ctrl</code>, <code>Alt</code> / <code>Option</code>.
-    Single letters are accepted (<code>K</code> → <code>KeyK</code>). For other keys use the rdev key name directly (e.g. <code>F1</code>).
-  </p>
-  <div class="note">
-    The hotkey is processed by the app's own global keyboard listener — no OS-level shortcut registration needed.
-  </div>
+  <p>Supported modifiers: <code>Shift</code>, <code>Meta</code> / <code>Cmd</code>, <code>Ctrl</code>, <code>Alt</code> / <code>Option</code>. Single letters are accepted, such as <code>K</code> becoming <code>KeyK</code>. For other keys use the rdev key name directly, such as <code>F1</code>.</p>
 
-  <h3>Synchronize a ZMK language layer on macOS</h3>
-  <p>
-    An external layout can map installed macOS input-source IDs to ZMK language families. When the metadata is valid, the overlay shows a <strong>Language</strong> flyout. Choosing a language selects that exact macOS source first; the app then corrects a stable mismatched ZMK base layer through the layout's existing writable BLE characteristic. Changes made by another keyboard or the macOS input menu are observed too.
-  </p>
+  <h2 id="mini-mode">5. Mini Mode</h2>
+  <span class="tag">Desktop app</span>
+  <p>Choose <strong>Mini Mode</strong> from the overlay menu when screen space is limited. On macOS you can also choose <strong>View -&gt; Enter Mini Mode</strong>. The compact window keeps showing the active keyboard layer and live key highlights, but hides menus and status chrome.</p>
+  <p>Drag Mini Mode from the empty padding around the keyboard. Use the arrow button labelled <strong>Restore full size</strong> to return to the previous full window size and position. Mini Mode is temporary, so a fresh launch always starts full size.</p>
+
+  <h2 id="self-test">6. Guided keyboard self-test</h2>
+  <span class="tag">Desktop app</span>
+  <p>Expand <strong>Keyboard</strong> in the overlay menu and choose <strong>Keyboard Self-test</strong>. Select a configured layout and one layer; the base layer is selected initially. Activate the chosen layer on your keyboard yourself, release all keys, then start the guided test and press and release each highlighted physical position.</p>
+  <ul>
+    <li><strong>Passed</strong> means the configured HID code completed the expected press-and-release cycle.</li>
+    <li><strong>Unexpected</strong> records a different received code after you choose to continue.</li>
+    <li><strong>Skipped</strong> means you explicitly continued because no usable event arrived.</li>
+    <li><strong>Not testable</strong> covers empty, unsupported, or multi-step layout behaviors.</li>
+  </ul>
+  <p>Use <strong>Retest problems</strong> to repeat unexpected and skipped positions, or <strong>Test another layer</strong> to return to selection. Results are discarded when the window closes.</p>
+  <p>Modifier descriptors such as <code>Shift+KeyQ</code> are checked as complete HID chords. The required modifiers must match exactly when the trigger is pressed, and the position passes only after the trigger and every contributing modifier have been released; either release order is accepted.</p>
+  <div class="note">This is a global HID-output check, not a raw ZMK matrix diagnostic. Events can come from any attached keyboard; the app does not activate firmware layers and does not verify combos, macros, hold-tap timing, or electrical switch health.</div>
+
+  <h2 id="ble-layer-sync">7. ZMK BLE layer sync</h2>
+  <span class="tag">BLE-dependent</span>
+  <p>A layout can include <code>bleLayerSource</code> metadata so Keyboard Helper listens to a compatible keyboard's active ZMK layer and updates the overlay from firmware state instead of only local modifier handling.</p>
+  <p>When the active layout has BLE metadata, the <strong>Connection</strong> flyout shows connecting, connected, not configured, or error state. Use <strong>Reconnect BLE</strong> after waking the keyboard, changing Bluetooth permission, or editing layout metadata.</p>
+
+  <h2 id="macos-language-sync">8. Synchronize a ZMK language layer on macOS</h2>
+  <span class="tag">macOS + BLE</span>
+  <p>An external layout can map installed macOS input-source IDs to ZMK language families. When the metadata is valid, the overlay shows a <strong>Language</strong> flyout. Choosing a language selects that exact macOS source first; the app then corrects a stable mismatched ZMK base layer through the layout's existing writable BLE characteristic. Changes made by another keyboard or the macOS input menu are observed too.</p>
   <pre><code>{`{
   "inputSourceSync": {
     "macos": {
@@ -175,25 +161,26 @@ import Layout from '../layouts/Layout.astro';
     }
   }
 }`}</code></pre>
-  <p>
-    Run <code>defaults read ~/Library/Preferences/com.apple.HIToolbox.plist AppleEnabledInputSources</code> to inspect enabled sources. The configured value must be the exact Text Input Source Services <code>kTISPropertyInputSourceID</code>; plist fields vary by source type, so use their names and bundle fields as discovery hints rather than transforming them. An unavailable configured source is disabled instead of being guessed. Every family layer and neutral layer must be a valid, non-overlapping <code>keyLayers</code> index, and each <code>baseLayer</code> must belong to its family. Optional <code>settleMs</code> controls how long the app waits before correcting a stable mismatch; it defaults to <code>1000</code> and accepts integer milliseconds from <code>0</code> through <code>60000</code>.
-  </p>
-  <div class="note">
-    This feature is macOS-only. It also requires <code>bleLayerSource</code> to point to a characteristic supporting encrypted Write with response and Notify. Transient Shift/AltGr/Character layers and configured neutral Functional/Mouse layers are preserved until a stable base layer returns. Other platforms, invalid metadata, and missing sources keep the existing overlay and BLE observation behavior.
-  </div>
+  <p>Run <code>defaults read ~/Library/Preferences/com.apple.HIToolbox.plist AppleEnabledInputSources</code> to inspect enabled sources. The configured value must be the exact Text Input Source Services <code>kTISPropertyInputSourceID</code>. An unavailable configured source is disabled instead of being guessed.</p>
+  <p>Every family layer and neutral layer must be a valid, non-overlapping <code>keyLayers</code> index, and each <code>baseLayer</code> must belong to its family. Optional <code>settleMs</code> controls how long the app waits before correcting a stable mismatch; it defaults to <code>1000</code> and accepts integer milliseconds from <code>0</code> through <code>60000</code>.</p>
+  <div class="note">This feature is macOS-only. It also requires <code>bleLayerSource</code> to point to a characteristic supporting encrypted Write with response and Notify. Transient Shift/AltGr/Character layers and configured neutral Functional/Mouse layers are preserved until a stable base layer returns.</div>
 
-  <h2>4. CLI toggle flag</h2>
-  <p>
-    You can also toggle the app by launching it with the <code>--toggle</code> flag. If the app is already running, this shows or hides the window rather than opening a second instance.
-  </p>
+  <h2 id="typing-invaders">9. Shift-Space Invaders</h2>
+  <span class="tag">Practice mode</span>
+  <p>Choose <strong>Shift-Space Invaders</strong> from the application menu to open a separate typing arcade window. It uses focused window input for gameplay, so overlay global key events can keep highlighting without advancing the game twice.</p>
+
+  <h2 id="cli-toggle">10. CLI toggle flag</h2>
+  <p>You can also toggle the app by launching it with the <code>--toggle</code> flag. If the app is already running, this shows or hides the window rather than opening a second instance.</p>
   <pre><code>/Applications/Keyboard\ Helper.app/Contents/MacOS/keyboard-app --toggle</code></pre>
   <p>Useful for binding to external hotkey managers like Raycast, BetterTouchTool, or Shortcuts.app.</p>
 
-  <h2>5. Build from source</h2>
+  <h2 id="build-from-source">11. Build from source</h2>
   <p>Prerequisites: <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js</a> LTS, <a href="https://rustup.rs" target="_blank" rel="noopener">Rust toolchain</a>, and <a href="https://v2.tauri.app/start/prerequisites/" target="_blank" rel="noopener">Tauri v2 platform deps</a>.</p>
   <pre><code>git clone https://github.com/maxistar/keyboard_helper.git
 cd keyboard_helper
 npm install
 npm run tauri dev    # dev window
 npm run tauri build  # release bundle</code></pre>
+
+  <p>Need a short fix instead of the full guide? The <a href={`${base}/faq/`}>FAQ</a> covers common setup, permission, BLE, and feature questions.</p>
 </Layout>
