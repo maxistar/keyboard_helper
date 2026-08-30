@@ -1,0 +1,7 @@
+{
+  "layout": "corne",
+  "state": "connected",
+  "writable": true,
+  "layer": 2,
+  "expectedControl": "enabled"
+}

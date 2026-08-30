@@ -274,7 +274,7 @@ async function selectLanguage(inputSourceId) {
   }
 }
 
-function getAllowedLayoutKeys(config) {
+function getAllowedLayoutKeys(_config) {
   const availableKeys = Object.keys(layoutDefinitions);
   return availableKeys;
 }
@@ -537,28 +537,6 @@ function applyLayer(index) {
 
   currentLayerIndex = safeIndex;
   renderLayerIndicator();
-}
-
-function shiftCorne() {
-  applyLayer(1);
-}
-
-function normalCorne() {
-  applyLayer(0);
-}
-
-function setDactylDefault() {
-  applyLayer(0);
-}
-
-function setDactylLower() {
-  console.log("Setting Dactyl lower layer");
-  applyLayer(1);
-}
-
-function setDactylMagic() {
-  console.log("Setting Dactyl lower layer");
-  applyLayer(2);
 }
 
 function parseToggleHotkey(str) {
@@ -902,5 +880,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   await setLayout(currentLayoutKey);
   if (layoutLoadErrors.length) {
     showLayoutError(`${layoutLoadErrors[0]} A built-in fallback is active.`);
+  }
+  if (tauri?.core?.invoke && await tauri.core.invoke("quality_smoke_requested")) {
+    await tauri.core.invoke("run_secondary_window_smoke");
   }
 });

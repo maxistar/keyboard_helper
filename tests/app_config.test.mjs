@@ -14,13 +14,9 @@ import {
   serializeConfig,
   validateConfigDraft,
 } from "../src/app_config.js";
+import { readJsonFixture } from "./fixture_helpers.mjs";
 
-const validLayout = {
-  name: "My Board",
-  keySize: { w: 50, h: 50, gap: 4 },
-  keyPositions: [{ row: 0, col: 0 }],
-  keyLayers: { default: [["A", "KeyA"]] },
-};
+const validLayout = readJsonFixture("layouts/external-minimal.json");
 
 test("defaults enable every built-in layout and select QWERTY", () => {
   const config = createDefaultConfig();

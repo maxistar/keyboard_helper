@@ -1,0 +1,5 @@
+{
+  "defaultLayout": "external",
+  "toggleHotkey": null,
+  "layouts": { "external": "tests/fixtures/layouts/external-minimal.json" }
+}

@@ -1,6 +1,7 @@
 import { loadLayoutCatalog, normalizeLayerData } from "./layout_catalog.js";
 import { buildTestPlan, createSelfTestController } from "./self_test/controller.js";
 import { createOverlayPresentationPayload } from "./self_test/overlay_presentation.js";
+import { initializeSecondaryWindow, SECONDARY_WINDOWS } from "./secondary_window_ready.js";
 
 const elements = Object.fromEntries([
   "setupView", "activeView", "resultsView", "layoutSelect", "layerSelect", "catalogErrors", "testability",
@@ -150,8 +151,14 @@ async function initialize() {
   } catch (error) {
     elements.catalogErrors.textContent = `Could not load keyboard layouts: ${error?.message ?? error}`;
     elements.testability.textContent = "Guided testing is unavailable.";
+    throw error;
   }
 }
 
 window.addEventListener("beforeunload", () => controller.dispose());
-initialize();
+initializeSecondaryWindow({
+  invoke: tauri?.core?.invoke,
+  label: SECONDARY_WINDOWS.selfTest.label,
+  failureStage: "asset-loading",
+  initialize,
+}).catch((error) => console.error("Self-test initialization failed:", error));

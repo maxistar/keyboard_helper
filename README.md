@@ -105,13 +105,18 @@ The report exists only until the self-test window closes. It verifies the config
 
 Releases are cut from `master` with semantic version tags.
 
+The required source matrix, website production build, platform packages, and
+Windows secondary-window smoke all finish before CI creates a GitHub release.
+See [Product quality gates](docs/quality-gates.md) for local commands, platform
+constraints, retained artifacts, and failure recovery.
+
 - Version source: keep `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml` on the same semver (e.g., `0.2.0`). Update all three before tagging so the JS package, Tauri config, and Rust crate stay aligned.
-- Trigger: create an annotated tag `vMAJOR.MINOR.PATCH` on `master` and push it; CI will build macOS/Windows/Linux bundles and publish a GitHub release with the assets attached. macOS release downloads are explicitly labelled `macos-apple-silicon` or `macos-intel`, include SHA-256 files, and remain unnotarized previews. The job should fail if the tag does not match the version in both files.
+- Trigger: create an annotated tag `vMAJOR.MINOR.PATCH` on `master` and push it; CI will build macOS/Windows/Linux bundles and publish a GitHub release with the assets attached. macOS release downloads are explicitly labelled `macos-apple-silicon` or `macos-intel`, include SHA-256 files, and remain unnotarized previews. The job fails if the tag does not match all three version sources.
 - Steps:
   1. Bump the version in `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml`, commit, and merge to `master`.
   2. Draft release notes (highlights, fixes, platform notes). Keep them short and paste them into the GitHub release description after CI creates it.
   3. Tag the merge commit (`git tag -a v0.2.0 -m "Release v0.2.0"`) and push the tag (`git push origin v0.2.0`).
-  4. Watch the release workflow in GitHub Actions; when it finishes, open the generated GitHub release for `v0.2.0`, paste the release notes into the description, and publish/save.
+  4. Watch the release workflow in GitHub Actions. A failed prerequisite creates no normal release; use its retained artifacts to diagnose the failure and rerun the complete tagged workflow. After success, open the generated release for `v0.2.0` and replace the automated notes with the prepared notes.
 - Non-tag pushes to `master` still run the build and upload architecture-specific artifacts to the workflow run but do not create a GitHub release entry or stable release downloads.
 
 ## App configuration & external layouts

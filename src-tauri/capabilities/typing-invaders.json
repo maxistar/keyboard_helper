@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "typing-invaders",
+  "description": "Capability for the Shift-Space Invaders window",
+  "windows": ["typing-invaders"],
+  "permissions": [
+    "core:default"
+  ]
+}

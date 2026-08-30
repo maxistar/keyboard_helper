@@ -4,6 +4,7 @@
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 mod ble_layer_sync;
 mod config_store;
 #[cfg(target_os = "macos")]
@@ -46,6 +47,49 @@ struct OverlayWindowSnapshot {
 #[derive(Default)]
 struct OverlayGeometryState {
     snapshot: Mutex<Option<OverlayWindowSnapshot>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SecondaryWindowReadyPayload {
+    label: String,
+    state: String,
+    stage: String,
+    error: Option<String>,
+}
+
+struct SecondaryWindowReadinessState {
+    sender: tokio::sync::broadcast::Sender<SecondaryWindowReadyPayload>,
+}
+
+impl Default for SecondaryWindowReadinessState {
+    fn default() -> Self {
+        let (sender, _) = tokio::sync::broadcast::channel(16);
+        Self { sender }
+    }
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SecondaryWindowSmokeResult {
+    label: String,
+    ready: bool,
+    visible: bool,
+    reused: bool,
+    restored: bool,
+    focused: bool,
+    closed: bool,
+    stage: String,
+    error: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct QualitySmokeReport {
+    schema_version: u8,
+    platform: String,
+    passed: bool,
+    windows: Vec<SecondaryWindowSmokeResult>,
 }
 
 impl OverlayGeometryState {
@@ -672,6 +716,213 @@ fn open_keyboard_self_test_window(
 }
 
 #[tauri::command]
+fn secondary_window_ready(
+    state: State<SecondaryWindowReadinessState>,
+    payload: SecondaryWindowReadyPayload,
+) {
+    let _ = state.sender.send(payload);
+}
+
+#[tauri::command]
+fn quality_smoke_requested() -> bool {
+    std::env::args().any(|argument| argument == "--quality-smoke-secondary-windows")
+}
+
+async fn wait_for_secondary_window(
+    receiver: &mut tokio::sync::broadcast::Receiver<SecondaryWindowReadyPayload>,
+    label: &str,
+) -> Result<(), SecondaryWindowReadyPayload> {
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(15);
+    loop {
+        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+        if remaining.is_zero() {
+            return Err(SecondaryWindowReadyPayload {
+                label: label.to_string(),
+                state: "failed".to_string(),
+                stage: "timeout".to_string(),
+                error: Some(format!("{label} readiness timed out")),
+            });
+        }
+        let payload = tokio::time::timeout(remaining, receiver.recv())
+            .await
+            .map_err(|_| SecondaryWindowReadyPayload {
+                label: label.to_string(),
+                state: "failed".to_string(),
+                stage: "timeout".to_string(),
+                error: Some(format!("{label} readiness timed out")),
+            })?
+            .map_err(|error| SecondaryWindowReadyPayload {
+                label: label.to_string(),
+                state: "failed".to_string(),
+                stage: "readiness".to_string(),
+                error: Some(format!("{label} readiness channel failed: {error}")),
+            })?;
+        if payload.label != label {
+            continue;
+        }
+        return if payload.state == "ready" {
+            Ok(())
+        } else {
+            Err(payload)
+        };
+    }
+}
+
+async fn smoke_secondary_window(
+    app_handle: &tauri::AppHandle,
+    receiver: &mut tokio::sync::broadcast::Receiver<SecondaryWindowReadyPayload>,
+    label: &str,
+) -> SecondaryWindowSmokeResult {
+    let mut result = SecondaryWindowSmokeResult {
+        label: label.to_string(),
+        ready: false,
+        visible: false,
+        reused: false,
+        restored: false,
+        focused: false,
+        closed: false,
+        stage: "open".to_string(),
+        error: None,
+    };
+    let opened = match label {
+        SETTINGS_WINDOW_LABEL => open_settings_window(app_handle),
+        TYPING_INVADERS_WINDOW_LABEL => open_typing_invaders_window(app_handle),
+        KEYBOARD_SELF_TEST_WINDOW_LABEL => open_keyboard_self_test_window(app_handle, "qwerty"),
+        _ => Err(format!("unknown secondary window label: {label}")),
+    };
+    if let Err(error) = opened {
+        result.error = Some(error);
+        return result;
+    }
+
+    result.stage = "readiness".to_string();
+    if let Err(failure) = wait_for_secondary_window(receiver, label).await {
+        result.stage = failure.stage;
+        result.error = Some(
+            failure
+                .error
+                .unwrap_or_else(|| format!("{label} readiness failed")),
+        );
+        if let Some(window) = app_handle.get_webview_window(label) {
+            let _ = window.destroy();
+        }
+        return result;
+    }
+    result.ready = true;
+    let Some(window) = app_handle.get_webview_window(label) else {
+        result.error = Some(format!("{label} disappeared after readiness"));
+        return result;
+    };
+    result.stage = "visible".to_string();
+    result.visible = window.is_visible().unwrap_or(false);
+    if !result.visible {
+        result.error = Some(format!("{label} is not visible"));
+        let _ = window.destroy();
+        return result;
+    }
+
+    result.stage = "reuse".to_string();
+    let reused = match label {
+        SETTINGS_WINDOW_LABEL => open_settings_window(app_handle),
+        TYPING_INVADERS_WINDOW_LABEL => open_typing_invaders_window(app_handle),
+        KEYBOARD_SELF_TEST_WINDOW_LABEL => open_keyboard_self_test_window(app_handle, "qwerty"),
+        _ => unreachable!(),
+    };
+    result.reused = reused.is_ok() && app_handle.get_webview_window(label).is_some();
+    if !result.reused {
+        result.error = Some(
+            reused
+                .err()
+                .unwrap_or_else(|| format!("{label} was not reused")),
+        );
+        let _ = window.destroy();
+        return result;
+    }
+
+    result.stage = "restore".to_string();
+    if let Err(error) = window.minimize() {
+        result.error = Some(format!("failed to minimize {label}: {error}"));
+        let _ = window.destroy();
+        return result;
+    }
+    let restored = match label {
+        SETTINGS_WINDOW_LABEL => open_settings_window(app_handle),
+        TYPING_INVADERS_WINDOW_LABEL => open_typing_invaders_window(app_handle),
+        KEYBOARD_SELF_TEST_WINDOW_LABEL => open_keyboard_self_test_window(app_handle, "qwerty"),
+        _ => unreachable!(),
+    };
+    for _ in 0..20 {
+        result.restored = restored.is_ok() && !window.is_minimized().unwrap_or(true);
+        result.focused = window.is_focused().unwrap_or(false);
+        if result.restored && result.focused {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    if !result.restored || !result.focused {
+        result.stage = "focus".to_string();
+        result.error = Some(format!("{label} did not restore and focus"));
+    }
+    if result.error.is_none() {
+        result.stage = "close".to_string();
+    }
+    if let Err(error) = window.destroy() {
+        result.error = Some(format!("failed to close {label}: {error}"));
+        return result;
+    }
+    for _ in 0..20 {
+        if app_handle.get_webview_window(label).is_none() {
+            result.closed = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    if !result.closed {
+        result.error = Some(format!("{label} did not close cleanly"));
+    } else if result.error.is_none() {
+        result.stage = "complete".to_string();
+    }
+    result
+}
+
+#[tauri::command]
+async fn run_secondary_window_smoke(
+    app_handle: tauri::AppHandle,
+) -> Result<QualitySmokeReport, String> {
+    let sender = app_handle
+        .state::<SecondaryWindowReadinessState>()
+        .sender
+        .clone();
+    let mut receiver = sender.subscribe();
+    let mut windows = Vec::new();
+    for label in [
+        SETTINGS_WINDOW_LABEL,
+        TYPING_INVADERS_WINDOW_LABEL,
+        KEYBOARD_SELF_TEST_WINDOW_LABEL,
+    ] {
+        windows.push(smoke_secondary_window(&app_handle, &mut receiver, label).await);
+    }
+    let passed = windows.iter().all(|result| result.error.is_none());
+    let report = QualitySmokeReport {
+        schema_version: 1,
+        platform: std::env::consts::OS.to_string(),
+        passed,
+        windows,
+    };
+    if let Ok(path) = std::env::var("KEYBOARD_HELPER_SMOKE_REPORT") {
+        if let Ok(json) = serde_json::to_string_pretty(&report) {
+            let _ = std::fs::write(path, json);
+        }
+    }
+    let exit_handle = app_handle.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(250)).await;
+        exit_handle.exit(if passed { 0 } else { 1 });
+    });
+    Ok(report)
+}
+
+#[tauri::command]
 fn start_keyboard_listener(app_handle: tauri::AppHandle, state: State<KeyboardListenerState>) {
     // Если уже запущен — второй раз не стартуем
     if state.is_running.swap(true, Ordering::SeqCst) {
@@ -984,6 +1235,7 @@ fn main() {
         .manage(BleLayerSyncTauriState::default())
         .manage(MacosInputSourceTauriState::default())
         .manage(OverlayGeometryState::default())
+        .manage(SecondaryWindowReadinessState::default())
         .setup(|app| {
             build_tray(app.handle())?;
             #[cfg(target_os = "macos")]
@@ -1020,6 +1272,9 @@ fn main() {
             open_typing_invaders,
             open_settings,
             open_keyboard_self_test,
+            secondary_window_ready,
+            quality_smoke_requested,
+            run_secondary_window_smoke,
             read_config_state,
             save_config,
             read_layout_file,
