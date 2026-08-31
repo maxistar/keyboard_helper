@@ -437,32 +437,12 @@ async fn watch_layers(
                         .as_ref()
                         .is_some_and(|characteristic| notification.uuid == characteristic.uuid)
                     {
-                        match decode_frame(&notification.value) {
-                            Ok(frame) => {
-                                if let SequenceObservation::Gap {
-                                    expected,
-                                    actual,
-                                    distance,
-                                } = sequence.observe(&frame)
-                                {
-                                    emit_keyboard_diagnostic(
-                                        app_handle,
-                                        layout_key,
-                                        "sequence-gap",
-                                        format!(
-                                            "BLE event sequence gap: expected {expected}, received {actual} ({distance} dropped)."
-                                        ),
-                                    )?;
-                                }
-                                emit_keyboard_event(app_handle, layout_key, frame)?;
-                            }
-                            Err(error) => emit_keyboard_diagnostic(
-                                app_handle,
-                                layout_key,
-                                "invalid-frame",
-                                format!("Rejected BLE keyboard event frame: {error}"),
-                            )?,
-                        }
+                        process_keyboard_event_notification(
+                            app_handle,
+                            layout_key,
+                            &mut sequence,
+                            &notification.value,
+                        )?;
                     } else if keyboard
                         .battery_char
                         .as_ref()
@@ -474,32 +454,64 @@ async fn watch_layers(
             }
             #[cfg(target_vendor = "apple")]
             KeyboardHandle::Macos(keyboard) => {
+                let enhanced =
+                    features.capabilities.is_some() && keyboard.supports_event_notifications();
                 emit_keyboard_status(
                     app_handle,
                     layout_key,
                     "connected",
-                    "stock",
-                    Some("extension-event-stream-platform-unavailable".into()),
-                    false,
-                    false,
-                    None,
-                    false,
-                    false,
+                    if enhanced {
+                        "enhanced"
+                    } else if features.extension_present {
+                        "unsupported"
+                    } else {
+                        "stock"
+                    },
+                    (!enhanced).then(|| {
+                        if features.extension_present {
+                            "extension-event-stream-unavailable".into()
+                        } else {
+                            "extension-capabilities-unavailable".into()
+                        }
+                    }),
+                    features.capabilities.is_some(),
+                    enhanced,
+                    features.capabilities.clone(),
+                    features.battery_available,
+                    features.device_information_available,
                 )?;
-                keyboard.start_notifications()?;
+                keyboard.start_notifications(features.capabilities.is_some())?;
+                let mut sequence = SequenceTracker::default();
                 while state.is_current(generation) {
                     process_command(&command_receiver, &mut pending, generation, |layer| {
                         std::future::ready(keyboard.write_active_layer(layer))
                     })
                     .await;
                     expire_pending(&mut pending);
-                    if let Some(layer) = keyboard.wait_for_notification_layer_timeout(
+                    let Some(notification) = keyboard.wait_for_notification_timeout(
                         Duration::from_millis(NOTIFICATION_POLL_TIMEOUT_MS),
-                    )? {
-                        confirm_pending(&mut pending, layer);
-                        if layer != last_layer {
-                            emit_layer(app_handle, layout_key, layer)?;
-                            last_layer = layer;
+                    )?
+                    else {
+                        continue;
+                    };
+                    match notification {
+                        ble_layer_macos::Notification::Layer(layer) => {
+                            confirm_pending(&mut pending, layer);
+                            if layer != last_layer {
+                                emit_layer(app_handle, layout_key, layer)?;
+                                last_layer = layer;
+                            }
+                        }
+                        ble_layer_macos::Notification::KeyboardEvent(value) => {
+                            process_keyboard_event_notification(
+                                app_handle,
+                                layout_key,
+                                &mut sequence,
+                                &value,
+                            )?;
+                        }
+                        ble_layer_macos::Notification::Battery(value) => {
+                            emit_battery(app_handle, layout_key, decode_battery(&value)?)?;
                         }
                     }
                 }
@@ -840,7 +852,24 @@ async fn inspect_keyboard_features(handle: &KeyboardHandle) -> Result<BtleKeyboa
             })
         }
         #[cfg(target_vendor = "apple")]
-        KeyboardHandle::Macos(_) => Ok(BtleKeyboardFeatures::default()),
+        KeyboardHandle::Macos(keyboard) => {
+            let extension_present = keyboard.has_capabilities_characteristic();
+            let capabilities = match keyboard.read_capabilities() {
+                Ok(Some(value)) => decode_capabilities(&value).ok(),
+                Ok(None) | Err(_) => None,
+            };
+            let mut battery_level = None;
+            if let Ok(Some(value)) = keyboard.read_battery() {
+                battery_level = Some(decode_battery(&value)?);
+            }
+            Ok(BtleKeyboardFeatures {
+                capabilities,
+                extension_present,
+                battery_available: keyboard.has_battery_characteristic(),
+                battery_level,
+                device_information_available: keyboard.has_device_information_service(),
+            })
+        }
     }
 }
 
@@ -904,6 +933,40 @@ fn decode_battery(data: &[u8]) -> Result<u8> {
         return Err(anyhow!("Invalid Battery Level {level}"));
     }
     Ok(level)
+}
+
+fn process_keyboard_event_notification(
+    app_handle: &AppHandle,
+    layout_key: &str,
+    sequence: &mut SequenceTracker,
+    value: &[u8],
+) -> Result<()> {
+    match decode_frame(value) {
+        Ok(frame) => {
+            if let SequenceObservation::Gap {
+                expected,
+                actual,
+                distance,
+            } = sequence.observe(&frame)
+            {
+                emit_keyboard_diagnostic(
+                    app_handle,
+                    layout_key,
+                    "sequence-gap",
+                    format!(
+                        "BLE event sequence gap: expected {expected}, received {actual} ({distance} dropped)."
+                    ),
+                )?;
+            }
+            emit_keyboard_event(app_handle, layout_key, frame)
+        }
+        Err(error) => emit_keyboard_diagnostic(
+            app_handle,
+            layout_key,
+            "invalid-frame",
+            format!("Rejected BLE keyboard event frame: {error}"),
+        ),
+    }
 }
 
 fn emit_layer(app_handle: &AppHandle, layout_key: &str, layer: u32) -> Result<()> {
