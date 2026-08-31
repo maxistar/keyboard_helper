@@ -21,6 +21,31 @@ test("automatic fallback and stock ZMK limitations remain visible", () => {
     { mode: "stock", reason: "extension-capabilities-unavailable" },
   );
   assert.equal(status.summary, "Active: System listener");
-  assert.equal(status.detail, "stock ZMK · ble-capabilities-unavailable");
+  assert.equal(status.detail, "stock ZMK · extension-capabilities-unavailable");
   assert.equal(status.battery, "Battery unavailable");
+});
+
+test("capability read diagnostics remain visible in unsupported mode", () => {
+  const reason = "extension-capabilities-invalid: InvalidCapabilitiesLength(3); received 3 bytes [01 00 77]";
+  const status = formatBleKeyboardStatus(
+    { effectiveSource: "system", reason },
+    { mode: "unsupported", reason },
+    87,
+  );
+  assert.equal(status.detail, `unsupported extension · ${reason}`);
+  assert.equal(status.battery, "Battery 87%");
+});
+
+test("fresh backend diagnostics override stale input-source fallback reasons", () => {
+  const status = formatBleKeyboardStatus(
+    { effectiveSource: "system", reason: "extension-event-stream-unavailable" },
+    {
+      mode: "unsupported",
+      reason: "extension-event-subscribe-failed: insufficient encryption",
+    },
+  );
+  assert.equal(
+    status.detail,
+    "unsupported extension · extension-event-subscribe-failed: insufficient encryption",
+  );
 });

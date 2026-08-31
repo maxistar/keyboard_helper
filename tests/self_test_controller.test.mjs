@@ -211,3 +211,81 @@ test("empty plans do not start and stopping disposes session results", () => {
   assert.equal(controller.getSnapshot().phase, "setup");
   assert.deepEqual(controller.getSnapshot().results, {});
 });
+
+test("BLE plans include every physical position and firmware-resolved combos", () => {
+  const definition = {
+    name: "BLE fixture",
+    keySize: { w: 40, h: 40, gap: 4 },
+    keyPositions: [{ row: 0, col: 0 }, { row: 0, col: 1 }],
+    combos: [{ id: 9, positions: [0, 1], code: "Escape" }],
+  };
+  const plan = buildTestPlan({
+    layoutKey: "ble-fixture",
+    definition,
+    layers: [[null, ["A", "KeyA"]]],
+    layerNames: ["Base"],
+    inputSource: "ble",
+  });
+  assert.deepEqual(plan.testableIndexes, [0, 1, 2]);
+  assert.equal(plan.entries[0].kind, "key");
+  assert.equal(plan.entries[2].kind, "combo");
+  assert.equal(plan.entries[2].comboId, 9);
+});
+
+test("BLE physical key events pass the requested position and diagnose a wrong key", () => {
+  const matching = createSelfTestController();
+  matching.start(onlyPosition(fixture(), 1));
+  matching.handlePhysicalKey(1, "down");
+  assert.equal(matching.getSnapshot().phase, "physical-key-active");
+  matching.handlePhysicalKey(1, "up");
+  assert.equal(matching.getSnapshot().phase, "complete");
+  assert.equal(matching.getSnapshot().counts.passed, 1);
+
+  const wrong = createSelfTestController();
+  wrong.start(onlyPosition(fixture(), 1));
+  wrong.handlePhysicalKey(2, "down");
+  assert.equal(wrong.getSnapshot().phase, "mismatch");
+  assert.equal(wrong.getSnapshot().diagnostics.at(-1).code, "unexpected-ble-key");
+});
+
+test("BLE combo events pass only matching metadata and retain unmatched diagnostics", () => {
+  const definition = {
+    name: "Combo fixture",
+    keySize: { w: 40, h: 40, gap: 4 },
+    keyPositions: [{ row: 0, col: 0 }, { row: 0, col: 1 }],
+    combos: [{ id: 9, positions: [0, 1], code: "Escape" }],
+  };
+  const plan = buildTestPlan({
+    layoutKey: "combo-fixture",
+    definition,
+    layers: [[["A", "KeyA"], ["B", "KeyB"]]],
+    layerNames: ["Base"],
+    inputSource: "ble",
+    onlyIndexes: [2],
+  });
+  const controller = createSelfTestController();
+  controller.start(plan);
+  controller.handleCombo(77, [4, 5], "down");
+  assert.equal(controller.getSnapshot().counts.passed, 0);
+  assert.equal(controller.getSnapshot().diagnostics.at(-1).code, "unmatched-ble-combo");
+  controller.handlePhysicalKey(0, "down");
+  controller.handlePhysicalKey(1, "down");
+  controller.handleCombo(9, [0, 1], "down");
+  assert.equal(controller.getSnapshot().phase, "waiting-clean");
+  controller.handlePhysicalKey(0, "up");
+  controller.handlePhysicalKey(1, "up");
+  assert.equal(controller.getSnapshot().phase, "complete");
+  assert.equal(controller.getSnapshot().counts.passed, 1);
+});
+
+test("BLE fallback clears physical state, records the transition, and rearms the current step", () => {
+  const controller = createSelfTestController();
+  controller.start(onlyPosition(fixture(), 1));
+  controller.handlePhysicalKey(1, "down");
+  assert.deepEqual(controller.getSnapshot().pressedPositions, [1]);
+  controller.handleSourceTransition("ble", "system", "ble-disconnected");
+  const snapshot = controller.getSnapshot();
+  assert.equal(snapshot.phase, "waiting-down");
+  assert.deepEqual(snapshot.pressedPositions, []);
+  assert.equal(snapshot.diagnostics.at(-1).code, "ble-fallback");
+});

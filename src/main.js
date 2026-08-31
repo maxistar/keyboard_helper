@@ -37,6 +37,14 @@ let comboBordersByCode = new Map();
 let comboBordersById = new Map();
 let comboBorderEls = [];
 let layoutLoadErrors = [];
+let selfTestSourceStateSubscribed = false;
+
+function publishSelfTestSourceState(status) {
+  if (!selfTestSourceStateSubscribed || !window.__TAURI__?.event?.emitTo) return;
+  window.__TAURI__.event
+    .emitTo("keyboard-self-test", "self-test-source-state", status)
+    .catch(() => { selfTestSourceStateSubscribed = false; });
+}
 
 async function loadLayoutDefinition(key, source) {
   // source: true (builtin) or string path
@@ -821,6 +829,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     onStatusChange: (status) => {
       highlightingStatus = status;
       renderBleKeyboardStatus();
+      publishSelfTestSourceState(status);
     },
   });
   bleHighlightController = createBleHighlightController({
@@ -987,6 +996,13 @@ window.addEventListener("DOMContentLoaded", async () => {
         selfTestOverlayPresentation.update(event.payload);
       })
       .catch((err) => console.error("Failed to listen self-test-overlay-state:", err));
+
+    tauri.event
+      .listen("self-test-source-request", () => {
+        selfTestSourceStateSubscribed = true;
+        publishSelfTestSourceState(inputSourceController.getSnapshot());
+      })
+      .catch((err) => console.error("Failed to listen self-test-source-request:", err));
 
     tauri.event
       .listen("layout_selected", (e) => {

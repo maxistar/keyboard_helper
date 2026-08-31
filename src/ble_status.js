@@ -12,7 +12,7 @@ export function formatBleKeyboardStatus(inputStatus, bleStatus, batteryLevel = n
       : bleStatus?.mode === "unsupported"
         ? "unsupported extension"
         : "not connected";
-  const reason = inputStatus?.reason ?? bleStatus?.reason ?? null;
+  const reason = bleStatus?.reason ?? inputStatus?.reason ?? null;
   return Object.freeze({
     summary: `Active: ${effective}`,
     detail: reason ? `${mode} · ${reason}` : mode,

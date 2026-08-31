@@ -33,6 +33,11 @@ pub enum Notification {
     Battery(Vec<u8>),
 }
 
+pub struct NotificationSubscriptions {
+    pub events: bool,
+    pub event_issue: Option<String>,
+}
+
 pub struct ConnectedKeyboard {
     _delegate: Retained<CoreBluetoothDelegate>,
     _manager: Retained<CBCentralManager>,
@@ -101,13 +106,6 @@ impl ConnectedKeyboard {
         self.capabilities_char.is_some()
     }
 
-    pub fn supports_event_notifications(&self) -> bool {
-        self.event_char.as_ref().is_some_and(|characteristic| {
-            unsafe { characteristic.properties() }
-                .contains(CBCharacteristicProperties::CBCharacteristicPropertyNotify)
-        })
-    }
-
     pub fn has_battery_characteristic(&self) -> bool {
         self.battery_char.is_some()
     }
@@ -159,34 +157,45 @@ impl ConnectedKeyboard {
         .map_err(|error| anyhow!(error))
     }
 
-    pub fn start_notifications(&self, enable_events: bool) -> Result<()> {
-        self.start_notification(&self.layer_char, self.layer_char_uuid, true)?;
-        if enable_events {
+    pub fn start_notifications(&self, enable_events: bool) -> Result<NotificationSubscriptions> {
+        self.start_notification(&self.layer_char, self.layer_char_uuid)?;
+        let (events, event_issue) = if enable_events {
             if let Some(characteristic) = &self.event_char {
-                self.start_notification(characteristic, self.event_char_uuid, true)?;
+                match self.start_notification(characteristic, self.event_char_uuid) {
+                    Ok(()) => (true, None),
+                    Err(error) => (
+                        false,
+                        Some(super::event_subscription_issue(&format!("{error:#}"))),
+                    ),
+                }
+            } else {
+                (
+                    false,
+                    Some("extension-event-characteristic-unavailable".into()),
+                )
             }
-        }
+        } else {
+            (false, None)
+        };
         if let Some(characteristic) = &self.battery_char {
-            self.start_notification(characteristic, self.battery_char_uuid, false)?;
+            let _ = self.start_notification(characteristic, self.battery_char_uuid);
         }
-        Ok(())
+        Ok(NotificationSubscriptions {
+            events,
+            event_issue,
+        })
     }
 
     fn start_notification(
         &self,
         characteristic: &CBCharacteristic,
         characteristic_uuid: Uuid,
-        required: bool,
     ) -> Result<()> {
         let properties = unsafe { characteristic.properties() };
         if !properties.contains(CBCharacteristicProperties::CBCharacteristicPropertyNotify) {
-            return if required {
-                Err(anyhow!(
-                    "Characteristic {characteristic_uuid} does not support notifications"
-                ))
-            } else {
-                Ok(())
-            };
+            return Err(anyhow!(
+                "Characteristic {characteristic_uuid} does not support notifications"
+            ));
         }
 
         if unsafe { characteristic.isNotifying() } {
@@ -198,7 +207,7 @@ impl ConnectedKeyboard {
                 .setNotifyValue_forCharacteristic(true, characteristic);
         }
 
-        wait_for_event_preserving(
+        let result = wait_for_event_preserving(
             &self.events,
             &self.deferred_events,
             NOTIFY_STATE_TIMEOUT,
@@ -211,10 +220,11 @@ impl ConnectedKeyboard {
                 }
                 _ => None,
             },
-        )?
-        .map_err(|error| anyhow!(error))?;
+        );
 
-        Ok(())
+        result?
+            .map_err(|error| anyhow!(error))
+            .with_context(|| format!("failed to enable notifications for {characteristic_uuid}"))
     }
 
     pub fn wait_for_notification_timeout(&self, timeout: Duration) -> Result<Option<Notification>> {
@@ -257,6 +267,16 @@ impl ConnectedKeyboard {
                 Ok(Some(Notification::Battery(
                     result.map_err(|error| anyhow!(error))?,
                 )))
+            }
+            DelegateEvent::Disconnected(peripheral_id, error)
+                if peripheral_id == self.peripheral_id =>
+            {
+                Err(anyhow!(match error {
+                    Some(error) if !error.is_empty() => {
+                        format!("Bluetooth peripheral disconnected: {error}")
+                    }
+                    _ => "Bluetooth peripheral disconnected".to_string(),
+                }))
             }
             _ => Ok(None),
         }
@@ -432,6 +452,7 @@ enum DelegateEvent {
     ManagerState(CBManagerState),
     Connected(Uuid),
     ConnectionFailed(Uuid, String),
+    Disconnected(Uuid, Option<String>),
     ServicesDiscovered(Uuid, Result<(), String>),
     CharacteristicsDiscovered(Uuid, Uuid, Result<(), String>),
     NotificationState(Uuid, Uuid, Result<(), String>),
@@ -483,6 +504,21 @@ declare_class!(
                 self.send(DelegateEvent::ConnectionFailed(
                     id,
                     localized_description(error),
+                ));
+            }
+        }
+
+        #[method(centralManager:didDisconnectPeripheral:error:)]
+        fn central_manager_did_disconnect_peripheral_error(
+            &self,
+            _central: &CBCentralManager,
+            peripheral: &CBPeripheral,
+            error: Option<&NSError>,
+        ) {
+            if let Ok(id) = nsuuid_to_uuid(unsafe { peripheral.identifier() }.as_ref()) {
+                self.send(DelegateEvent::Disconnected(
+                    id,
+                    error.map(|error| error.localizedDescription().to_string()),
                 ));
             }
         }
@@ -723,8 +759,16 @@ fn nsuuid_to_uuid(uuid: &objc2_foundation::NSUUID) -> Result<Uuid> {
 }
 
 fn cbuuid_to_uuid(uuid: &CBUUID) -> Result<Uuid> {
-    Uuid::parse_str(&unsafe { uuid.UUIDString() }.to_string())
-        .context("invalid service/characteristic UUID")
+    parse_cbuuid_string(&unsafe { uuid.UUIDString() }.to_string())
+}
+
+fn parse_cbuuid_string(value: &str) -> Result<Uuid> {
+    let normalized = match value.len() {
+        4 => format!("0000{value}-0000-1000-8000-00805f9b34fb"),
+        8 => format!("{value}-0000-1000-8000-00805f9b34fb"),
+        _ => value.to_string(),
+    };
+    Uuid::parse_str(&normalized).context("invalid service/characteristic UUID")
 }
 
 fn uuid_to_cbuuid(uuid: Uuid) -> Retained<CBUUID> {
@@ -754,3 +798,32 @@ unsafe extern "C" {
 
 #[cfg_attr(target_os = "macos", link(name = "AppKit", kind = "framework"))]
 unsafe extern "C" {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn expands_sig_assigned_cbuuid_strings() {
+        assert_eq!(
+            parse_cbuuid_string("180F").unwrap(),
+            Uuid::parse_str(BATTERY_SERVICE_UUID).unwrap()
+        );
+        assert_eq!(
+            parse_cbuuid_string("2A19").unwrap(),
+            Uuid::parse_str(BATTERY_LEVEL_UUID).unwrap()
+        );
+        assert_eq!(
+            parse_cbuuid_string("0000180A").unwrap(),
+            Uuid::parse_str(DEVICE_INFORMATION_SERVICE_UUID).unwrap()
+        );
+    }
+
+    #[test]
+    fn preserves_custom_128_bit_cbuuid_strings() {
+        assert_eq!(
+            parse_cbuuid_string("B34A0004-E782-4706-8F9C-6C056C416507").unwrap(),
+            Uuid::parse_str(EVENT_UUID).unwrap()
+        );
+    }
+}

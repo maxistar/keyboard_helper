@@ -2,18 +2,21 @@ import { loadLayoutCatalog, normalizeLayerData } from "./layout_catalog.js";
 import { buildTestPlan, createSelfTestController } from "./self_test/controller.js";
 import { createOverlayPresentationPayload } from "./self_test/overlay_presentation.js";
 import { initializeSecondaryWindow, SECONDARY_WINDOWS } from "./secondary_window_ready.js";
+import { normalizeBleKeyboardFrame, normalizeSystemKeyEvent } from "./input_events.js";
 
 const elements = Object.fromEntries([
   "setupView", "activeView", "resultsView", "layoutSelect", "layerSelect", "catalogErrors", "testability",
   "startButton", "selectionLabel", "progressText", "progressBar", "instruction", "expectedCode",
   "receivedCode", "mismatchActions", "waitingActions", "retryButton", "problemButton", "skipButton", "stopButton",
   "resultCounts", "problemList", "retestButton", "anotherLayerButton", "closeButton", "closeResultsButton", "liveStatus",
+  "transportDiagnostics",
 ].map((id) => [id, document.getElementById(id)]));
 
 const tauri = window.__TAURI__;
 let catalog = null;
 let selectedLayoutKey = null;
 let selectedLayerIndex = 0;
+let effectiveInputSource = "system";
 
 async function readConfig() {
   if (!tauri?.core?.invoke) return null;
@@ -27,6 +30,19 @@ function currentData() {
   return { definition, ...normalized };
 }
 
+function buildSelectedPlan() {
+  const { definition, layers, names } = currentData();
+  if (!definition) return null;
+  return buildTestPlan({
+    layoutKey: selectedLayoutKey,
+    definition,
+    layers,
+    layerNames: names,
+    layerIndex: selectedLayerIndex,
+    inputSource: effectiveInputSource,
+  });
+}
+
 function renderSetup() {
   const { definition, layers, names } = currentData();
   elements.layerSelect.innerHTML = "";
@@ -36,10 +52,13 @@ function renderSetup() {
   selectedLayerIndex = Math.min(selectedLayerIndex, Math.max(0, layers.length - 1));
   elements.layerSelect.value = String(selectedLayerIndex);
   elements.layerSelect.disabled = !layers.length;
-  const plan = definition ? buildTestPlan({ layoutKey: selectedLayoutKey, definition, layers, layerNames: names, layerIndex: selectedLayerIndex }) : null;
+  const plan = buildSelectedPlan();
   const testable = plan?.testableIndexes.length ?? 0;
-  const notTestable = plan?.entries.filter((entry) => !entry.descriptor.supported).length ?? 0;
-  elements.testability.textContent = plan ? `${testable} guided positions · ${notTestable} not testable from HID events` : "No compatible layout is available.";
+  const notTestable = plan?.entries.filter((entry) => entry.kind === "key" && !entry.testable).length ?? 0;
+  const combos = plan?.entries.filter((entry) => entry.kind === "combo").length ?? 0;
+  elements.testability.textContent = plan
+    ? `${testable} guided items${combos ? ` · ${combos} firmware combos` : ""} · source: ${effectiveInputSource === "ble" ? "BLE physical events" : "global HID"}${notTestable ? ` · ${notTestable} not testable` : ""}`
+    : "No compatible layout is available.";
   elements.startButton.disabled = testable === 0;
   elements.selectionLabel.textContent = definition ? `${definition.name} · ${names[selectedLayerIndex] ?? "Layer"}` : "";
 }
@@ -69,6 +88,10 @@ function renderResults(snapshot) {
 }
 
 function render(snapshot) {
+  const latestDiagnostic = snapshot.diagnostics?.at(-1);
+  elements.transportDiagnostics.textContent = latestDiagnostic
+    ? `BLE diagnostic: ${latestDiagnostic.code}${latestDiagnostic.message ? ` — ${latestDiagnostic.message}` : ""}`
+    : "";
   const setup = snapshot.phase === "setup";
   const complete = snapshot.phase === "complete";
   elements.setupView.hidden = !setup;
@@ -105,9 +128,8 @@ const controller = createSelfTestController({
 });
 
 function startSelectedPlan() {
-  const { definition, layers, names } = currentData();
-  if (!definition) return;
-  controller.start(buildTestPlan({ layoutKey: selectedLayoutKey, definition, layers, layerNames: names, layerIndex: selectedLayerIndex }));
+  const plan = buildSelectedPlan();
+  if (plan) controller.start(plan);
 }
 
 async function closeWindow() {
@@ -145,7 +167,33 @@ async function initialize() {
     elements.catalogErrors.textContent = catalog.errors.join(" ");
     renderSetup();
     if (tauri?.event?.listen) {
-      await tauri.event.listen("key_event", (event) => controller.handleKey(event.payload?.key, event.payload?.event_type));
+      await tauri.event.listen("key_event", (event) => {
+        if (effectiveInputSource !== "system") return;
+        const input = normalizeSystemKeyEvent(event.payload);
+        if (input) controller.handleKey(input.code, input.action);
+      });
+      await tauri.event.listen("ble_keyboard_event", (event) => {
+        if (effectiveInputSource !== "ble" || event.payload?.layout !== selectedLayoutKey) return;
+        const input = normalizeBleKeyboardFrame(event.payload?.frame);
+        if (input?.kind === "key") controller.handlePhysicalKey(input.position, input.action);
+        if (input?.kind === "combo") controller.handleCombo(input.comboId, input.positions, input.action);
+        if (input?.kind === "diagnostic") controller.reportDiagnostic("firmware-diagnostic", input);
+      });
+      await tauri.event.listen("ble_keyboard_diagnostic", (event) => {
+        if (event.payload?.layout !== selectedLayoutKey) return;
+        controller.reportDiagnostic(event.payload?.code ?? "ble-diagnostic", {
+          message: event.payload?.message,
+        });
+      });
+      await tauri.event.listen("self-test-source-state", (event) => {
+        const next = event.payload?.effectiveSource === "ble" ? "ble" : "system";
+        if (next === effectiveInputSource) return;
+        const previous = effectiveInputSource;
+        effectiveInputSource = next;
+        controller.handleSourceTransition(previous, next, event.payload?.reason);
+        if (controller.getSnapshot().phase === "setup") renderSetup();
+      });
+      await tauri.event.emitTo("overlay", "self-test-source-request", {});
     }
     publishOverlay(controller.getSnapshot());
   } catch (error) {

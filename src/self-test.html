@@ -20,8 +20,9 @@
         <label>Layer<select id="layerSelect" disabled></select></label>
       </div>
       <div id="catalogErrors" class="error-list" role="alert"></div>
+      <div id="transportDiagnostics" class="error-list" role="status" aria-live="polite"></div>
       <p id="testability" class="testability" role="status" aria-live="polite">Loading layouts…</p>
-      <div class="notice"><strong>Activate the selected layer and release all keys before starting.</strong> This test observes global HID events from any attached keyboard. Modifier chords pass only after the trigger and every modifier are released. It cannot diagnose the ZMK matrix, combos, macros, or hold-tap timing.</div>
+      <div class="notice"><strong>Activate the selected layer and release all keys before starting.</strong> A ready BLE event stream tests physical positions and firmware-resolved combos. Otherwise the test falls back to global HID events from any attached keyboard. Modifier chords pass only after the trigger and every modifier are released.</div>
       <button id="startButton" class="button primary" type="button" disabled>Start guided test</button>
     </section>
 
@@ -49,7 +50,7 @@
       <h2 id="resultsTitle">Test complete</h2>
       <div id="resultCounts" class="result-counts"></div>
       <ul id="problemList" class="problem-list"></ul>
-      <p class="notice">These results verify configured HID output only. Events may come from any attached keyboard and do not prove raw switch or matrix health.</p>
+      <p class="notice">Results identify whether the session used physical BLE telemetry or global HID fallback. Transport diagnostics remain visible above.</p>
       <div class="actions">
         <button id="retestButton" class="button primary" type="button">Retest problems</button>
         <button id="anotherLayerButton" class="button secondary" type="button">Test another layer</button>

@@ -15,8 +15,8 @@ use tokio::time::sleep;
 use uuid::Uuid;
 
 use crate::ble_keyboard_events::{
-    decode_capabilities, decode_frame, BleKeyboardCapabilities, DecodedBleKeyboardFrame,
-    SequenceObservation, SequenceTracker,
+    decode_capabilities, decode_frame, BleKeyboardCapabilities, BleKeyboardEvent,
+    DecodedBleKeyboardFrame, SequenceObservation, SequenceTracker,
 };
 
 #[cfg(target_vendor = "apple")]
@@ -27,6 +27,7 @@ const DEFAULT_SCAN_SECS: u64 = 2;
 const PROBE_TIMEOUT_SECS: u64 = 2;
 const NOTIFICATION_POLL_TIMEOUT_MS: u64 = 500;
 const COMMAND_CONFIRM_TIMEOUT_SECS: u64 = 4;
+const LAYER_CONFLICT_SETTLE_MS: u64 = 1_000;
 const CAPABILITIES_UUID: &str = "b34a0003-e782-4706-8f9c-6c056c416507";
 const EVENT_UUID: &str = "b34a0004-e782-4706-8f9c-6c056c416507";
 const BATTERY_LEVEL_UUID: &str = "00002a19-0000-1000-8000-00805f9b34fb";
@@ -50,6 +51,68 @@ struct PendingCommand {
     acceptable_layers: Vec<u32>,
     response: SyncSender<Result<(), String>>,
     deadline: Instant,
+}
+
+#[derive(Debug)]
+struct LayerReconciler {
+    legacy: u32,
+    stream: Option<u32>,
+    mismatch: Option<(u32, u32, Instant)>,
+    reported: Option<(u32, u32)>,
+}
+
+impl LayerReconciler {
+    fn new(legacy: u32) -> Self {
+        Self {
+            legacy,
+            stream: None,
+            mismatch: None,
+            reported: None,
+        }
+    }
+
+    fn observe_legacy(&mut self, layer: u32, now: Instant) {
+        self.legacy = layer;
+        self.reconcile(now);
+    }
+
+    fn observe_stream(&mut self, layer: u32, now: Instant) {
+        self.stream = Some(layer);
+        self.reconcile(now);
+    }
+
+    fn reconcile(&mut self, now: Instant) {
+        let Some(stream) = self.stream else {
+            return;
+        };
+        if self.legacy == stream {
+            self.mismatch = None;
+            self.reported = None;
+            return;
+        }
+        let pair = (self.legacy, stream);
+        if self
+            .mismatch
+            .as_ref()
+            .map(|(legacy, stream, _)| (*legacy, *stream))
+            != Some(pair)
+        {
+            self.mismatch = Some((self.legacy, stream, now));
+            self.reported = None;
+        }
+    }
+
+    fn take_stable_conflict(&mut self, now: Instant) -> Option<(u32, u32)> {
+        let (legacy, stream, since) = self.mismatch?;
+        let pair = (legacy, stream);
+        if now.duration_since(since) < Duration::from_millis(LAYER_CONFLICT_SETTLE_MS)
+            || self.reported == Some(pair)
+        {
+            return None;
+        }
+        self.reported = Some(pair);
+        Some(pair)
+    }
 }
 
 #[derive(Default)]
@@ -208,6 +271,7 @@ struct BtleKeyboard {
 #[derive(Default)]
 struct BtleKeyboardFeatures {
     capabilities: Option<BleKeyboardCapabilities>,
+    capability_issue: Option<String>,
     extension_present: bool,
     battery_available: bool,
     battery_level: Option<u8>,
@@ -334,13 +398,7 @@ async fn run_sync(
         } else {
             "stock"
         },
-        features.capabilities.is_none().then(|| {
-            if features.extension_present {
-                "extension-capabilities-unsupported".into()
-            } else {
-                "extension-capabilities-unavailable".into()
-            }
-        }),
+        capabilities_status_reason(&features),
         features.capabilities.is_some(),
         false,
         features.capabilities.clone(),
@@ -383,23 +441,33 @@ async fn watch_layers(
     command_receiver: Receiver<LayerCommand>,
 ) -> Result<()> {
     let mut pending: Option<PendingCommand> = None;
+    let mut layer_reconciler = LayerReconciler::new(last_layer);
     let watch_result: Result<()> = async {
         match keyboard {
             KeyboardHandle::Btle(keyboard) => {
-                let mut notifications =
+                let (mut notifications, event_subscribed, event_issue) =
                     notification_stream(&keyboard, features.capabilities.is_some()).await?;
-                let enhanced = features.capabilities.is_some()
-                    && keyboard.event_char.as_ref().is_some_and(|characteristic| {
-                        characteristic.properties.contains(CharPropFlags::NOTIFY)
-                    });
                 emit_keyboard_status(
                     app_handle,
                     layout_key,
                     "connected",
-                    if enhanced { "enhanced" } else { "stock" },
-                    (!enhanced).then(|| "extension-event-stream-unavailable".into()),
+                    if features.capabilities.is_some() {
+                        "enhanced"
+                    } else if features.extension_present {
+                        "unsupported"
+                    } else {
+                        "stock"
+                    },
+                    if features.capabilities.is_some() {
+                        (!event_subscribed).then(|| {
+                            event_issue
+                                .unwrap_or_else(|| "extension-event-stream-unavailable".into())
+                        })
+                    } else {
+                        capabilities_status_reason(&features)
+                    },
                     features.capabilities.is_some(),
-                    enhanced,
+                    event_subscribed,
                     features.capabilities.clone(),
                     features.battery_available,
                     features.device_information_available,
@@ -420,13 +488,17 @@ async fn watch_layers(
                     let Some(notification) = (match next {
                         Ok(Some(notification)) => Some(notification),
                         Ok(None) => return Err(anyhow!("BLE notification stream ended")),
-                        Err(_) => None,
+                        Err(_) => {
+                            report_layer_conflict(app_handle, layout_key, &mut layer_reconciler)?;
+                            None
+                        }
                     }) else {
                         continue;
                     };
 
                     if notification.uuid == keyboard.layer_char.uuid {
                         let layer = decode_active_layer(&notification.value)?;
+                        layer_reconciler.observe_legacy(layer, Instant::now());
                         confirm_pending(&mut pending, layer);
                         if layer != last_layer {
                             emit_layer(app_handle, layout_key, layer)?;
@@ -437,12 +509,14 @@ async fn watch_layers(
                         .as_ref()
                         .is_some_and(|characteristic| notification.uuid == characteristic.uuid)
                     {
-                        process_keyboard_event_notification(
+                        if let Some(layer) = process_keyboard_event_notification(
                             app_handle,
                             layout_key,
                             &mut sequence,
                             &notification.value,
-                        )?;
+                        )? {
+                            layer_reconciler.observe_stream(layer, Instant::now());
+                        }
                     } else if keyboard
                         .battery_char
                         .as_ref()
@@ -450,37 +524,40 @@ async fn watch_layers(
                     {
                         emit_battery(app_handle, layout_key, decode_battery(&notification.value)?)?;
                     }
+                    report_layer_conflict(app_handle, layout_key, &mut layer_reconciler)?;
                 }
             }
             #[cfg(target_vendor = "apple")]
             KeyboardHandle::Macos(keyboard) => {
-                let enhanced =
-                    features.capabilities.is_some() && keyboard.supports_event_notifications();
+                let subscriptions =
+                    keyboard.start_notifications(features.capabilities.is_some())?;
                 emit_keyboard_status(
                     app_handle,
                     layout_key,
                     "connected",
-                    if enhanced {
+                    if features.capabilities.is_some() {
                         "enhanced"
                     } else if features.extension_present {
                         "unsupported"
                     } else {
                         "stock"
                     },
-                    (!enhanced).then(|| {
-                        if features.extension_present {
-                            "extension-event-stream-unavailable".into()
-                        } else {
-                            "extension-capabilities-unavailable".into()
-                        }
-                    }),
+                    if features.capabilities.is_some() {
+                        (!subscriptions.events).then(|| {
+                            subscriptions
+                                .event_issue
+                                .clone()
+                                .unwrap_or_else(|| "extension-event-stream-unavailable".into())
+                        })
+                    } else {
+                        capabilities_status_reason(&features)
+                    },
                     features.capabilities.is_some(),
-                    enhanced,
+                    subscriptions.events,
                     features.capabilities.clone(),
                     features.battery_available,
                     features.device_information_available,
                 )?;
-                keyboard.start_notifications(features.capabilities.is_some())?;
                 let mut sequence = SequenceTracker::default();
                 while state.is_current(generation) {
                     process_command(&command_receiver, &mut pending, generation, |layer| {
@@ -492,10 +569,12 @@ async fn watch_layers(
                         Duration::from_millis(NOTIFICATION_POLL_TIMEOUT_MS),
                     )?
                     else {
+                        report_layer_conflict(app_handle, layout_key, &mut layer_reconciler)?;
                         continue;
                     };
                     match notification {
                         ble_layer_macos::Notification::Layer(layer) => {
+                            layer_reconciler.observe_legacy(layer, Instant::now());
                             confirm_pending(&mut pending, layer);
                             if layer != last_layer {
                                 emit_layer(app_handle, layout_key, layer)?;
@@ -503,17 +582,20 @@ async fn watch_layers(
                             }
                         }
                         ble_layer_macos::Notification::KeyboardEvent(value) => {
-                            process_keyboard_event_notification(
+                            if let Some(layer) = process_keyboard_event_notification(
                                 app_handle,
                                 layout_key,
                                 &mut sequence,
                                 &value,
-                            )?;
+                            )? {
+                                layer_reconciler.observe_stream(layer, Instant::now());
+                            }
                         }
                         ble_layer_macos::Notification::Battery(value) => {
                             emit_battery(app_handle, layout_key, decode_battery(&value)?)?;
                         }
                     }
+                    report_layer_conflict(app_handle, layout_key, &mut layer_reconciler)?;
                 }
             }
         }
@@ -827,14 +909,18 @@ async fn inspect_keyboard_features(handle: &KeyboardHandle) -> Result<BtleKeyboa
     match handle {
         KeyboardHandle::Btle(keyboard) => {
             let extension_present = keyboard.capabilities_char.is_some();
-            let capabilities = if let Some(characteristic) = &keyboard.capabilities_char {
-                match keyboard.peripheral.read(characteristic).await {
-                    Ok(value) => decode_capabilities(&value).ok(),
-                    Err(_) => None,
-                }
-            } else {
-                None
-            };
+            let (capabilities, capability_issue) =
+                if let Some(characteristic) = &keyboard.capabilities_char {
+                    match keyboard.peripheral.read(characteristic).await {
+                        Ok(value) => inspect_capabilities_value(&value),
+                        Err(error) => (
+                            None,
+                            Some(format!("extension-capabilities-read-failed: {error}")),
+                        ),
+                    }
+                } else {
+                    (None, None)
+                };
             let mut battery_level = None;
             if let Some(characteristic) = &keyboard.battery_char {
                 if characteristic.properties.contains(CharPropFlags::READ) {
@@ -845,6 +931,7 @@ async fn inspect_keyboard_features(handle: &KeyboardHandle) -> Result<BtleKeyboa
             }
             Ok(BtleKeyboardFeatures {
                 capabilities,
+                capability_issue,
                 extension_present,
                 battery_available: keyboard.battery_char.is_some(),
                 battery_level,
@@ -854,9 +941,13 @@ async fn inspect_keyboard_features(handle: &KeyboardHandle) -> Result<BtleKeyboa
         #[cfg(target_vendor = "apple")]
         KeyboardHandle::Macos(keyboard) => {
             let extension_present = keyboard.has_capabilities_characteristic();
-            let capabilities = match keyboard.read_capabilities() {
-                Ok(Some(value)) => decode_capabilities(&value).ok(),
-                Ok(None) | Err(_) => None,
+            let (capabilities, capability_issue) = match keyboard.read_capabilities() {
+                Ok(Some(value)) => inspect_capabilities_value(&value),
+                Ok(None) => (None, None),
+                Err(error) => (
+                    None,
+                    Some(format!("extension-capabilities-read-failed: {error}")),
+                ),
             };
             let mut battery_level = None;
             if let Ok(Some(value)) = keyboard.read_battery() {
@@ -864,12 +955,46 @@ async fn inspect_keyboard_features(handle: &KeyboardHandle) -> Result<BtleKeyboa
             }
             Ok(BtleKeyboardFeatures {
                 capabilities,
+                capability_issue,
                 extension_present,
                 battery_available: keyboard.has_battery_characteristic(),
                 battery_level,
                 device_information_available: keyboard.has_device_information_service(),
             })
         }
+    }
+}
+
+fn inspect_capabilities_value(value: &[u8]) -> (Option<BleKeyboardCapabilities>, Option<String>) {
+    match decode_capabilities(value) {
+        Ok(capabilities) => (Some(capabilities), None),
+        Err(error) => {
+            let bytes = value
+                .iter()
+                .map(|byte| format!("{byte:02x}"))
+                .collect::<Vec<_>>()
+                .join(" ");
+            (
+                None,
+                Some(format!(
+                    "extension-capabilities-invalid: {error}; received {} bytes [{}]",
+                    value.len(),
+                    bytes
+                )),
+            )
+        }
+    }
+}
+
+fn capabilities_status_reason(features: &BtleKeyboardFeatures) -> Option<String> {
+    if features.capabilities.is_some() {
+        None
+    } else if let Some(issue) = &features.capability_issue {
+        Some(issue.clone())
+    } else if features.extension_present {
+        Some("extension-capabilities-unsupported".into())
+    } else {
+        Some("extension-capabilities-unavailable".into())
     }
 }
 
@@ -890,7 +1015,11 @@ async fn read_active_layer(handle: &KeyboardHandle) -> Result<u32> {
 async fn notification_stream(
     keyboard: &BtleKeyboard,
     enable_events: bool,
-) -> Result<impl futures_util::Stream<Item = ValueNotification> + Send> {
+) -> Result<(
+    impl futures_util::Stream<Item = ValueNotification> + Send,
+    bool,
+    Option<String>,
+)> {
     if !keyboard
         .layer_char
         .properties
@@ -903,19 +1032,46 @@ async fn notification_stream(
 
     let stream = keyboard.peripheral.notifications().await?;
     keyboard.peripheral.subscribe(&keyboard.layer_char).await?;
-    if enable_events {
+    let (event_subscribed, event_issue) = if enable_events {
         if let Some(characteristic) = &keyboard.event_char {
             if characteristic.properties.contains(CharPropFlags::NOTIFY) {
-                keyboard.peripheral.subscribe(characteristic).await?;
+                match keyboard.peripheral.subscribe(characteristic).await {
+                    Ok(()) => (true, None),
+                    Err(error) => (false, Some(event_subscription_issue(&format!("{error:#}")))),
+                }
+            } else {
+                (
+                    false,
+                    Some("extension-event-characteristic-does-not-notify".into()),
+                )
             }
+        } else {
+            (
+                false,
+                Some("extension-event-characteristic-unavailable".into()),
+            )
         }
-    }
+    } else {
+        (false, None)
+    };
     if let Some(characteristic) = &keyboard.battery_char {
         if characteristic.properties.contains(CharPropFlags::NOTIFY) {
-            keyboard.peripheral.subscribe(characteristic).await?;
+            let _ = keyboard.peripheral.subscribe(characteristic).await;
         }
     }
-    Ok(stream)
+    Ok((stream, event_subscribed, event_issue))
+}
+
+fn event_subscription_issue(detail: &str) -> String {
+    let lower = detail.to_ascii_lowercase();
+    if lower.contains("resources are insufficient")
+        || lower.contains("att error: 0x11")
+        || lower.contains("att error 0x11")
+    {
+        "extension-event-stream-busy: another BLE connection owns the event stream".into()
+    } else {
+        format!("extension-event-subscribe-failed: {detail}")
+    }
 }
 
 fn decode_active_layer(data: &[u8]) -> Result<u32> {
@@ -940,7 +1096,7 @@ fn process_keyboard_event_notification(
     layout_key: &str,
     sequence: &mut SequenceTracker,
     value: &[u8],
-) -> Result<()> {
+) -> Result<Option<u32>> {
     match decode_frame(value) {
         Ok(frame) => {
             if let SequenceObservation::Gap {
@@ -958,15 +1114,41 @@ fn process_keyboard_event_notification(
                     ),
                 )?;
             }
-            emit_keyboard_event(app_handle, layout_key, frame)
+            let layer = match &frame.event {
+                BleKeyboardEvent::Layer { layer, .. } => Some(u32::from(*layer)),
+                _ => None,
+            };
+            emit_keyboard_event(app_handle, layout_key, frame)?;
+            Ok(layer)
         }
-        Err(error) => emit_keyboard_diagnostic(
+        Err(error) => {
+            emit_keyboard_diagnostic(
+                app_handle,
+                layout_key,
+                "invalid-frame",
+                format!("Rejected BLE keyboard event frame: {error}"),
+            )?;
+            Ok(None)
+        }
+    }
+}
+
+fn report_layer_conflict(
+    app_handle: &AppHandle,
+    layout_key: &str,
+    reconciler: &mut LayerReconciler,
+) -> Result<()> {
+    if let Some((legacy, stream)) = reconciler.take_stable_conflict(Instant::now()) {
+        emit_keyboard_diagnostic(
             app_handle,
             layout_key,
-            "invalid-frame",
-            format!("Rejected BLE keyboard event frame: {error}"),
-        ),
+            "layer-conflict",
+            format!(
+                "BLE layer sources disagree: layer characteristic reports {legacy}, event stream reports {stream}."
+            ),
+        )?;
     }
+    Ok(())
 }
 
 fn emit_layer(app_handle: &AppHandle, layout_key: &str, layer: u32) -> Result<()> {
@@ -1081,6 +1263,65 @@ fn emit_battery(app_handle: &AppHandle, layout_key: &str, level: u8) -> Result<(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn maps_firmware_single_owner_rejection_to_busy_status() {
+        assert_eq!(
+            event_subscription_issue("Operation failed with ATT error: 0x11"),
+            "extension-event-stream-busy: another BLE connection owns the event stream"
+        );
+        assert_eq!(
+            event_subscription_issue("Resources are insufficient."),
+            "extension-event-stream-busy: another BLE connection owns the event stream"
+        );
+    }
+
+    #[test]
+    fn capability_probe_preserves_invalid_bytes_for_hardware_diagnostics() {
+        let (capabilities, issue) = inspect_capabilities_value(&[1, 0, 0x77]);
+        assert_eq!(capabilities, None);
+        assert_eq!(
+            issue.as_deref(),
+            Some(
+                "extension-capabilities-invalid: InvalidCapabilitiesLength(3); received 3 bytes [01 00 77]"
+            )
+        );
+
+        let (capabilities, issue) = inspect_capabilities_value(&[1, 0, 0x77, 0, 0x14, 1, 0, 0]);
+        assert!(capabilities.is_some());
+        assert_eq!(issue, None);
+    }
+
+    #[test]
+    fn layer_reconciliation_ignores_reordering_but_reports_stable_conflicts_once() {
+        let start = Instant::now();
+        let mut reconciler = LayerReconciler::new(1);
+        reconciler.observe_stream(2, start);
+        assert_eq!(
+            reconciler.take_stable_conflict(start + Duration::from_millis(999)),
+            None
+        );
+        reconciler.observe_legacy(2, start + Duration::from_millis(999));
+        assert_eq!(
+            reconciler.take_stable_conflict(start + Duration::from_secs(2)),
+            None
+        );
+
+        reconciler.observe_stream(3, start + Duration::from_secs(3));
+        assert_eq!(
+            reconciler.take_stable_conflict(start + Duration::from_secs(4)),
+            Some((2, 3))
+        );
+        assert_eq!(
+            reconciler.take_stable_conflict(start + Duration::from_secs(5)),
+            None
+        );
+        reconciler.observe_legacy(3, start + Duration::from_secs(5));
+        assert_eq!(
+            reconciler.take_stable_conflict(start + Duration::from_secs(6)),
+            None
+        );
+    }
 
     fn pending(
         layer: u32,

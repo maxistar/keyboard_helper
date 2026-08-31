@@ -9,27 +9,81 @@ function freezeEntry(entry) {
   });
 }
 
-export function buildTestPlan({ layoutKey, definition, layers, layerNames, layerIndex = 0, onlyIndexes = null }) {
+function positionsForCombo(combo, keyPositions) {
+  if (Array.isArray(combo?.positions)) return combo.positions;
+  const coordinates = [combo?.key1, combo?.key2];
+  if (coordinates.some((position) => !position)) return [];
+  return coordinates.map((position) => keyPositions.findIndex(
+    (candidate) => candidate.row === position.row && candidate.col === position.col,
+  ));
+}
+
+function comboEntries(definition, startIndex, allowed) {
+  const entries = [];
+  for (const combo of (Array.isArray(definition.combos) ? definition.combos : [])) {
+    const positions = positionsForCombo(combo, definition.keyPositions);
+    const comboId = Number.isInteger(combo?.id) && combo.id > 0 ? combo.id : null;
+    if ((!comboId && positions.length === 0)
+      || positions.some((position) => !Number.isInteger(position) || position < 0 || position >= definition.keyPositions.length)) {
+      continue;
+    }
+    const index = startIndex + entries.length;
+    const sourceTestable = true;
+    entries.push(freezeEntry({
+      index,
+      kind: "combo",
+      position: {},
+      label: combo.code ?? (comboId ? `Combo ${comboId}` : `Combo ${positions.join("+")}`),
+      rawCode: combo.code ?? "",
+      descriptor: { supported: false, trigger: null, modifiers: [] },
+      comboId,
+      positions: Object.freeze([...positions]),
+      sourceTestable,
+      testable: sourceTestable && (!allowed || allowed.has(index)),
+      excludedFromRetest: Boolean(allowed && !allowed.has(index)),
+    }));
+  }
+  return entries;
+}
+
+export function buildTestPlan({
+  layoutKey,
+  definition,
+  layers,
+  layerNames,
+  layerIndex = 0,
+  onlyIndexes = null,
+  inputSource = "system",
+}) {
   const allowed = onlyIndexes ? new Set(onlyIndexes) : null;
   const entries = definition.keyPositions.map((position, index) => {
     const rawEntry = effectiveLayerEntry(layers, layerIndex, index);
     const normalized = normalizeKeyEntry(rawEntry);
     const descriptor = normalizeHidDescriptor(normalized.code);
+    const sourceTestable = inputSource === "ble" || descriptor.supported;
     return freezeEntry({
       index,
+      kind: "key",
       position,
-      label: typeof normalized.label === "object" ? (normalized.label.text ?? "") : (normalized.label ?? ""),
+      label: normalized.label && typeof normalized.label === "object"
+        ? (normalized.label.text ?? "")
+        : (normalized.label ?? ""),
       rawCode: normalized.code ?? "",
       descriptor,
-      testable: descriptor.supported && (!allowed || allowed.has(index)),
-      excludedFromRetest: Boolean(allowed && !allowed.has(index) && descriptor.supported),
+      sourceTestable,
+      testable: sourceTestable && (!allowed || allowed.has(index)),
+      excludedFromRetest: Boolean(allowed && !allowed.has(index) && sourceTestable),
     });
   });
+  if (inputSource === "ble") {
+    entries.push(...comboEntries(definition, entries.length, allowed));
+  }
   const testableIndexes = entries.filter((entry) => entry.testable).map((entry) => entry.index);
   return Object.freeze({
     layoutKey,
     layoutName: definition.name ?? layoutKey,
     layerIndex,
+    inputSource,
     layerName: layerNames?.[layerIndex] ?? `Layer ${layerIndex + 1}`,
     keySize: Object.freeze({ ...definition.keySize }),
     entries: Object.freeze(entries),
@@ -39,7 +93,7 @@ export function buildTestPlan({ layoutKey, definition, layers, layerNames, layer
 
 function initialResults(plan) {
   return new Map(plan.entries
-    .filter((entry) => !entry.descriptor.supported && !entry.excludedFromRetest)
+    .filter((entry) => !entry.testable && !entry.excludedFromRetest)
     .map((entry) => [entry.index, { status: "not-testable", expected: entry.rawCode }]));
 }
 
@@ -50,10 +104,13 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
     cursor: 0,
     results: new Map(),
     pressedCodes: new Set(),
+    pressedPositions: new Set(),
     activeChord: null,
+    activePhysicalPosition: null,
     pendingTransition: null,
     received: null,
     completionRevision: 0,
+    diagnostics: [],
   };
 
   function currentEntry() {
@@ -77,9 +134,11 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
       received: state.received,
       activeModifiers,
       pressedCodes: [...state.pressedCodes],
+      pressedPositions: [...state.pressedPositions],
       chordActive: state.phase === "chord-active",
       waitingForRelease: state.phase === "waiting-clean",
       completionRevision: state.completionRevision,
+      diagnostics: state.diagnostics.map((diagnostic) => ({ ...diagnostic })),
     };
   }
 
@@ -98,7 +157,7 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
   }
 
   function finishPendingTransition() {
-    if (state.phase !== "waiting-clean" || state.pressedCodes.size > 0) return false;
+    if (state.phase !== "waiting-clean" || state.pressedCodes.size > 0 || state.pressedPositions.size > 0) return false;
     const transition = state.pendingTransition;
     state.pendingTransition = null;
     if (transition === "advance") {
@@ -113,6 +172,7 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
 
   function waitForCleanBoundary(transition) {
     state.activeChord = null;
+    state.activePhysicalPosition = null;
     state.pendingTransition = transition;
     state.received = transition === "retry" ? null : state.received;
     state.phase = "waiting-clean";
@@ -139,10 +199,13 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
       cursor: 0,
       results: initialResults(plan),
       pressedCodes: state.pressedCodes,
+      pressedPositions: state.pressedPositions,
       activeChord: null,
+      activePhysicalPosition: null,
       pendingTransition: "start",
       received: null,
       completionRevision: state.completionRevision,
+      diagnostics: state.diagnostics,
     };
     if (!finishPendingTransition()) notify();
     return true;
@@ -228,6 +291,132 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
     return false;
   }
 
+  function samePositions(left, right) {
+    const expected = [...left].sort((a, b) => a - b);
+    const received = [...right].sort((a, b) => a - b);
+    return left.length === right.length
+      && expected.every((position, index) => position === received[index]);
+  }
+
+  function recordDiagnostic(code, detail = {}) {
+    state.diagnostics = [...state.diagnostics, { code, ...detail }].slice(-20);
+  }
+
+  function reportDiagnostic(code, detail = {}) {
+    recordDiagnostic(code, detail);
+    notify();
+  }
+
+  function handleSourceTransition(previous, current, reason = null) {
+    if (previous === current) return false;
+    if (previous === "ble") {
+      state.pressedPositions.clear();
+      state.activePhysicalPosition = null;
+    }
+    if (previous === "system") {
+      state.pressedCodes.clear();
+      state.activeChord = null;
+    }
+    recordDiagnostic(current === "ble" ? "ble-source-active" : "ble-fallback", {
+      message: `${previous} → ${current}${reason ? `: ${reason}` : ""}`,
+    });
+    if (state.phase === "waiting-clean") {
+      if (!finishPendingTransition()) notify();
+      return true;
+    }
+    if (["physical-key-active", "chord-active", "mismatch"].includes(state.phase)) {
+      state.phase = "waiting-down";
+      state.received = null;
+      state.pendingTransition = null;
+    }
+    notify();
+    return true;
+  }
+
+  function handlePhysicalKey(position, eventType) {
+    if (!Number.isInteger(position) || position < 0 || !["down", "up"].includes(eventType)) return false;
+    const wasPressed = state.pressedPositions.has(position);
+    if (eventType === "down") {
+      if (wasPressed) return false;
+      state.pressedPositions.add(position);
+    } else if (!wasPressed) {
+      return false;
+    } else {
+      state.pressedPositions.delete(position);
+    }
+
+    if (state.phase === "waiting-clean") {
+      if (!finishPendingTransition()) notify();
+      return false;
+    }
+    if (["setup", "complete"].includes(state.phase)) return false;
+    if (state.phase === "mismatch") {
+      notify();
+      return false;
+    }
+
+    const expected = currentEntry();
+    if (expected?.kind === "combo") {
+      if (!expected.positions.includes(position)) {
+        recordDiagnostic("unexpected-ble-key", { position });
+        state.phase = "mismatch";
+        state.received = `Position ${position}`;
+        notify();
+        return true;
+      }
+      notify();
+      return false;
+    }
+
+    if (state.phase === "waiting-down") {
+      if (eventType === "up") {
+        notify();
+        return false;
+      }
+      state.received = `Position ${position}`;
+      if (position === expected?.index) {
+        state.activePhysicalPosition = position;
+        state.phase = "physical-key-active";
+      } else {
+        recordDiagnostic("unexpected-ble-key", { position, expectedPosition: expected?.index });
+        state.phase = "mismatch";
+      }
+      notify();
+      return true;
+    }
+
+    if (state.phase === "physical-key-active" && eventType === "down") {
+      recordDiagnostic("unexpected-ble-key", { position, expectedPosition: expected?.index });
+      state.phase = "mismatch";
+      state.received = `Position ${position}`;
+      state.activePhysicalPosition = null;
+      notify();
+      return true;
+    }
+    if (state.phase === "physical-key-active" && eventType === "up" && position === state.activePhysicalPosition) {
+      state.results.set(expected.index, { status: "passed", expected: expected.rawCode });
+      waitForCleanBoundary("advance");
+      return true;
+    }
+    notify();
+    return false;
+  }
+
+  function handleCombo(comboId, positions, eventType) {
+    if (eventType !== "down" || !Array.isArray(positions)) return false;
+    const expected = currentEntry();
+    const matches = expected?.kind === "combo"
+      && ((expected.comboId && expected.comboId === comboId) || samePositions(expected.positions, positions));
+    if (!matches) {
+      reportDiagnostic("unmatched-ble-combo", { comboId, positions: [...positions] });
+      return false;
+    }
+    state.results.set(expected.index, { status: "passed", expected: expected.rawCode });
+    state.received = comboId ? `Combo ${comboId}` : `Positions ${positions.join("+")}`;
+    waitForCleanBoundary("advance");
+    return true;
+  }
+
   function retry() {
     if (state.phase !== "mismatch") return false;
     waitForCleanBoundary("retry");
@@ -243,7 +432,7 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
   }
 
   function skip() {
-    if (!["waiting-down", "chord-active"].includes(state.phase)) return false;
+    if (!["waiting-down", "chord-active", "physical-key-active"].includes(state.phase)) return false;
     const entry = currentEntry();
     state.results.set(entry.index, { status: "skipped", expected: entry.rawCode });
     waitForCleanBoundary("advance");
@@ -259,7 +448,10 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
       results: new Map(),
       received: null,
       activeChord: null,
+      activePhysicalPosition: null,
       pendingTransition: null,
+      pressedPositions: new Set(),
+      diagnostics: [],
     };
     notify();
   }
@@ -276,11 +468,25 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
       entries: Object.freeze(state.plan.entries.map((entry) => freezeEntry({
         ...entry,
         testable: problems.includes(entry.index),
-        excludedFromRetest: entry.descriptor.supported && !problems.includes(entry.index),
+        excludedFromRetest: entry.sourceTestable && !problems.includes(entry.index),
       }))),
     });
     return start(plan);
   }
 
-  return { getSnapshot: snapshot, start, handleKey, retry, markProblem, skip, stop, retestProblems, dispose: stop };
+  return {
+    getSnapshot: snapshot,
+    start,
+    handleKey,
+    handlePhysicalKey,
+    handleCombo,
+    reportDiagnostic,
+    handleSourceTransition,
+    retry,
+    markProblem,
+    skip,
+    stop,
+    retestProblems,
+    dispose: stop,
+  };
 }
