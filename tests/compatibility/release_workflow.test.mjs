@@ -14,4 +14,5 @@ test("release publication is downstream of quality, version, and platform packag
   assert.match(publish, /gh release create/);
   assert.doesNotMatch(beforePublish, /gh release create|actions\/create-release/);
   assert.match(workflow, /windows-secondary-window-smoke/);
+  assert.doesNotMatch(workflow, /continue-on-error/);
 });

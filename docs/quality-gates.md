@@ -29,9 +29,8 @@ single-instance reuse, minimized-window restoration, focus, and clean close.
 The structured JSON report is retained as the
 `windows-secondary-window-smoke` workflow artifact.
 
-During stabilization the smoke step is non-blocking. After repeated green runs,
-set the repository variable `WINDOWS_SMOKE_REQUIRED=true`; the same matrix step
-then becomes a release-blocking prerequisite without changing its test path.
+The smoke is a required Windows matrix step. A failure blocks the package matrix
+and therefore prevents the release publication job from running.
 
 ## Fixtures and extension suites
 
@@ -58,10 +57,10 @@ is approved and configured.
 ## Release safety and recovery
 
 A tag first passes the source matrix, production website build, version check,
-all four platform package jobs, the Windows smoke once promoted to required,
-and macOS architecture and ad-hoc-signature verification. Only the final
-`publish` job can create a normal GitHub release. A failed required prerequisite
-therefore leaves workflow artifacts for diagnosis but no completed release.
+all four platform package jobs, the required Windows smoke, and macOS
+architecture and ad-hoc-signature verification. Only the final `publish` job
+can create a normal GitHub release. A failed required prerequisite therefore
+leaves workflow artifacts for diagnosis but no completed release.
 
 Workflow artifacts use the repository's configured GitHub Actions retention.
 After a failure, download the relevant build or smoke artifact, fix the source

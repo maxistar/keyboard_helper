@@ -109,7 +109,6 @@ jobs:
           "${{ matrix.artifact_label }}"
       - name: Exercise secondary windows
         if: matrix.platform == 'windows'
-        continue-on-error: ${{ vars.WINDOWS_SMOKE_REQUIRED != 'true' }}
         timeout-minutes: 3
         shell: pwsh
         run: |
