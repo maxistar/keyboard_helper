@@ -6,12 +6,11 @@ import { createInputSourceController } from "../src/input_source_controller.js";
 const systemEvent = { kind: "key", source: "system", action: "down", code: "KeyA" };
 const bleEvent = { kind: "key", source: "ble", action: "down", position: 0, layer: 0, sequence: 1, streamStart: false };
 
-function createHarness(policy = "auto") {
+function createHarness() {
   const events = [];
   const clears = [];
   const changes = [];
   const controller = createInputSourceController({
-    policy,
     onEvent: (event) => events.push(event),
     onClearSourceState: (detail) => clears.push(detail),
     onEffectiveSourceChange: (detail) => changes.push(detail),
@@ -19,7 +18,7 @@ function createHarness(policy = "auto") {
   return { controller, events, clears, changes };
 }
 
-test("Auto remains on the system listener until a validated STREAM_START", () => {
+test("automatic selection remains on the system listener until a validated STREAM_START", () => {
   const harness = createHarness();
   assert.equal(harness.controller.handleEvent(systemEvent), true);
   harness.controller.setBleConnection({ capabilitiesValidated: true, subscribed: true });
@@ -33,32 +32,19 @@ test("Auto remains on the system listener until a validated STREAM_START", () =>
   assert.deepEqual(harness.clears, [{ source: "system", reason: "ble-stream-start" }]);
 });
 
-test("forced BLE never silently falls back and disconnect clears BLE state", () => {
-  const harness = createHarness("ble");
-  assert.equal(harness.controller.getSnapshot().effectiveSource, null);
-  assert.equal(harness.controller.handleEvent(systemEvent), false);
+test("disconnect clears BLE state and automatically restores the system listener", () => {
+  const harness = createHarness();
   harness.controller.setBleConnection({ capabilitiesValidated: true, subscribed: true });
   harness.controller.handleEvent({ ...bleEvent, streamStart: true });
   assert.equal(harness.controller.getSnapshot().effectiveSource, "ble");
   harness.controller.disconnectBle();
-  assert.equal(harness.controller.getSnapshot().effectiveSource, null);
-  assert.deepEqual(harness.clears.at(-1), { source: "ble", reason: "ble-disconnected" });
-});
-
-test("forced system listener ignores BLE while leaving BLE readiness intact", () => {
-  const harness = createHarness("system");
-  harness.controller.setBleConnection({ capabilitiesValidated: true, subscribed: true });
-  assert.equal(harness.controller.handleEvent({ ...bleEvent, streamStart: true }), false);
-  assert.equal(harness.controller.getSnapshot().bleReady, true);
   assert.equal(harness.controller.getSnapshot().effectiveSource, "system");
+  assert.deepEqual(harness.clears.at(-1), { source: "ble", reason: "ble-disconnected" });
   assert.equal(harness.controller.handleEvent(systemEvent), true);
 });
 
-test("policy changes and sequence gaps clear source-owned transient state", () => {
+test("sequence gaps clear BLE-owned transient state", () => {
   const harness = createHarness();
-  harness.controller.setPolicy("system");
-  assert.deepEqual(harness.clears.at(-1), { source: "system", reason: "policy-changed" });
-  harness.controller.setPolicy("ble");
   harness.controller.setBleConnection({ capabilitiesValidated: true, subscribed: true });
   harness.controller.handleEvent({ ...bleEvent, streamStart: true });
   harness.controller.reportSequenceGap();

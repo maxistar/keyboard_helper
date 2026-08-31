@@ -3,7 +3,6 @@ import test from "node:test";
 
 import {
   normalizeBleKeyboardFrame,
-  normalizeHighlightingPolicy,
   normalizeSystemKeyEvent,
 } from "../src/input_events.js";
 
@@ -52,8 +51,7 @@ test("the layer snapshot can carry STREAM_START readiness without pretending to 
   });
 });
 
-test("malformed BLE events are rejected and unknown policies migrate to Auto", () => {
+test("malformed BLE events are rejected", () => {
   assert.equal(normalizeBleKeyboardFrame({ sequence: 1, flags: 0, event: { kind: "key", action: "down", position: -1, layer: 0 } }), null);
   assert.equal(normalizeBleKeyboardFrame({ sequence: 1, flags: 0, event: { kind: "combo", action: "down", comboId: 0, positions: [], layer: 0 } }), null);
-  assert.equal(normalizeHighlightingPolicy("future"), "auto");
 });

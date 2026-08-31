@@ -26,12 +26,6 @@ const MODIFIER_KEYS = new Set([
   "Shift", "ShiftLeft", "ShiftRight", "Control", "ControlLeft", "ControlRight",
   "Alt", "AltLeft", "AltRight", "Meta", "MetaLeft", "MetaRight",
 ]);
-const HIGHLIGHTING_POLICIES = new Set(["auto", "ble", "system"]);
-
-export function normalizeHighlightingSource(value) {
-  return HIGHLIGHTING_POLICIES.has(value) ? value : "auto";
-}
-
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -39,7 +33,6 @@ function isPlainObject(value) {
 export function createDefaultConfig() {
   return {
     defaultLayout: "qwerty",
-    highlightingSource: "auto",
     toggleHotkey: null,
     layouts: Object.fromEntries(Object.keys(BUILTIN_LAYOUTS).map((key) => [key, true])),
   };
@@ -101,21 +94,22 @@ export function normalizeConfig(value) {
   const defaultLayout = requestedDefault && Object.hasOwn(layouts, requestedDefault)
     ? requestedDefault
     : Object.keys(layouts)[0] ?? defaults.defaultLayout;
+  const normalized = { ...value };
+  delete normalized.highlightingSource;
   return {
-    ...value,
+    ...normalized,
     defaultLayout,
-    highlightingSource: normalizeHighlightingSource(value.highlightingSource),
     toggleHotkey: normalizeHotkey(value.toggleHotkey),
     layouts,
   };
 }
 
 export function serializeConfig(original, draft) {
-  const base = isPlainObject(original) ? original : {};
+  const base = isPlainObject(original) ? { ...original } : {};
+  delete base.highlightingSource;
   return {
     ...base,
     defaultLayout: draft.defaultLayout,
-    highlightingSource: normalizeHighlightingSource(draft.highlightingSource),
     toggleHotkey: normalizeHotkey(draft.toggleHotkey),
     layouts: { ...draft.layouts },
   };
@@ -134,9 +128,6 @@ export function validateConfigDraft(draft) {
     errors.toggleHotkey = "Record a supported keyboard shortcut or clear it.";
   } else if (draft?.toggleHotkey && !String(draft.toggleHotkey).includes("+")) {
     warnings.toggleHotkey = "An unmodified shortcut may trigger while typing.";
-  }
-  if (!HIGHLIGHTING_POLICIES.has(draft?.highlightingSource)) {
-    errors.highlightingSource = "Choose Auto, BLE, or System listener.";
   }
   return { valid: Object.keys(errors).length === 0, errors, warnings };
 }

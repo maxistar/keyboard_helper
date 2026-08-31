@@ -3,12 +3,6 @@ export const HIGHLIGHTING_SOURCES = Object.freeze({
   SYSTEM: "system",
 });
 
-export const HIGHLIGHTING_POLICIES = Object.freeze({
-  AUTO: "auto",
-  BLE: "ble",
-  SYSTEM: "system",
-});
-
 const VALID_ACTIONS = new Set(["down", "up"]);
 
 function isByte(value) {
@@ -17,12 +11,6 @@ function isByte(value) {
 
 function isSequence(value) {
   return Number.isInteger(value) && value >= 0 && value <= 0xffffffff;
-}
-
-export function normalizeHighlightingPolicy(value) {
-  return Object.values(HIGHLIGHTING_POLICIES).includes(value)
-    ? value
-    : HIGHLIGHTING_POLICIES.AUTO;
 }
 
 export function normalizeSystemKeyEvent(payload) {

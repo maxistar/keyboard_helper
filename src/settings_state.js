@@ -69,10 +69,6 @@ export function createSettingsState(readResult) {
     return setDraft({ ...draft, toggleHotkey: value || null });
   }
 
-  function setHighlightingSource(value) {
-    return setDraft({ ...draft, highlightingSource: value });
-  }
-
   function addExternal(path, definition) {
     const result = createExternalLayoutEntry({ path, definition, layouts: draft.layouts });
     if (result.duplicateKey) return { ...snapshot(), duplicateKey: result.duplicateKey };
@@ -113,7 +109,6 @@ export function createSettingsState(readResult) {
     setLayoutEnabled,
     setDefaultLayout,
     setHotkey,
-    setHighlightingSource,
     addExternal,
     removeLayout,
     setExternalMetadata,

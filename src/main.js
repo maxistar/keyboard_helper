@@ -816,7 +816,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
   const config = await loadConfig();
   inputSourceController = createInputSourceController({
-    policy: config.highlightingSource,
     onEvent: handleNormalizedInputEvent,
     onClearSourceState: clearHighlightState,
     onStatusChange: (status) => {

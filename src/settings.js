@@ -24,8 +24,6 @@ const elements = {
   layoutsError: document.getElementById("layoutsError"),
   defaultLayout: document.getElementById("defaultLayout"),
   defaultLayoutError: document.getElementById("defaultLayoutError"),
-  highlightingSource: document.getElementById("highlightingSource"),
-  highlightingSourceError: document.getElementById("highlightingSourceError"),
   addLayout: document.getElementById("addLayoutButton"),
   externalLayouts: document.getElementById("externalLayouts"),
   externalError: document.getElementById("externalError"),
@@ -171,11 +169,6 @@ function render() {
   elements.hotkeyValue.classList.toggle("recording", recording);
   elements.hotkeyError.textContent = snapshot.validation.errors.toggleHotkey ?? "";
   elements.hotkeyWarning.textContent = snapshot.validation.warnings.toggleHotkey ?? "";
-  elements.highlightingSource.value = snapshot.draft.highlightingSource;
-  elements.highlightingSource.disabled = loading || saving;
-  const highlightingSourceError = snapshot.validation.errors.highlightingSource ?? "";
-  elements.highlightingSourceError.textContent = highlightingSourceError;
-  elements.highlightingSource.setAttribute("aria-invalid", String(Boolean(highlightingSourceError)));
   elements.recovery.hidden = snapshot.status !== "invalid";
   if (snapshot.status === "invalid") {
     elements.recoveryMessage.textContent = `${snapshot.error ?? "The file is malformed."} (${snapshot.path})`;
@@ -304,10 +297,6 @@ async function initialize() {
 
 elements.defaultLayout.addEventListener("change", () => {
   state.setDefaultLayout(elements.defaultLayout.value);
-  render();
-});
-elements.highlightingSource.addEventListener("change", () => {
-  state.setHighlightingSource(elements.highlightingSource.value);
   render();
 });
 elements.addLayout.addEventListener("click", addExternalLayout);
