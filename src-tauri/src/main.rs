@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+mod ble_keyboard_events;
 mod ble_layer_sync;
 mod config_store;
 #[cfg(target_os = "macos")]

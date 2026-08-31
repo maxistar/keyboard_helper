@@ -14,6 +14,11 @@ use tauri::{AppHandle, Emitter};
 use tokio::time::sleep;
 use uuid::Uuid;
 
+use crate::ble_keyboard_events::{
+    decode_capabilities, decode_frame, BleKeyboardCapabilities, DecodedBleKeyboardFrame,
+    SequenceObservation, SequenceTracker,
+};
+
 #[cfg(target_vendor = "apple")]
 #[path = "ble_layer_macos.rs"]
 mod ble_layer_macos;
@@ -22,6 +27,10 @@ const DEFAULT_SCAN_SECS: u64 = 2;
 const PROBE_TIMEOUT_SECS: u64 = 2;
 const NOTIFICATION_POLL_TIMEOUT_MS: u64 = 500;
 const COMMAND_CONFIRM_TIMEOUT_SECS: u64 = 4;
+const CAPABILITIES_UUID: &str = "b34a0003-e782-4706-8f9c-6c056c416507";
+const EVENT_UUID: &str = "b34a0004-e782-4706-8f9c-6c056c416507";
+const BATTERY_LEVEL_UUID: &str = "00002a19-0000-1000-8000-00805f9b34fb";
+const DEVICE_INFORMATION_SERVICE_UUID: &str = "0000180a-0000-1000-8000-00805f9b34fb";
 
 struct LayerCommand {
     generation: u64,
@@ -153,10 +162,56 @@ struct BleLayerStatusPayload {
     writable: bool,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct BleKeyboardStatusPayload {
+    layout: String,
+    state: String,
+    mode: String,
+    reason: Option<String>,
+    capabilities_validated: bool,
+    subscribed: bool,
+    capabilities: Option<BleKeyboardCapabilities>,
+    battery_available: bool,
+    device_information_available: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct BleKeyboardEventPayload {
+    layout: String,
+    frame: DecodedBleKeyboardFrame,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct BleKeyboardDiagnosticPayload {
+    layout: String,
+    code: String,
+    message: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct BleBatteryPayload {
+    layout: String,
+    level: u8,
+}
+
 #[derive(Debug)]
 struct BtleKeyboard {
     peripheral: Peripheral,
     layer_char: Characteristic,
+    capabilities_char: Option<Characteristic>,
+    event_char: Option<Characteristic>,
+    battery_char: Option<Characteristic>,
+    device_information_available: bool,
+}
+
+#[derive(Default)]
+struct BtleKeyboardFeatures {
+    capabilities: Option<BleKeyboardCapabilities>,
+    extension_present: bool,
+    battery_available: bool,
+    battery_level: Option<u8>,
+    device_information_available: bool,
 }
 
 enum KeyboardHandle {
@@ -192,6 +247,18 @@ pub fn start_sync(
                 Some(error.to_string()),
                 false,
             );
+            let _ = emit_keyboard_status(
+                &app_handle,
+                &config.layout_key,
+                "error",
+                "unknown",
+                Some(error.to_string()),
+                false,
+                false,
+                None,
+                false,
+                false,
+            );
         }
         state.clear_command_session(generation);
     });
@@ -214,6 +281,18 @@ async fn run_sync(
 ) -> Result<()> {
     ensure_supported_format(&config)?;
     emit_status(&app_handle, &config.layout_key, "connecting", None, false)?;
+    emit_keyboard_status(
+        &app_handle,
+        &config.layout_key,
+        "connecting",
+        "unknown",
+        Some("ble-connecting".into()),
+        false,
+        false,
+        None,
+        false,
+        false,
+    )?;
 
     let service_uuid = Uuid::parse_str(&config.service_uuid)
         .with_context(|| format!("invalid service UUID: {}", config.service_uuid))?;
@@ -237,9 +316,37 @@ async fn run_sync(
     }
 
     let layer = read_active_layer(&keyboard).await?;
+    let features = inspect_keyboard_features(&keyboard).await?;
+    if let Some(level) = features.battery_level {
+        emit_battery(&app_handle, &config.layout_key, level)?;
+    }
     emit_layer(&app_handle, &config.layout_key, layer)?;
     let writable = keyboard_supports_write(&keyboard);
     emit_status(&app_handle, &config.layout_key, "connected", None, writable)?;
+    emit_keyboard_status(
+        &app_handle,
+        &config.layout_key,
+        "connected",
+        if features.capabilities.is_some() {
+            "enhanced"
+        } else if features.extension_present {
+            "unsupported"
+        } else {
+            "stock"
+        },
+        features.capabilities.is_none().then(|| {
+            if features.extension_present {
+                "extension-capabilities-unsupported".into()
+            } else {
+                "extension-capabilities-unavailable".into()
+            }
+        }),
+        features.capabilities.is_some(),
+        false,
+        features.capabilities.clone(),
+        features.battery_available,
+        features.device_information_available,
+    )?;
 
     if writable {
         state.install_command_session(generation, config.layout_key.clone(), command_sender)?;
@@ -251,6 +358,7 @@ async fn run_sync(
         generation,
         &config.layout_key,
         keyboard,
+        features,
         layer,
         command_receiver,
     )
@@ -270,6 +378,7 @@ async fn watch_layers(
     generation: u64,
     layout_key: &str,
     keyboard: KeyboardHandle,
+    features: BtleKeyboardFeatures,
     mut last_layer: u32,
     command_receiver: Receiver<LayerCommand>,
 ) -> Result<()> {
@@ -277,7 +386,25 @@ async fn watch_layers(
     let watch_result: Result<()> = async {
         match keyboard {
             KeyboardHandle::Btle(keyboard) => {
-                let mut notifications = notification_stream(&keyboard).await?;
+                let mut notifications =
+                    notification_stream(&keyboard, features.capabilities.is_some()).await?;
+                let enhanced = features.capabilities.is_some()
+                    && keyboard.event_char.as_ref().is_some_and(|characteristic| {
+                        characteristic.properties.contains(CharPropFlags::NOTIFY)
+                    });
+                emit_keyboard_status(
+                    app_handle,
+                    layout_key,
+                    "connected",
+                    if enhanced { "enhanced" } else { "stock" },
+                    (!enhanced).then(|| "extension-event-stream-unavailable".into()),
+                    features.capabilities.is_some(),
+                    enhanced,
+                    features.capabilities.clone(),
+                    features.battery_available,
+                    features.device_information_available,
+                )?;
+                let mut sequence = SequenceTracker::default();
                 while state.is_current(generation) {
                     process_command(&command_receiver, &mut pending, generation, |layer| {
                         write_btle_layer(&keyboard, layer)
@@ -298,20 +425,67 @@ async fn watch_layers(
                         continue;
                     };
 
-                    if notification.uuid != keyboard.layer_char.uuid {
-                        continue;
-                    }
-
-                    let layer = decode_active_layer(&notification.value)?;
-                    confirm_pending(&mut pending, layer);
-                    if layer != last_layer {
-                        emit_layer(app_handle, layout_key, layer)?;
-                        last_layer = layer;
+                    if notification.uuid == keyboard.layer_char.uuid {
+                        let layer = decode_active_layer(&notification.value)?;
+                        confirm_pending(&mut pending, layer);
+                        if layer != last_layer {
+                            emit_layer(app_handle, layout_key, layer)?;
+                            last_layer = layer;
+                        }
+                    } else if keyboard
+                        .event_char
+                        .as_ref()
+                        .is_some_and(|characteristic| notification.uuid == characteristic.uuid)
+                    {
+                        match decode_frame(&notification.value) {
+                            Ok(frame) => {
+                                if let SequenceObservation::Gap {
+                                    expected,
+                                    actual,
+                                    distance,
+                                } = sequence.observe(&frame)
+                                {
+                                    emit_keyboard_diagnostic(
+                                        app_handle,
+                                        layout_key,
+                                        "sequence-gap",
+                                        format!(
+                                            "BLE event sequence gap: expected {expected}, received {actual} ({distance} dropped)."
+                                        ),
+                                    )?;
+                                }
+                                emit_keyboard_event(app_handle, layout_key, frame)?;
+                            }
+                            Err(error) => emit_keyboard_diagnostic(
+                                app_handle,
+                                layout_key,
+                                "invalid-frame",
+                                format!("Rejected BLE keyboard event frame: {error}"),
+                            )?,
+                        }
+                    } else if keyboard
+                        .battery_char
+                        .as_ref()
+                        .is_some_and(|characteristic| notification.uuid == characteristic.uuid)
+                    {
+                        emit_battery(app_handle, layout_key, decode_battery(&notification.value)?)?;
                     }
                 }
             }
             #[cfg(target_vendor = "apple")]
             KeyboardHandle::Macos(keyboard) => {
+                emit_keyboard_status(
+                    app_handle,
+                    layout_key,
+                    "connected",
+                    "stock",
+                    Some("extension-event-stream-platform-unavailable".into()),
+                    false,
+                    false,
+                    None,
+                    false,
+                    false,
+                )?;
                 keyboard.start_notifications()?;
                 while state.is_current(generation) {
                     process_command(&command_receiver, &mut pending, generation, |layer| {
@@ -344,6 +518,18 @@ async fn watch_layers(
 
     if watch_result.is_ok() {
         emit_status(app_handle, layout_key, "idle", None, false)?;
+        emit_keyboard_status(
+            app_handle,
+            layout_key,
+            "idle",
+            "unknown",
+            Some("ble-session-stopped".into()),
+            false,
+            false,
+            None,
+            false,
+            false,
+        )?;
     }
     watch_result
 }
@@ -604,7 +790,58 @@ async fn connect_btle_keyboard(
     Ok(BtleKeyboard {
         peripheral,
         layer_char,
+        capabilities_char: find_optional_characteristic(&chars, CAPABILITIES_UUID)?,
+        event_char: find_optional_characteristic(&chars, EVENT_UUID)?,
+        battery_char: find_optional_characteristic(&chars, BATTERY_LEVEL_UUID)?,
+        device_information_available: chars.iter().any(|characteristic| {
+            characteristic.service_uuid
+                == Uuid::parse_str(DEVICE_INFORMATION_SERVICE_UUID).expect("valid DIS UUID")
+        }),
     })
+}
+
+fn find_optional_characteristic(
+    characteristics: &std::collections::BTreeSet<Characteristic>,
+    uuid: &str,
+) -> Result<Option<Characteristic>> {
+    let expected = Uuid::parse_str(uuid)?;
+    Ok(characteristics
+        .iter()
+        .find(|characteristic| characteristic.uuid == expected)
+        .cloned())
+}
+
+async fn inspect_keyboard_features(handle: &KeyboardHandle) -> Result<BtleKeyboardFeatures> {
+    match handle {
+        KeyboardHandle::Btle(keyboard) => {
+            let extension_present = keyboard.capabilities_char.is_some();
+            let capabilities = if let Some(characteristic) = &keyboard.capabilities_char {
+                match keyboard.peripheral.read(characteristic).await {
+                    Ok(value) => decode_capabilities(&value).ok(),
+                    Err(_) => None,
+                }
+            } else {
+                None
+            };
+            let mut battery_level = None;
+            if let Some(characteristic) = &keyboard.battery_char {
+                if characteristic.properties.contains(CharPropFlags::READ) {
+                    if let Ok(value) = keyboard.peripheral.read(characteristic).await {
+                        battery_level = Some(decode_battery(&value)?);
+                    }
+                }
+            }
+            Ok(BtleKeyboardFeatures {
+                capabilities,
+                extension_present,
+                battery_available: keyboard.battery_char.is_some(),
+                battery_level,
+                device_information_available: keyboard.device_information_available,
+            })
+        }
+        #[cfg(target_vendor = "apple")]
+        KeyboardHandle::Macos(_) => Ok(BtleKeyboardFeatures::default()),
+    }
 }
 
 async fn read_active_layer(handle: &KeyboardHandle) -> Result<u32> {
@@ -623,6 +860,7 @@ async fn read_active_layer(handle: &KeyboardHandle) -> Result<u32> {
 
 async fn notification_stream(
     keyboard: &BtleKeyboard,
+    enable_events: bool,
 ) -> Result<impl futures_util::Stream<Item = ValueNotification> + Send> {
     if !keyboard
         .layer_char
@@ -636,6 +874,18 @@ async fn notification_stream(
 
     let stream = keyboard.peripheral.notifications().await?;
     keyboard.peripheral.subscribe(&keyboard.layer_char).await?;
+    if enable_events {
+        if let Some(characteristic) = &keyboard.event_char {
+            if characteristic.properties.contains(CharPropFlags::NOTIFY) {
+                keyboard.peripheral.subscribe(characteristic).await?;
+            }
+        }
+    }
+    if let Some(characteristic) = &keyboard.battery_char {
+        if characteristic.properties.contains(CharPropFlags::NOTIFY) {
+            keyboard.peripheral.subscribe(characteristic).await?;
+        }
+    }
     Ok(stream)
 }
 
@@ -644,6 +894,16 @@ fn decode_active_layer(data: &[u8]) -> Result<u32> {
         .try_into()
         .map_err(|_| anyhow!("Expected 4 bytes, got {}", data.len()))?;
     Ok(u32::from_le_bytes(bytes))
+}
+
+fn decode_battery(data: &[u8]) -> Result<u8> {
+    let [level]: [u8; 1] = data
+        .try_into()
+        .map_err(|_| anyhow!("Expected 1 battery byte, got {}", data.len()))?;
+    if level > 100 {
+        return Err(anyhow!("Invalid Battery Level {level}"));
+    }
+    Ok(level)
 }
 
 fn emit_layer(app_handle: &AppHandle, layout_key: &str, layer: u32) -> Result<()> {
@@ -678,6 +938,83 @@ fn emit_status(
         .map_err(|error| anyhow!("failed to emit ble_layer_status: {error}"))
 }
 
+#[allow(clippy::too_many_arguments)]
+fn emit_keyboard_status(
+    app_handle: &AppHandle,
+    layout_key: &str,
+    state: &str,
+    mode: &str,
+    reason: Option<String>,
+    capabilities_validated: bool,
+    subscribed: bool,
+    capabilities: Option<BleKeyboardCapabilities>,
+    battery_available: bool,
+    device_information_available: bool,
+) -> Result<()> {
+    app_handle
+        .emit(
+            "ble_keyboard_status",
+            BleKeyboardStatusPayload {
+                layout: layout_key.to_string(),
+                state: state.to_string(),
+                mode: mode.to_string(),
+                reason,
+                capabilities_validated,
+                subscribed,
+                capabilities,
+                battery_available,
+                device_information_available,
+            },
+        )
+        .map_err(|error| anyhow!("failed to emit ble_keyboard_status: {error}"))
+}
+
+fn emit_keyboard_event(
+    app_handle: &AppHandle,
+    layout_key: &str,
+    frame: DecodedBleKeyboardFrame,
+) -> Result<()> {
+    app_handle
+        .emit(
+            "ble_keyboard_event",
+            BleKeyboardEventPayload {
+                layout: layout_key.to_string(),
+                frame,
+            },
+        )
+        .map_err(|error| anyhow!("failed to emit ble_keyboard_event: {error}"))
+}
+
+fn emit_keyboard_diagnostic(
+    app_handle: &AppHandle,
+    layout_key: &str,
+    code: &str,
+    message: String,
+) -> Result<()> {
+    app_handle
+        .emit(
+            "ble_keyboard_diagnostic",
+            BleKeyboardDiagnosticPayload {
+                layout: layout_key.to_string(),
+                code: code.to_string(),
+                message,
+            },
+        )
+        .map_err(|error| anyhow!("failed to emit ble_keyboard_diagnostic: {error}"))
+}
+
+fn emit_battery(app_handle: &AppHandle, layout_key: &str, level: u8) -> Result<()> {
+    app_handle
+        .emit(
+            "ble_battery_update",
+            BleBatteryPayload {
+                layout: layout_key.to_string(),
+                level,
+            },
+        )
+        .map_err(|error| anyhow!("failed to emit ble_battery_update: {error}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -701,6 +1038,14 @@ mod tests {
     #[test]
     fn layer_payload_is_four_byte_little_endian() {
         assert_eq!(encode_layer(0x1234_5678), [0x78, 0x56, 0x34, 0x12]);
+    }
+
+    #[test]
+    fn standard_battery_level_is_one_bounded_byte() {
+        assert_eq!(decode_battery(&[0]).unwrap(), 0);
+        assert_eq!(decode_battery(&[100]).unwrap(), 100);
+        assert!(decode_battery(&[101]).is_err());
+        assert!(decode_battery(&[50, 0]).is_err());
     }
 
     #[test]

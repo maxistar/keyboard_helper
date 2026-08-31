@@ -14,6 +14,7 @@ test("missing configuration starts with a clean built-in draft", () => {
   const state = createSettingsState({ status: "missing", path: "/home/me/.keyri.json", revision: "missing" });
   const snapshot = state.snapshot();
   assert.equal(snapshot.draft.defaultLayout, "qwerty");
+  assert.equal(snapshot.draft.highlightingSource, "auto");
   assert.equal(snapshot.dirty, false);
   assert.equal(snapshot.canSave, false);
 });
@@ -27,10 +28,12 @@ test("valid edits remain draft-only and preserve unknown fields", () => {
     data: { defaultLayout: "qwerty", layouts: { qwerty: true, corne: true }, future: 42 },
   });
   state.setDefaultLayout("corne");
+  state.setHighlightingSource("ble");
   assert.equal(state.snapshot().dirty, true);
   assert.equal(state.snapshot().canSave, true);
   assert.equal(state.serializedConfig().future, 42);
   assert.equal(state.serializedConfig().defaultLayout, "corne");
+  assert.equal(state.serializedConfig().highlightingSource, "ble");
 });
 
 test("disabled default and final layout block saving", () => {

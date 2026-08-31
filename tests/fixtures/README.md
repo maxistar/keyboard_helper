@@ -7,7 +7,8 @@ should reuse them before inventing a private schema variant.
   layered, combo/chord, BLE, and input-source shapes as production layouts.
 - `configs/` contains startup, external-layout, and intentionally invalid draft
   configurations.
-- `ble/` contains transport-state examples; no physical BLE device is required.
+- `ble/` contains transport-state examples and reviewed Keyboard Helper BLE v1 capability/event
+  frames; no physical BLE device is required.
 - `future/` reserves versioned locations for approved analytics, lesson, mobile,
   and BLE-event contracts. Files there are documentation until the owning
   OpenSpec change defines their runtime schema.

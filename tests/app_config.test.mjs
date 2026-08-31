@@ -21,6 +21,7 @@ const validLayout = readJsonFixture("layouts/external-minimal.json");
 test("defaults enable every built-in layout and select QWERTY", () => {
   const config = createDefaultConfig();
   assert.equal(config.defaultLayout, "qwerty");
+  assert.equal(config.highlightingSource, "auto");
   assert.deepEqual(Object.keys(config.layouts), Object.keys(BUILTIN_LAYOUTS));
   assert.ok(Object.values(config.layouts).every((source) => source === true));
   assert.equal(config.toggleHotkey, null);
@@ -35,6 +36,7 @@ test("normalization keeps valid known and unknown data while repairing defaults"
   });
   assert.equal(config.defaultLayout, "corne");
   assert.equal(config.toggleHotkey, "Shift+Meta+KeyK");
+  assert.equal(config.highlightingSource, "auto");
   assert.deepEqual(config.layouts, { corne: true, external: "/tmp/layout.json" });
   assert.deepEqual(config.futureSetting, { enabled: true });
 });
@@ -42,23 +44,24 @@ test("normalization keeps valid known and unknown data while repairing defaults"
 test("serialization preserves unknown top-level fields", () => {
   const saved = serializeConfig(
     { futureSetting: 42, defaultLayout: "qwerty" },
-    { defaultLayout: "corne", toggleHotkey: "Ctrl+KeyK", layouts: { corne: true } },
+    { defaultLayout: "corne", highlightingSource: "ble", toggleHotkey: "Ctrl+KeyK", layouts: { corne: true } },
   );
   assert.deepEqual(saved, {
     futureSetting: 42,
     defaultLayout: "corne",
+    highlightingSource: "ble",
     toggleHotkey: "Ctrl+KeyK",
     layouts: { corne: true },
   });
 });
 
-test("draft validation enforces layout, default, and hotkey invariants", () => {
-  assert.equal(validateConfigDraft({ layouts: {}, defaultLayout: "", toggleHotkey: "?" }).valid, false);
+test("draft validation enforces layout, default, highlighting source, and hotkey invariants", () => {
+  assert.equal(validateConfigDraft({ layouts: {}, defaultLayout: "", highlightingSource: "future", toggleHotkey: "?" }).valid, false);
   assert.deepEqual(
-    Object.keys(validateConfigDraft({ layouts: {}, defaultLayout: "", toggleHotkey: "?" }).errors).sort(),
-    ["defaultLayout", "layouts", "toggleHotkey"],
+    Object.keys(validateConfigDraft({ layouts: {}, defaultLayout: "", highlightingSource: "future", toggleHotkey: "?" }).errors).sort(),
+    ["defaultLayout", "highlightingSource", "layouts", "toggleHotkey"],
   );
-  assert.equal(validateConfigDraft({ layouts: { corne: true }, defaultLayout: "corne", toggleHotkey: null }).valid, true);
+  assert.equal(validateConfigDraft({ layouts: { corne: true }, defaultLayout: "corne", highlightingSource: "system", toggleHotkey: null }).valid, true);
 });
 
 test("hotkeys normalize aliases and keyboard capture reports modifiers", () => {

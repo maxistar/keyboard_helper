@@ -31,7 +31,9 @@ test("self-test runtime loads its own catalog, observes native events, and dispo
   assert.match(script, /controller\.dispose\(\)/);
   assert.match(script, /emitTo\("overlay", "self-test-overlay-state"/);
   assert.match(overlayScript, /listen\("self-test-overlay-state"/);
-  assert.match(overlayScript, /handleKey\(key, event_type\)/);
+  assert.match(overlayScript, /normalizeSystemKeyEvent\(e\.payload\)/);
+  assert.match(overlayScript, /inputSourceController\.handleEvent\(event\)/);
+  assert.match(overlayScript, /listen\("ble_keyboard_event"/);
   assert.match(overlayCss, /\.key\.self-test-expected/);
   assert.match(overlayCss, /\.key\.pressed/);
 });
