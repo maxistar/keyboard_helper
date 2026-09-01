@@ -49,3 +49,16 @@ test("fresh backend diagnostics override stale input-source fallback reasons", (
     "unsupported extension · extension-event-subscribe-failed: insufficient encryption",
   );
 });
+
+test("subscription capacity diagnostics remain generic and preserve fallback", () => {
+  const reason =
+    "extension-event-subscription-capacity-unavailable: Operation failed with ATT error: 0x11";
+  const status = formatBleKeyboardStatus(
+    { effectiveSource: "system", reason: "extension-event-stream-unavailable" },
+    { mode: "unsupported", reason },
+    100,
+  );
+  assert.equal(status.summary, "Active: System listener");
+  assert.equal(status.detail, `unsupported extension · ${reason}`);
+  assert.equal(status.battery, "Battery 100%");
+});

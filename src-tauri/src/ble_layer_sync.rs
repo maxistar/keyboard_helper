@@ -1068,7 +1068,7 @@ fn event_subscription_issue(detail: &str) -> String {
         || lower.contains("att error: 0x11")
         || lower.contains("att error 0x11")
     {
-        "extension-event-stream-busy: another BLE connection owns the event stream".into()
+        format!("extension-event-subscription-capacity-unavailable: {detail}")
     } else {
         format!("extension-event-subscribe-failed: {detail}")
     }
@@ -1265,14 +1265,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn maps_firmware_single_owner_rejection_to_busy_status() {
+    fn maps_att_resource_rejection_to_capacity_status() {
         assert_eq!(
             event_subscription_issue("Operation failed with ATT error: 0x11"),
-            "extension-event-stream-busy: another BLE connection owns the event stream"
+            "extension-event-subscription-capacity-unavailable: Operation failed with ATT error: 0x11"
         );
         assert_eq!(
             event_subscription_issue("Resources are insufficient."),
-            "extension-event-stream-busy: another BLE connection owns the event stream"
+            "extension-event-subscription-capacity-unavailable: Resources are insufficient."
         );
     }
 
