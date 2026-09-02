@@ -18,48 +18,17 @@ test("normalizes named layers and keeps stable display order", () => {
     layers: [base, lower],
     names: ["Default", "Lower layer"],
     layerKeys: ["default", "lower_layer"],
-    layerMetadata: [
-      { firmwareLayerIndex: null, selfTestExcludedPositions: [] },
-      { firmwareLayerIndex: null, selfTestExcludedPositions: [] },
-    ],
   });
 });
 
-test("normalizes explicit firmware layer metadata without inferring from order or labels", () => {
+test("normalized layer order is stable for firmware ordinal mapping", () => {
   const base = [["A", "KeyA"], ["Fn", ""]];
   const lower = [["1", "Digit1"], null];
-  assert.deepEqual(normalizeLayerData(
-    { Friendly_base: base, lower_layer: lower },
-    {
-      Friendly_base: { firmwareLayerIndex: 7, selfTestExcludedPositions: [1, 1, -1, 2, "0"] },
-      lower_layer: { firmwareLayerIndex: 13, selfTestExcludedPositions: [0] },
-    },
-    2,
-  ), {
+  assert.deepEqual(normalizeLayerData({ Friendly_base: base, lower_layer: lower }), {
     layers: [base, lower],
     names: ["Friendly base", "Lower layer"],
     layerKeys: ["Friendly_base", "lower_layer"],
-    layerMetadata: [
-      { firmwareLayerIndex: 7, selfTestExcludedPositions: [1] },
-      { firmwareLayerIndex: 13, selfTestExcludedPositions: [0] },
-    ],
   });
-});
-
-test("rejects malformed firmware indexes and exclusions instead of guessing", () => {
-  const normalized = normalizeLayerData(
-    { alpha: [["A", "KeyA"]], beta: [["B", "KeyB"]] },
-    {
-      alpha: { firmwareLayerIndex: "0", selfTestExcludedPositions: "all" },
-      Renamed_Beta: { firmwareLayerIndex: 1, selfTestExcludedPositions: [0] },
-    },
-    1,
-  );
-  assert.deepEqual(normalized.layerKeys, ["alpha", "beta"]);
-  assert.deepEqual(normalized.layerMetadata, [
-    { firmwareLayerIndex: null, selfTestExcludedPositions: [] },
-    { firmwareLayerIndex: null, selfTestExcludedPositions: [] },
-  ]);
 });
 
 test("effective layer entries fall back only for absent or null entries", () => {

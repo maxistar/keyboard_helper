@@ -13,6 +13,12 @@ function validRequest(request) {
     && request.firmwareLayerIndex >= 0;
 }
 
+export function matchesOrderedLayerRequest(layerKeys, request) {
+  if (!Array.isArray(layerKeys)) return false;
+  const layerIndex = layerKeys.indexOf(request?.layerKey);
+  return layerIndex >= 0 && layerIndex === request?.firmwareLayerIndex;
+}
+
 export function createSelfTestLayerLeaseCoordinator({
   getActiveLayoutKey,
   getObservedLayer,

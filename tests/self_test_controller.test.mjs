@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildTestPlan, createSelfTestController } from "../src/self_test/controller.js";
+import { buildComboTestPlan, buildTestPlan, createSelfTestController } from "../src/self_test/controller.js";
 
 function fixture(layer = null) {
   const base = [["A", "KeyA"], ["A2", "KeyA"], ["Q", "Shift+KeyQ"], ["Layer", ""]];
@@ -212,7 +212,7 @@ test("empty plans do not start and stopping disposes session results", () => {
   assert.deepEqual(controller.getSnapshot().results, {});
 });
 
-test("BLE plans keep unsupported ordinary positions untestable and include firmware-resolved combos", () => {
+test("selected-layer plans keep unsupported ordinary positions untestable and never include global combos", () => {
   const definition = {
     name: "BLE fixture",
     keySize: { w: 40, h: 40, gap: 4 },
@@ -226,14 +226,39 @@ test("BLE plans keep unsupported ordinary positions untestable and include firmw
     layerNames: ["Base"],
     inputSource: "ble",
   });
-  assert.deepEqual(plan.testableIndexes, [1, 2]);
+  assert.deepEqual(plan.testableIndexes, [1]);
+  assert.equal(plan.planKind, "layer");
   assert.equal(plan.entries[0].kind, "key");
   assert.equal(plan.entries[0].testable, false);
-  assert.equal(plan.entries[2].kind, "combo");
-  assert.equal(plan.entries[2].comboId, 9);
+  assert.equal(plan.entries.some((entry) => entry.kind === "combo"), false);
 });
 
-test("selected-layer metadata excludes a valid fallback HID position and preserves firmware mapping", () => {
+test("global combo plans include only valid combos with non-empty trimmed codes", () => {
+  const plan = buildComboTestPlan({
+    layoutKey: "combo-fixture",
+    definition: {
+      name: "Combo fixture",
+      keySize: { w: 40, h: 40, gap: 4 },
+      keyPositions: [{ row: 0, col: 0 }, { row: 0, col: 1 }],
+      combos: [
+        { id: 9, positions: [0, 1], code: " Escape " },
+        { id: 10, positions: [0, 1], code: "" },
+        { id: 11, positions: [0, 1], code: "   " },
+        { id: 12, positions: [0, 1] },
+        { positions: [0, 7], code: "Invalid positions" },
+      ],
+    },
+  });
+  assert.equal(plan.planKind, "global-combos");
+  assert.equal(plan.layerIndex, null);
+  assert.equal(plan.firmwareLayerIndex, null);
+  assert.deepEqual(plan.testableIndexes, [0]);
+  assert.equal(plan.entries.length, 1);
+  assert.equal(plan.entries[0].rawCode, "Escape");
+  assert.equal(plan.entries[0].comboId, 9);
+});
+
+test("selected-layer order becomes the firmware index and empty codes remain untestable", () => {
   const plan = buildTestPlan({
     layoutKey: "mapped",
     definition: {
@@ -241,20 +266,15 @@ test("selected-layer metadata excludes a valid fallback HID position and preserv
       keySize: { w: 40, h: 40, gap: 4 },
       keyPositions: [{ row: 0, col: 0 }, { row: 0, col: 1 }],
     },
-    layers: [[["Shift", "ShiftLeft"], ["A", "KeyA"]], [null, ["B", "KeyB"]]],
+    layers: [[["Shift", "ShiftLeft"], ["A", "KeyA"]], [["Layer", ""], ["B", "KeyB"]]],
     layerNames: ["Base", "Forced shift"],
     layerKeys: ["base", "forced_shift"],
-    layerMetadata: [
-      { firmwareLayerIndex: 0, selfTestExcludedPositions: [] },
-      { firmwareLayerIndex: 7, selfTestExcludedPositions: [0] },
-    ],
     layerIndex: 1,
     inputSource: "ble",
   });
   assert.equal(plan.layerKey, "forced_shift");
-  assert.equal(plan.firmwareLayerIndex, 7);
-  assert.deepEqual(plan.selfTestExcludedPositions, [0]);
-  assert.equal(plan.entries[0].rawCode, "ShiftLeft");
+  assert.equal(plan.firmwareLayerIndex, 1);
+  assert.equal(plan.entries[0].rawCode, "");
   assert.equal(plan.entries[0].testable, false);
   assert.equal(plan.entries[1].testable, true);
 });
@@ -284,13 +304,9 @@ test("BLE combo events pass only matching metadata and retain unmatched diagnost
     keyPositions: [{ row: 0, col: 0 }, { row: 0, col: 1 }],
     combos: [{ id: 9, positions: [0, 1], code: "Escape" }],
   };
-  const plan = buildTestPlan({
+  const plan = buildComboTestPlan({
     layoutKey: "combo-fixture",
     definition,
-    layers: [[["A", "KeyA"], ["B", "KeyB"]]],
-    layerNames: ["Base"],
-    inputSource: "ble",
-    onlyIndexes: [2],
   });
   const controller = createSelfTestController();
   controller.start(plan);
@@ -380,13 +396,9 @@ test("system HID events do not turn a firmware combo step into an ordinary misma
     keyPositions: [{ row: 0, col: 0 }, { row: 0, col: 1 }],
     combos: [{ id: 4, positions: [0, 1], code: "Escape" }],
   };
-  const plan = buildTestPlan({
+  const plan = buildComboTestPlan({
     layoutKey: "combo-only",
     definition,
-    layers: [[null, null]],
-    layerNames: ["Base"],
-    inputSource: "ble",
-    onlyIndexes: [2],
   });
   const controller = createSelfTestController();
   controller.start(plan);

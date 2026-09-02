@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createSelfTestLayerLeaseCoordinator } from "../src/self_test/layer_lease.js";
+import {
+  createSelfTestLayerLeaseCoordinator,
+  matchesOrderedLayerRequest,
+} from "../src/self_test/layer_lease.js";
 
 function harness({ writable = true, failWrite = null, validateLayerRequest = () => true } = {}) {
   let activeLayoutKey = "corney";
@@ -59,7 +62,20 @@ test("rejects invalid requests and stale generation operations", async () => {
   assert.deepEqual(subject.writes, [5]);
 });
 
-test("rejects a request that does not match overlay-owned layer metadata", async () => {
+test("ordered layer validation requires matching raw identity and ordinal", () => {
+  const layerKeys = ["Default", "Linux: Default", "Mac: Shift"];
+  assert.equal(matchesOrderedLayerRequest(layerKeys, {
+    layerKey: "Mac: Shift", firmwareLayerIndex: 2,
+  }), true);
+  assert.equal(matchesOrderedLayerRequest(layerKeys, {
+    layerKey: "Mac: Shift", firmwareLayerIndex: 1,
+  }), false);
+  assert.equal(matchesOrderedLayerRequest(layerKeys, {
+    layerKey: "Missing", firmwareLayerIndex: 2,
+  }), false);
+});
+
+test("rejects a request that does not match the overlay-owned layer order", async () => {
   const subject = harness({ validateLayerRequest: (candidate) => candidate.firmwareLayerIndex === 5 });
   assert.equal(await subject.coordinator.acquire({ ...request, firmwareLayerIndex: 18 }), false);
   assert.deepEqual(subject.writes, []);

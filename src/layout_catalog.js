@@ -6,29 +6,14 @@ export function formatLayerName(rawName, index) {
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
-function normalizeSelfTestLayerMetadata(raw, positionCount) {
-  const firmwareLayerIndex = Number.isInteger(raw?.firmwareLayerIndex) && raw.firmwareLayerIndex >= 0
-    ? raw.firmwareLayerIndex
-    : null;
-  const selfTestExcludedPositions = Array.isArray(raw?.selfTestExcludedPositions)
-    ? [...new Set(raw.selfTestExcludedPositions.filter((position) => (
-      Number.isInteger(position)
-      && position >= 0
-      && (!Number.isInteger(positionCount) || position < positionCount)
-    )))]
-    : [];
-  return { firmwareLayerIndex, selfTestExcludedPositions };
-}
-
-export function normalizeLayerData(layerSource, metadataSource = {}, positionCount = null) {
-  if (!layerSource) return { layers: [], names: [], layerKeys: [], layerMetadata: [] };
+export function normalizeLayerData(layerSource) {
+  if (!layerSource) return { layers: [], names: [], layerKeys: [] };
   if (Array.isArray(layerSource)) {
     const layerKeys = layerSource.map((_, index) => String(index));
     return {
       layers: layerSource,
       names: layerSource.map((_, index) => `Layer ${index + 1}`),
       layerKeys,
-      layerMetadata: layerKeys.map((key) => normalizeSelfTestLayerMetadata(metadataSource?.[key], positionCount)),
     };
   }
 
@@ -42,7 +27,6 @@ export function normalizeLayerData(layerSource, metadataSource = {}, positionCou
     layers: entries.map(([, layer]) => layer),
     names: entries.map(([name], index) => formatLayerName(name, index)),
     layerKeys: entries.map(([name]) => name),
-    layerMetadata: entries.map(([name]) => normalizeSelfTestLayerMetadata(metadataSource?.[name], positionCount)),
   };
 }
 

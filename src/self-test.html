@@ -31,7 +31,12 @@
       <div id="transportDiagnostics" class="error-list" role="status" aria-live="polite"></div>
       <p id="testability" class="testability" role="status" aria-live="polite">Loading layouts…</p>
       <div class="notice"><strong>System HID output determines every ordinary Passed result.</strong> When the layout and keyboard support writable BLE layer control, the selected layer is activated and confirmed automatically. Otherwise activate it manually. BLE key telemetry is optional position evidence and may be unavailable or disabled for privacy. Modifier chords pass only after the trigger and every modifier are released.</div>
-      <button id="startButton" class="button primary" type="button" disabled>Start guided test</button>
+      <div class="actions">
+        <button id="startButton" class="button primary" type="button" disabled>Start guided layer test</button>
+        <button id="comboTestButton" class="button secondary" type="button" disabled>Test global combos</button>
+      </div>
+      <p id="comboTestStatus" class="testability" role="status" aria-live="polite">Checking global combos…</p>
+      <p class="notice">The global combo test is separate from layer testing. It uses firmware BLE events and includes only layout combos with a non-empty output code.</p>
     </section>
 
     <section id="activeView" class="panel guidance" aria-labelledby="guideTitle" hidden>
@@ -59,10 +64,10 @@
       <div id="resultCounts" class="result-counts"></div>
       <p id="resultEvidence" class="testability"></p>
       <ul id="problemList" class="problem-list"></ul>
-      <p class="notice">Ordinary results verify system HID output. BLE position corroboration is reported separately and never substitutes for or blocks that verdict.</p>
+      <p id="resultNotice" class="notice">Ordinary results verify system HID output. BLE position corroboration is reported separately and never substitutes for or blocks that verdict.</p>
       <div class="actions">
         <button id="retestButton" class="button primary" type="button">Retest problems</button>
-        <button id="anotherLayerButton" class="button secondary" type="button">Test another layer</button>
+        <button id="anotherLayerButton" class="button secondary" type="button">Choose another test</button>
         <button id="closeResultsButton" class="button ghost" type="button">Close</button>
       </div>
     </section>

@@ -48,7 +48,7 @@ test("mapped plan waits for authoritative lease confirmation before starting", a
   assert.equal(subject.states.at(-1).mode, "active");
 });
 
-test("unmapped and unavailable layer control preserve manual HID testing", async () => {
+test("manual plans and unavailable layer control preserve manual HID testing", async () => {
   const unmapped = harness();
   await unmapped.session.start(plan({ firmwareLayerIndex: null }));
   assert.equal(unmapped.started.length, 1);
@@ -61,6 +61,19 @@ test("unmapped and unavailable layer control preserve manual HID testing", async
   assert.equal(unavailable.started.length, 1);
   assert.equal(unavailable.states.at(-1).mode, "manual");
   assert.match(unavailable.states.at(-1).message, /No writable BLE/);
+});
+
+test("global combo plan starts without a layer lease or manual-layer warning", async () => {
+  const subject = harness();
+  await subject.session.start(plan({
+    planKind: "global-combos",
+    layerKey: null,
+    firmwareLayerIndex: null,
+  }));
+  assert.equal(subject.started.length, 1);
+  assert.deepEqual(subject.emitted, []);
+  assert.equal(subject.states.at(-1).mode, "not-required");
+  assert.match(subject.states.at(-1).message, /does not change the active layer/i);
 });
 
 test("stale confirmations cannot start or alter a newer plan", async () => {

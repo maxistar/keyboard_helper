@@ -9,7 +9,7 @@ const overlayCss = readFileSync(new URL("../src/styles.css", import.meta.url), "
 const capability = JSON.parse(readFileSync(new URL("../src-tauri/capabilities/self-test.json", import.meta.url), "utf8"));
 
 test("self-test entry point exposes setup, layer control, guidance, results, and accessible status regions", () => {
-  for (const id of ["layoutSelect", "layerSelect", "startButton", "selectionLabel", "retryButton", "problemButton", "skipButton", "stopButton", "resultCounts", "resultEvidence", "retestButton", "anotherLayerButton", "layerControlStatus", "layerRetryButton", "manualContinueButton"]) {
+  for (const id of ["layoutSelect", "layerSelect", "startButton", "comboTestButton", "comboTestStatus", "selectionLabel", "retryButton", "problemButton", "skipButton", "stopButton", "resultCounts", "resultEvidence", "retestButton", "anotherLayerButton", "layerControlStatus", "layerRetryButton", "manualContinueButton"]) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
   assert.match(html, /role="status" aria-live="polite"/);
@@ -19,6 +19,8 @@ test("self-test entry point exposes setup, layer control, guidance, results, and
   assert.match(html, /disabled for privacy/);
   assert.match(html, /Modifier chords pass only after the trigger and every modifier are released/);
   assert.match(html, /BLE position corroboration is reported separately/);
+  assert.match(html, /Test global combos/);
+  assert.match(html, /non-empty output code/);
   assert.doesNotMatch(html, /id="keyboardPreview"/);
   assert.match(html, /existing Keyboard Helper overlay/);
 });
@@ -33,6 +35,8 @@ test("self-test runtime loads its own catalog, observes native events, and dispo
   assert.match(script, /beforeunload/);
   assert.match(script, /controller\.dispose\(\)/);
   assert.match(script, /createSelfTestLayerSession/);
+  assert.match(script, /buildComboTestPlan/);
+  assert.match(script, /startGlobalComboPlan/);
   assert.match(script, /listen\("self-test-layer-lease-status"/);
   assert.match(script, /snapshot\.phase === "complete"/);
   assert.match(script, /layerSession\?\.release\(\)/);

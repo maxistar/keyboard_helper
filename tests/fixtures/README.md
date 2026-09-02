@@ -4,7 +4,7 @@ These files are reviewed examples of supported Keyboard Helper metadata. Tests
 should reuse them before inventing a private schema variant.
 
 - `layouts/` contains minimal layouts that preserve the same positional,
-  layered, per-layer self-test metadata, combo/chord, BLE, and input-source
+  ordered-layer, code-derived self-test, combo/chord, BLE, and input-source
   shapes as production layouts.
 - `configs/` contains startup, external-layout, and intentionally invalid draft
   configurations.

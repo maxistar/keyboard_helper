@@ -15,7 +15,13 @@ export function createOverlayPresentationPayload(snapshot) {
     if (entry.kind !== "combo" && !entry.testable && !entry.excludedFromRetest) states[entry.index] = "not-testable";
   }
   for (const [index, result] of Object.entries(snapshot.results ?? {})) {
-    if (SELF_TEST_KEY_STATES.includes(result.status)) states[index] = result.status;
+    if (!SELF_TEST_KEY_STATES.includes(result.status)) continue;
+    const entry = snapshot.plan.entries[Number(index)];
+    if (entry?.kind === "combo") {
+      for (const position of entry.positions) states[position] = result.status;
+    } else {
+      states[index] = result.status;
+    }
   }
   if (snapshot.current && snapshot.phase !== "waiting-clean") {
     if (snapshot.current.kind === "combo") {

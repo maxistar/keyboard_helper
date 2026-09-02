@@ -34,16 +34,22 @@ export function createSelfTestLayerSession({
       await emit("self-test-layer-lease-release", { generation: current.generation });
     }
     const generation = ++nextGeneration;
+    const layerNotRequired = plan?.planKind === "global-combos";
     const automatic = Number.isInteger(plan?.firmwareLayerIndex) && plan.firmwareLayerIndex >= 0;
     current = {
       generation,
       plan,
       automatic,
       started: false,
-      mode: automatic ? "activating" : "manual",
+      mode: layerNotRequired ? "not-required" : automatic ? "activating" : "manual",
       message: null,
       reassertRequested: false,
     };
+    if (layerNotRequired) {
+      beginPlan();
+      publish("not-required", "Global combo testing does not change the active layer.");
+      return generation;
+    }
     if (!automatic) {
       beginPlan();
       publish("manual", "Activate the selected layer manually; its state cannot be confirmed.");
@@ -124,7 +130,9 @@ export function createSelfTestLayerSession({
   const release = async () => {
     if (!current) return false;
     const generation = current.generation;
-    await emit("self-test-layer-lease-release", { generation });
+    if (current.plan?.planKind !== "global-combos") {
+      await emit("self-test-layer-lease-release", { generation });
+    }
     current = null;
     onState({ generation, mode: "idle", message: null, automatic: false, started: false });
     return true;

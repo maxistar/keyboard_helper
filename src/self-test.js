@@ -1,5 +1,5 @@
 import { loadLayoutCatalog, normalizeLayerData } from "./layout_catalog.js";
-import { buildTestPlan, createSelfTestController } from "./self_test/controller.js";
+import { buildComboTestPlan, buildTestPlan, createSelfTestController } from "./self_test/controller.js";
 import { createOverlayPresentationPayload } from "./self_test/overlay_presentation.js";
 import { initializeSecondaryWindow, SECONDARY_WINDOWS } from "./secondary_window_ready.js";
 import { normalizeBleKeyboardFrame, normalizeSystemKeyEvent } from "./input_events.js";
@@ -7,11 +7,11 @@ import { createSelfTestLayerSession } from "./self_test/layer_session.js";
 
 const elements = Object.fromEntries([
   "setupView", "activeView", "resultsView", "layoutSelect", "layerSelect", "catalogErrors", "testability",
-  "startButton", "selectionLabel", "progressText", "progressBar", "instruction", "expectedCode",
+  "startButton", "comboTestButton", "comboTestStatus", "selectionLabel", "progressText", "progressBar", "instruction", "expectedCode",
   "receivedCode", "mismatchActions", "waitingActions", "retryButton", "problemButton", "skipButton", "stopButton",
   "resultCounts", "problemList", "retestButton", "anotherLayerButton", "closeButton", "closeResultsButton", "liveStatus",
   "transportDiagnostics",
-  "layerControlStatus", "layerControlActions", "layerRetryButton", "manualContinueButton", "resultEvidence",
+  "layerControlStatus", "layerControlActions", "layerRetryButton", "manualContinueButton", "resultEvidence", "resultNotice",
 ].map((id) => [id, document.getElementById(id)]));
 
 const tauri = window.__TAURI__;
@@ -31,16 +31,12 @@ async function readConfig() {
 
 function currentData() {
   const definition = catalog?.definitions[selectedLayoutKey];
-  const normalized = normalizeLayerData(
-    definition?.keyLayers,
-    definition?.layerMetadata,
-    definition?.keyPositions?.length,
-  );
+  const normalized = normalizeLayerData(definition?.keyLayers);
   return { definition, ...normalized };
 }
 
 function buildSelectedPlan() {
-  const { definition, layers, names, layerKeys, layerMetadata } = currentData();
+  const { definition, layers, names, layerKeys } = currentData();
   if (!definition) return null;
   return buildTestPlan({
     layoutKey: selectedLayoutKey,
@@ -48,10 +44,15 @@ function buildSelectedPlan() {
     layers,
     layerNames: names,
     layerKeys,
-    layerMetadata,
     layerIndex: selectedLayerIndex,
     inputSource: effectiveInputSource,
   });
+}
+
+function buildGlobalComboPlan() {
+  const { definition } = currentData();
+  if (!definition) return null;
+  return buildComboTestPlan({ layoutKey: selectedLayoutKey, definition });
 }
 
 function renderSetup() {
@@ -64,14 +65,22 @@ function renderSetup() {
   elements.layerSelect.value = String(selectedLayerIndex);
   elements.layerSelect.disabled = !layers.length;
   const plan = buildSelectedPlan();
+  const comboPlan = buildGlobalComboPlan();
   const testable = plan?.testableIndexes.length ?? 0;
   const notTestable = plan?.entries.filter((entry) => entry.kind === "key" && !entry.testable).length ?? 0;
-  const combos = plan?.entries.filter((entry) => entry.kind === "combo").length ?? 0;
   elements.testability.textContent = plan
-    ? `${testable} guided items${combos ? ` · ${combos} firmware combos` : ""} · HID output verification${effectiveInputSource === "ble" ? " · optional BLE position diagnostics" : " · no BLE position telemetry"}${notTestable ? ` · ${notTestable} not testable` : ""}`
+    ? `${testable} guided layer items · HID output verification${effectiveInputSource === "ble" ? " · optional BLE position diagnostics" : " · no BLE position telemetry"}${notTestable ? ` · ${notTestable} not testable` : ""}`
     : "No compatible layout is available.";
+  const comboCount = comboPlan?.testableIndexes.length ?? 0;
+  const comboReady = effectiveInputSource === "ble" && comboCount > 0;
+  elements.comboTestStatus.textContent = comboCount === 0
+    ? "No global combos with a non-empty output code are defined for this layout."
+    : comboReady
+      ? `${comboCount} global firmware combos are ready for BLE verification.`
+      : `${comboCount} global firmware combos require ready, permitted BLE telemetry.`;
   const activating = layerSessionState.mode === "activating";
   elements.startButton.disabled = testable === 0 || activating;
+  elements.comboTestButton.disabled = !comboReady || activating;
   elements.layoutSelect.disabled = !layers.length || activating;
   elements.layerSelect.disabled = !layers.length || activating;
   elements.selectionLabel.textContent = definition ? `${definition.name} · ${names[selectedLayerIndex] ?? "Layer"}` : "";
@@ -95,7 +104,8 @@ function publishOverlay(snapshot) {
 
 function renderResults(snapshot) {
   elements.resultCounts.innerHTML = "";
-  for (const [status, label] of Object.entries({ passed: "Passed (HID)", unexpected: "Unexpected", skipped: "Skipped", "not-testable": "Not testable" })) {
+  const globalCombos = snapshot.plan.planKind === "global-combos";
+  for (const [status, label] of Object.entries({ passed: globalCombos ? "Passed (firmware)" : "Passed (HID)", unexpected: "Unexpected", skipped: "Skipped", "not-testable": "Not testable" })) {
     const item = document.createElement("div"); item.innerHTML = `<strong>${snapshot.counts[status]}</strong>${label}`; elements.resultCounts.appendChild(item);
   }
   elements.problemList.innerHTML = "";
@@ -107,10 +117,16 @@ function renderResults(snapshot) {
     elements.problemList.appendChild(item);
   }
   elements.retestButton.disabled = snapshot.counts.unexpected + snapshot.counts.skipped === 0;
-  const passedResults = Object.values(snapshot.results).filter((result) => result.status === "passed");
-  const corroborated = passedResults.filter((result) => result.bleCorroborated).length;
-  const warnings = passedResults.filter((result) => result.blePositionWarning).length;
-  elements.resultEvidence.textContent = `${snapshot.counts.passed} ordinary items passed from system HID evidence. ${corroborated} had matching BLE position corroboration.${warnings ? ` ${warnings} had a BLE position warning.` : ""}`;
+  if (globalCombos) {
+    elements.resultEvidence.textContent = `${snapshot.counts.passed} global combos passed from matching firmware BLE events.`;
+    elements.resultNotice.textContent = "Global combo results verify declared firmware combo events. They are independent of the selected layer and do not use system HID events as their verdict.";
+  } else {
+    const passedResults = Object.values(snapshot.results).filter((result) => result.status === "passed");
+    const corroborated = passedResults.filter((result) => result.bleCorroborated).length;
+    const warnings = passedResults.filter((result) => result.blePositionWarning).length;
+    elements.resultEvidence.textContent = `${snapshot.counts.passed} ordinary items passed from system HID evidence. ${corroborated} had matching BLE position corroboration.${warnings ? ` ${warnings} had a BLE position warning.` : ""}`;
+    elements.resultNotice.textContent = "Ordinary results verify system HID output. BLE position corroboration is reported separately and never substitutes for or blocks that verdict.";
+  }
   elements.liveStatus.textContent = `Test complete. ${snapshot.counts.passed} passed, ${snapshot.counts.unexpected} unexpected, ${snapshot.counts.skipped} skipped.`;
 }
 
@@ -180,6 +196,12 @@ async function startSelectedPlan() {
   if (plan) await layerSession.start(plan);
 }
 
+async function startGlobalComboPlan() {
+  if (effectiveInputSource !== "ble") return;
+  const plan = buildGlobalComboPlan();
+  if (plan?.testableIndexes.length) await layerSession.start(plan);
+}
+
 async function closeWindow() {
   await layerSession.release();
   controller.dispose();
@@ -190,6 +212,7 @@ async function closeWindow() {
 elements.layoutSelect.addEventListener("change", () => { selectedLayoutKey = elements.layoutSelect.value; selectedLayerIndex = 0; renderSetup(); });
 elements.layerSelect.addEventListener("change", () => { selectedLayerIndex = Number(elements.layerSelect.value); renderSetup(); });
 elements.startButton.addEventListener("click", startSelectedPlan);
+elements.comboTestButton.addEventListener("click", startGlobalComboPlan);
 elements.retryButton.addEventListener("click", () => controller.retry());
 elements.problemButton.addEventListener("click", () => controller.markProblem());
 elements.skipButton.addEventListener("click", () => controller.skip());
@@ -251,6 +274,11 @@ async function initialize() {
         const previous = effectiveInputSource;
         effectiveInputSource = next;
         controller.handleSourceTransition(previous, next, event.payload?.reason);
+        const snapshot = controller.getSnapshot();
+        if (snapshot.plan?.planKind === "global-combos") {
+          if (next !== "ble") controller.pause("BLE combo telemetry is unavailable. Restore it or stop the test.");
+          else if (snapshot.phase === "paused") controller.resume();
+        }
         if (controller.getSnapshot().phase === "setup") renderSetup();
       });
       await tauri.event.listen("self-test-layer-lease-status", (event) => {

@@ -41,6 +41,7 @@ test("golden layout fixtures are accepted by the external layout parser", () => 
 test("golden Corne fixture exercises layer, combo, BLE, and input-source contracts", () => {
   const corne = readJsonFixture("layouts/corne-connected.json");
   assert.equal(Object.keys(corne.keyLayers).length, 5);
+  assert.equal("layerMetadata" in corne, false);
   assert.equal(corne.combos[0].id, "escape-combo");
   assert.equal(normalizeBleLayerSource(corne)?.format, "int32-le");
   assert.equal(normalizeInputSourceSync(corne, 5, { platform: "macos" }).error, null);

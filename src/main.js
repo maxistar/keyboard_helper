@@ -24,7 +24,10 @@ import { createMacosInputSourceController } from "./macos_input_source.js";
 import { createInputSourceLayerReconciler } from "./input_source_layer_reconciler.js";
 import { calcBounds, calcKeyBounds, renderKeyLabel } from "./keyboard_renderer.js";
 import { createSelfTestOverlayPresentation } from "./self_test/overlay_presentation.js";
-import { createSelfTestLayerLeaseCoordinator } from "./self_test/layer_lease.js";
+import {
+  createSelfTestLayerLeaseCoordinator,
+  matchesOrderedLayerRequest,
+} from "./self_test/layer_lease.js";
 
 const builtinLayoutFiles = BUILTIN_LAYOUT_FILES;
 let layoutDefinitions = {};
@@ -33,7 +36,6 @@ let layouts = {};
 let layoutLayers = {};
 let layoutLayerNames = {};
 let layoutLayerKeys = {};
-let layoutLayerMetadata = {};
 let layoutSources = {};
 let layoutBleSources = {};
 let layoutInputSourceSync = {};
@@ -150,22 +152,16 @@ function rebuildLayoutData() {
   normalizedLayoutLayers = {};
   layoutLayerNames = {};
   layoutLayerKeys = {};
-  layoutLayerMetadata = {};
   layouts = {};
   layoutBleSources = {};
   layoutInputSourceSync = {};
   comboDefinitionsByLayout = {};
 
   for (const [key, def] of Object.entries(layoutDefinitions)) {
-    const { layers, names, layerKeys, layerMetadata } = normalizeLayerData(
-      def.keyLayers,
-      def.layerMetadata,
-      def.keyPositions?.length,
-    );
+    const { layers, names, layerKeys } = normalizeLayerData(def.keyLayers);
     normalizedLayoutLayers[key] = layers;
     layoutLayerNames[key] = names;
     layoutLayerKeys[key] = layerKeys;
-    layoutLayerMetadata[key] = layerMetadata;
     layouts[key] = buildLayout(def, layers);
     layoutBleSources[key] = normalizeBleLayerSource(def);
     const inputSourceSync = normalizeInputSourceSync(def, layers.length);
@@ -879,12 +875,10 @@ window.addEventListener("DOMContentLoaded", async () => {
     isWritable: () => bleLayerControlStatus.state === "connected"
       && bleLayerControlStatus.writable
       && bleLayerSync?.getActiveLayoutKey() === currentLayoutKey,
-    validateLayerRequest: (request) => {
-      const layerIndex = layoutLayerKeys[currentLayoutKey]?.indexOf(request.layerKey) ?? -1;
-      return layerIndex >= 0
-        && layoutLayerMetadata[currentLayoutKey]?.[layerIndex]?.firmwareLayerIndex
-          === request.firmwareLayerIndex;
-    },
+    validateLayerRequest: (request) => matchesOrderedLayerRequest(
+      layoutLayerKeys[currentLayoutKey],
+      request,
+    ),
     writeLayer: (layer, acceptableLayers) => bleLayerSync.writeLayer(layer, acceptableLayers),
     setReconciliationSuspended: (suspended) => sourceLayerReconciler?.setSuspended(suspended),
     onStatus: publishSelfTestLayerLeaseStatus,

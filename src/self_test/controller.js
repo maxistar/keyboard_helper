@@ -18,23 +18,25 @@ function positionsForCombo(combo, keyPositions) {
   ));
 }
 
-function comboEntries(definition, startIndex, allowed) {
+function comboEntries(definition, allowed) {
   const entries = [];
   for (const combo of (Array.isArray(definition.combos) ? definition.combos : [])) {
-    const positions = positionsForCombo(combo, definition.keyPositions);
+    const code = typeof combo?.code === "string" ? combo.code.trim() : "";
+    if (!code) continue;
+    const positions = positionsForCombo(combo, definition.keyPositions ?? []);
     const comboId = Number.isInteger(combo?.id) && combo.id > 0 ? combo.id : null;
     if ((!comboId && positions.length === 0)
       || positions.some((position) => !Number.isInteger(position) || position < 0 || position >= definition.keyPositions.length)) {
       continue;
     }
-    const index = startIndex + entries.length;
+    const index = entries.length;
     const sourceTestable = true;
     entries.push(freezeEntry({
       index,
       kind: "combo",
       position: {},
-      label: combo.code ?? (comboId ? `Combo ${comboId}` : `Combo ${positions.join("+")}`),
-      rawCode: combo.code ?? "",
+      label: code,
+      rawCode: code,
       descriptor: { supported: false, trigger: null, modifiers: [] },
       comboId,
       positions: Object.freeze([...positions]),
@@ -52,19 +54,16 @@ export function buildTestPlan({
   layers,
   layerNames,
   layerKeys = [],
-  layerMetadata = [],
   layerIndex = 0,
   onlyIndexes = null,
   inputSource = "system",
 }) {
   const allowed = onlyIndexes ? new Set(onlyIndexes) : null;
-  const selectedMetadata = layerMetadata[layerIndex] ?? {};
-  const excludedPositions = new Set(selectedMetadata.selfTestExcludedPositions ?? []);
   const entries = definition.keyPositions.map((position, index) => {
     const rawEntry = effectiveLayerEntry(layers, layerIndex, index);
     const normalized = normalizeKeyEntry(rawEntry);
     const descriptor = normalizeHidDescriptor(normalized.code);
-    const sourceTestable = descriptor.supported && !excludedPositions.has(index);
+    const sourceTestable = descriptor.supported;
     return freezeEntry({
       index,
       kind: "key",
@@ -79,21 +78,35 @@ export function buildTestPlan({
       excludedFromRetest: Boolean(allowed && !allowed.has(index) && sourceTestable),
     });
   });
-  if (inputSource === "ble") {
-    entries.push(...comboEntries(definition, entries.length, allowed));
-  }
   const testableIndexes = entries.filter((entry) => entry.testable).map((entry) => entry.index);
   return Object.freeze({
+    planKind: "layer",
     layoutKey,
     layoutName: definition.name ?? layoutKey,
     layerIndex,
     layerKey: layerKeys[layerIndex] ?? String(layerIndex),
-    firmwareLayerIndex: Number.isInteger(selectedMetadata.firmwareLayerIndex)
-      ? selectedMetadata.firmwareLayerIndex
-      : null,
-    selfTestExcludedPositions: Object.freeze([...excludedPositions]),
+    firmwareLayerIndex: layerIndex,
     inputSource,
     layerName: layerNames?.[layerIndex] ?? `Layer ${layerIndex + 1}`,
+    keySize: Object.freeze({ ...definition.keySize }),
+    entries: Object.freeze(entries),
+    testableIndexes: Object.freeze(testableIndexes),
+  });
+}
+
+export function buildComboTestPlan({ layoutKey, definition, onlyIndexes = null }) {
+  const allowed = onlyIndexes ? new Set(onlyIndexes) : null;
+  const entries = comboEntries(definition, allowed);
+  const testableIndexes = entries.filter((entry) => entry.testable).map((entry) => entry.index);
+  return Object.freeze({
+    planKind: "global-combos",
+    layoutKey,
+    layoutName: definition.name ?? layoutKey,
+    layerIndex: null,
+    layerKey: null,
+    firmwareLayerIndex: null,
+    inputSource: "ble",
+    layerName: "Global firmware combos",
     keySize: Object.freeze({ ...definition.keySize }),
     entries: Object.freeze(entries),
     testableIndexes: Object.freeze(testableIndexes),
