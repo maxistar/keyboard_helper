@@ -212,7 +212,7 @@ test("empty plans do not start and stopping disposes session results", () => {
   assert.deepEqual(controller.getSnapshot().results, {});
 });
 
-test("BLE plans include every physical position and firmware-resolved combos", () => {
+test("BLE plans keep unsupported ordinary positions untestable and include firmware-resolved combos", () => {
   const definition = {
     name: "BLE fixture",
     keySize: { w: 40, h: 40, gap: 4 },
@@ -226,25 +226,54 @@ test("BLE plans include every physical position and firmware-resolved combos", (
     layerNames: ["Base"],
     inputSource: "ble",
   });
-  assert.deepEqual(plan.testableIndexes, [0, 1, 2]);
+  assert.deepEqual(plan.testableIndexes, [1, 2]);
   assert.equal(plan.entries[0].kind, "key");
+  assert.equal(plan.entries[0].testable, false);
   assert.equal(plan.entries[2].kind, "combo");
   assert.equal(plan.entries[2].comboId, 9);
 });
 
-test("BLE physical key events pass the requested position and diagnose a wrong key", () => {
+test("selected-layer metadata excludes a valid fallback HID position and preserves firmware mapping", () => {
+  const plan = buildTestPlan({
+    layoutKey: "mapped",
+    definition: {
+      name: "Mapped",
+      keySize: { w: 40, h: 40, gap: 4 },
+      keyPositions: [{ row: 0, col: 0 }, { row: 0, col: 1 }],
+    },
+    layers: [[["Shift", "ShiftLeft"], ["A", "KeyA"]], [null, ["B", "KeyB"]]],
+    layerNames: ["Base", "Forced shift"],
+    layerKeys: ["base", "forced_shift"],
+    layerMetadata: [
+      { firmwareLayerIndex: 0, selfTestExcludedPositions: [] },
+      { firmwareLayerIndex: 7, selfTestExcludedPositions: [0] },
+    ],
+    layerIndex: 1,
+    inputSource: "ble",
+  });
+  assert.equal(plan.layerKey, "forced_shift");
+  assert.equal(plan.firmwareLayerIndex, 7);
+  assert.deepEqual(plan.selfTestExcludedPositions, [0]);
+  assert.equal(plan.entries[0].rawCode, "ShiftLeft");
+  assert.equal(plan.entries[0].testable, false);
+  assert.equal(plan.entries[1].testable, true);
+});
+
+test("BLE physical position alone cannot pass an ordinary key and wrong HID remains unexpected", () => {
   const matching = createSelfTestController();
   matching.start(onlyPosition(fixture(), 1));
   matching.handlePhysicalKey(1, "down");
-  assert.equal(matching.getSnapshot().phase, "physical-key-active");
   matching.handlePhysicalKey(1, "up");
-  assert.equal(matching.getSnapshot().phase, "complete");
-  assert.equal(matching.getSnapshot().counts.passed, 1);
+  assert.equal(matching.getSnapshot().phase, "waiting-down");
+  assert.equal(matching.getSnapshot().counts.passed, 0);
+  matching.handleKey("KeyZ", "down");
+  assert.equal(matching.getSnapshot().phase, "mismatch");
+  assert.equal(matching.getSnapshot().received, "KeyZ");
 
   const wrong = createSelfTestController();
   wrong.start(onlyPosition(fixture(), 1));
   wrong.handlePhysicalKey(2, "down");
-  assert.equal(wrong.getSnapshot().phase, "mismatch");
+  assert.equal(wrong.getSnapshot().phase, "waiting-down");
   assert.equal(wrong.getSnapshot().diagnostics.at(-1).code, "unexpected-ble-key");
 });
 
@@ -288,4 +317,104 @@ test("BLE fallback clears physical state, records the transition, and rearms the
   assert.equal(snapshot.phase, "waiting-down");
   assert.deepEqual(snapshot.pressedPositions, []);
   assert.equal(snapshot.diagnostics.at(-1).code, "ble-fallback");
+});
+
+test("highlighting source transitions do not reset an in-progress system HID lifecycle", () => {
+  const controller = createSelfTestController();
+  controller.start(oneKeyPlan("KeyA"));
+  controller.handleKey("KeyA", "down");
+  controller.handleSourceTransition("system", "ble", "telemetry-ready");
+  assert.equal(controller.getSnapshot().phase, "chord-active");
+  controller.handleKey("KeyA", "up");
+  assert.equal(controller.getSnapshot().phase, "complete");
+  assert.equal(controller.getSnapshot().counts.passed, 1);
+});
+
+test("correct HID passes without BLE when telemetry is unavailable or privacy-disabled", () => {
+  for (const inputSource of ["system", "ble"]) {
+    const plan = Object.freeze({ ...oneKeyPlan("KeyA"), inputSource });
+    const controller = createSelfTestController();
+    controller.start(plan);
+    controller.handleKey("KeyA", "down");
+    controller.handleKey("KeyA", "up");
+    const result = controller.getSnapshot().results[0];
+    assert.equal(result.status, "passed");
+    assert.equal(result.bleCorroborated, false);
+  }
+});
+
+test("matching BLE lifecycle annotates but does not decide an ordinary HID pass", () => {
+  const controller = createSelfTestController();
+  controller.start(oneKeyPlan("KeyA"));
+  controller.handlePhysicalKey(0, "down");
+  controller.handlePhysicalKey(0, "up");
+  assert.equal(controller.getSnapshot().counts.passed, 0);
+  controller.handleKey("KeyA", "down");
+  controller.handleKey("KeyA", "up");
+  assert.equal(controller.getSnapshot().results[0].bleCorroborated, true);
+});
+
+test("wrong or late BLE positions never block a correct HID verdict", () => {
+  const wrong = createSelfTestController();
+  wrong.start(oneKeyPlan("KeyA"));
+  wrong.handlePhysicalKey(3, "down");
+  wrong.handleKey("KeyA", "down");
+  wrong.handleKey("KeyA", "up");
+  assert.equal(wrong.getSnapshot().phase, "complete");
+  assert.equal(wrong.getSnapshot().results[0].blePositionWarning, true);
+
+  const late = createSelfTestController();
+  late.start(oneKeyPlan("KeyA"));
+  late.handleKey("KeyA", "down");
+  late.handleKey("KeyA", "up");
+  assert.equal(late.getSnapshot().phase, "complete");
+  late.handlePhysicalKey(0, "down");
+  late.handlePhysicalKey(0, "up");
+  assert.equal(late.getSnapshot().results[0].status, "passed");
+});
+
+test("system HID events do not turn a firmware combo step into an ordinary mismatch", () => {
+  const definition = {
+    name: "Combo only",
+    keySize: { w: 40, h: 40, gap: 4 },
+    keyPositions: [{ row: 0, col: 0 }, { row: 0, col: 1 }],
+    combos: [{ id: 4, positions: [0, 1], code: "Escape" }],
+  };
+  const plan = buildTestPlan({
+    layoutKey: "combo-only",
+    definition,
+    layers: [[null, null]],
+    layerNames: ["Base"],
+    inputSource: "ble",
+    onlyIndexes: [2],
+  });
+  const controller = createSelfTestController();
+  controller.start(plan);
+  controller.handleKey("Escape", "down");
+  assert.equal(controller.getSnapshot().phase, "waiting-down");
+  controller.handlePhysicalKey(0, "down");
+  controller.handlePhysicalKey(1, "down");
+  controller.handleCombo(4, [0, 1], "down");
+  controller.handleKey("Escape", "up");
+  controller.handlePhysicalKey(0, "up");
+  controller.handlePhysicalKey(1, "up");
+  assert.equal(controller.getSnapshot().phase, "complete");
+});
+
+test("layer pause ignores test evidence, drains held keys, and resumes the same step", () => {
+  const controller = createSelfTestController();
+  controller.start(oneKeyPlan("KeyA"));
+  controller.handleKey("ShiftLeft", "down");
+  assert.equal(controller.getSnapshot().phase, "mismatch");
+  assert.equal(controller.pause("Layer changed"), true);
+  controller.handleKey("KeyA", "down");
+  controller.handleKey("KeyA", "up");
+  assert.equal(controller.getSnapshot().counts.passed, 0);
+  assert.equal(controller.resume(), true);
+  assert.equal(controller.getSnapshot().phase, "waiting-clean");
+  controller.handleKey("ShiftLeft", "up");
+  assert.equal(controller.getSnapshot().phase, "waiting-down");
+  controller.handleKey("KeyA", "down");
+  controller.handleKey("KeyA", "up");
+  assert.equal(controller.getSnapshot().phase, "complete");
 });

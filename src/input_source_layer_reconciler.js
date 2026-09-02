@@ -19,6 +19,7 @@ export function createInputSourceLayerReconciler({
   let timer = null;
   let generation = 0;
   let pending = false;
+  let suspended = false;
   let state = { status: "waiting", message: null, sourceId: null, observedLayer: null };
 
   const sourceByInputId = new Map(
@@ -50,6 +51,10 @@ export function createInputSourceLayerReconciler({
 
   const reconcile = () => {
     cancelSettling();
+    if (suspended) {
+      publish("suspended", "Self-test controls the keyboard layer");
+      return;
+    }
     const desired = sourceByInputId.get(sourceId);
     if (!desired) {
       publish(sourceId ? "unsupported-source" : "waiting");
@@ -128,6 +133,12 @@ export function createInputSourceLayerReconciler({
     setBleStatus(nextState, writable = false) {
       bleState = nextState ?? "idle";
       bleWritable = Boolean(writable);
+      reconcile();
+    },
+    setSuspended(nextSuspended) {
+      const next = Boolean(nextSuspended);
+      if (next === suspended) return;
+      suspended = next;
       reconcile();
     },
     resume: reconcile,

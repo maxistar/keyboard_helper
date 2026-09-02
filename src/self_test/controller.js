@@ -51,16 +51,20 @@ export function buildTestPlan({
   definition,
   layers,
   layerNames,
+  layerKeys = [],
+  layerMetadata = [],
   layerIndex = 0,
   onlyIndexes = null,
   inputSource = "system",
 }) {
   const allowed = onlyIndexes ? new Set(onlyIndexes) : null;
+  const selectedMetadata = layerMetadata[layerIndex] ?? {};
+  const excludedPositions = new Set(selectedMetadata.selfTestExcludedPositions ?? []);
   const entries = definition.keyPositions.map((position, index) => {
     const rawEntry = effectiveLayerEntry(layers, layerIndex, index);
     const normalized = normalizeKeyEntry(rawEntry);
     const descriptor = normalizeHidDescriptor(normalized.code);
-    const sourceTestable = inputSource === "ble" || descriptor.supported;
+    const sourceTestable = descriptor.supported && !excludedPositions.has(index);
     return freezeEntry({
       index,
       kind: "key",
@@ -83,6 +87,11 @@ export function buildTestPlan({
     layoutKey,
     layoutName: definition.name ?? layoutKey,
     layerIndex,
+    layerKey: layerKeys[layerIndex] ?? String(layerIndex),
+    firmwareLayerIndex: Number.isInteger(selectedMetadata.firmwareLayerIndex)
+      ? selectedMetadata.firmwareLayerIndex
+      : null,
+    selfTestExcludedPositions: Object.freeze([...excludedPositions]),
     inputSource,
     layerName: layerNames?.[layerIndex] ?? `Layer ${layerIndex + 1}`,
     keySize: Object.freeze({ ...definition.keySize }),
@@ -107,8 +116,11 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
     pressedPositions: new Set(),
     activeChord: null,
     activePhysicalPosition: null,
+    physicalEvidence: null,
     pendingTransition: null,
+    pendingRequiresPhysicalClean: false,
     received: null,
+    pauseReason: null,
     completionRevision: 0,
     diagnostics: [],
   };
@@ -132,9 +144,11 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
       results,
       counts,
       received: state.received,
+      pauseReason: state.pauseReason,
       activeModifiers,
       pressedCodes: [...state.pressedCodes],
       pressedPositions: [...state.pressedPositions],
+      physicalEvidence: state.physicalEvidence ? { ...state.physicalEvidence } : null,
       chordActive: state.phase === "chord-active",
       waitingForRelease: state.phase === "waiting-clean",
       completionRevision: state.completionRevision,
@@ -147,6 +161,8 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
   function advance() {
     state.cursor += 1;
     state.received = null;
+    state.pauseReason = null;
+    state.physicalEvidence = null;
     if (state.cursor >= state.plan.testableIndexes.length) {
       state.phase = "complete";
       state.completionRevision += 1;
@@ -157,9 +173,12 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
   }
 
   function finishPendingTransition() {
-    if (state.phase !== "waiting-clean" || state.pressedCodes.size > 0 || state.pressedPositions.size > 0) return false;
+    if (state.phase !== "waiting-clean"
+      || state.pressedCodes.size > 0
+      || (state.pendingRequiresPhysicalClean && state.pressedPositions.size > 0)) return false;
     const transition = state.pendingTransition;
     state.pendingTransition = null;
+    state.pendingRequiresPhysicalClean = false;
     if (transition === "advance") {
       advance();
     } else {
@@ -170,11 +189,13 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
     return true;
   }
 
-  function waitForCleanBoundary(transition) {
+  function waitForCleanBoundary(transition, { requirePhysical = false } = {}) {
     state.activeChord = null;
     state.activePhysicalPosition = null;
+    state.physicalEvidence = null;
     state.pendingTransition = transition;
-    state.received = transition === "retry" ? null : state.received;
+    state.pendingRequiresPhysicalClean = requirePhysical;
+    state.received = ["retry", "resume"].includes(transition) ? null : state.received;
     state.phase = "waiting-clean";
     if (!finishPendingTransition()) notify();
   }
@@ -202,8 +223,11 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
       pressedPositions: state.pressedPositions,
       activeChord: null,
       activePhysicalPosition: null,
+      physicalEvidence: null,
       pendingTransition: "start",
+      pendingRequiresPhysicalClean: false,
       received: null,
+      pauseReason: null,
       completionRevision: state.completionRevision,
       diagnostics: state.diagnostics,
     };
@@ -230,12 +254,20 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
     if (["setup", "complete"].includes(state.phase)) {
       return false;
     }
+    if (state.phase === "paused") {
+      notify();
+      return false;
+    }
     if (state.phase === "mismatch") {
       notify();
       return false;
     }
 
     const expected = currentEntry();
+    if (expected?.kind === "combo") {
+      notify();
+      return false;
+    }
     const modifier = normalizeModifier(code);
     const modifierIsExpectedTrigger = expected?.descriptor.trigger === code
       && expected.descriptor.modifiers.length === 0;
@@ -284,7 +316,13 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
         notify();
         return false;
       }
-      state.results.set(expected.index, { status: "passed", expected: expected.rawCode });
+      state.results.set(expected.index, {
+        status: "passed",
+        expected: expected.rawCode,
+        bleCorroborated: state.physicalEvidence?.position === expected.index
+          && state.physicalEvidence?.released === true,
+        blePositionWarning: Boolean(state.physicalEvidence?.warning),
+      });
       waitForCleanBoundary("advance");
       return true;
     }
@@ -312,10 +350,7 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
     if (previous === "ble") {
       state.pressedPositions.clear();
       state.activePhysicalPosition = null;
-    }
-    if (previous === "system") {
-      state.pressedCodes.clear();
-      state.activeChord = null;
+      state.physicalEvidence = null;
     }
     recordDiagnostic(current === "ble" ? "ble-source-active" : "ble-fallback", {
       message: `${previous} → ${current}${reason ? `: ${reason}` : ""}`,
@@ -323,11 +358,6 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
     if (state.phase === "waiting-clean") {
       if (!finishPendingTransition()) notify();
       return true;
-    }
-    if (["physical-key-active", "chord-active", "mismatch"].includes(state.phase)) {
-      state.phase = "waiting-down";
-      state.received = null;
-      state.pendingTransition = null;
     }
     notify();
     return true;
@@ -350,6 +380,10 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
       return false;
     }
     if (["setup", "complete"].includes(state.phase)) return false;
+    if (state.phase === "paused") {
+      notify();
+      return false;
+    }
     if (state.phase === "mismatch") {
       notify();
       return false;
@@ -368,35 +402,19 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
       return false;
     }
 
-    if (state.phase === "waiting-down") {
-      if (eventType === "up") {
-        notify();
-        return false;
-      }
-      state.received = `Position ${position}`;
-      if (position === expected?.index) {
-        state.activePhysicalPosition = position;
-        state.phase = "physical-key-active";
-      } else {
-        recordDiagnostic("unexpected-ble-key", { position, expectedPosition: expected?.index });
-        state.phase = "mismatch";
-      }
-      notify();
-      return true;
-    }
-
-    if (state.phase === "physical-key-active" && eventType === "down") {
+    if (eventType === "down" && position !== expected?.index) {
       recordDiagnostic("unexpected-ble-key", { position, expectedPosition: expected?.index });
-      state.phase = "mismatch";
-      state.received = `Position ${position}`;
-      state.activePhysicalPosition = null;
+      state.physicalEvidence = { position, warning: true, released: false };
       notify();
       return true;
     }
-    if (state.phase === "physical-key-active" && eventType === "up" && position === state.activePhysicalPosition) {
-      state.results.set(expected.index, { status: "passed", expected: expected.rawCode });
-      waitForCleanBoundary("advance");
+    if (eventType === "down" && position === expected?.index) {
+      state.physicalEvidence = { position, warning: false, released: false };
+      notify();
       return true;
+    }
+    if (eventType === "up" && position === state.physicalEvidence?.position) {
+      state.physicalEvidence = { ...state.physicalEvidence, released: true };
     }
     notify();
     return false;
@@ -413,13 +431,34 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
     }
     state.results.set(expected.index, { status: "passed", expected: expected.rawCode });
     state.received = comboId ? `Combo ${comboId}` : `Positions ${positions.join("+")}`;
-    waitForCleanBoundary("advance");
+    waitForCleanBoundary("advance", { requirePhysical: true });
     return true;
   }
 
   function retry() {
     if (state.phase !== "mismatch") return false;
     waitForCleanBoundary("retry");
+    return true;
+  }
+
+  function pause(reason = "The active keyboard layer changed") {
+    if (["setup", "complete", "paused"].includes(state.phase)) return false;
+    state.phase = "paused";
+    state.pauseReason = reason;
+    state.activeChord = null;
+    state.activePhysicalPosition = null;
+    state.physicalEvidence = null;
+    state.pendingTransition = null;
+    state.pendingRequiresPhysicalClean = false;
+    state.received = null;
+    notify();
+    return true;
+  }
+
+  function resume() {
+    if (state.phase !== "paused") return false;
+    state.pauseReason = null;
+    waitForCleanBoundary("resume");
     return true;
   }
 
@@ -432,7 +471,7 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
   }
 
   function skip() {
-    if (!["waiting-down", "chord-active", "physical-key-active"].includes(state.phase)) return false;
+    if (!["waiting-down", "chord-active"].includes(state.phase)) return false;
     const entry = currentEntry();
     state.results.set(entry.index, { status: "skipped", expected: entry.rawCode });
     waitForCleanBoundary("advance");
@@ -447,22 +486,25 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
       cursor: 0,
       results: new Map(),
       received: null,
+      pauseReason: null,
       activeChord: null,
       activePhysicalPosition: null,
+      physicalEvidence: null,
       pendingTransition: null,
+      pendingRequiresPhysicalClean: false,
       pressedPositions: new Set(),
       diagnostics: [],
     };
     notify();
   }
 
-  function retestProblems() {
+  function createRetestPlan() {
     if (state.phase !== "complete" || !state.plan) return false;
     const problems = [...state.results.entries()]
       .filter(([, result]) => result.status === "unexpected" || result.status === "skipped")
       .map(([index]) => index);
     if (!problems.length) return false;
-    const plan = Object.freeze({
+    return Object.freeze({
       ...state.plan,
       testableIndexes: Object.freeze(problems),
       entries: Object.freeze(state.plan.entries.map((entry) => freezeEntry({
@@ -471,6 +513,11 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
         excludedFromRetest: entry.sourceTestable && !problems.includes(entry.index),
       }))),
     });
+  }
+
+  function retestProblems() {
+    const plan = createRetestPlan();
+    if (!plan) return false;
     return start(plan);
   }
 
@@ -483,9 +530,12 @@ export function createSelfTestController({ onChange = () => {} } = {}) {
     reportDiagnostic,
     handleSourceTransition,
     retry,
+    pause,
+    resume,
     markProblem,
     skip,
     stop,
+    createRetestPlan,
     retestProblems,
     dispose: stop,
   };

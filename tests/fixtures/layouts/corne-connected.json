@@ -15,6 +15,13 @@
     "ruShift": [["Й", "Shift+KeyQ"], ["Ц", "Shift+KeyW"], ["Ф", "Shift+KeyA"], ["Ы", "Shift+KeyS"], null],
     "utility": [["BT", "F19"], null, null, null, null]
   },
+  "layerMetadata": {
+    "de": { "firmwareLayerIndex": 0, "selfTestExcludedPositions": [4] },
+    "deShift": { "firmwareLayerIndex": 1, "selfTestExcludedPositions": [] },
+    "ru": { "firmwareLayerIndex": 2, "selfTestExcludedPositions": [4] },
+    "ruShift": { "firmwareLayerIndex": 3, "selfTestExcludedPositions": [] },
+    "utility": { "firmwareLayerIndex": 4, "selfTestExcludedPositions": [0] }
+  },
   "combos": [
     {
       "id": "escape-combo",

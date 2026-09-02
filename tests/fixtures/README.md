@@ -4,7 +4,8 @@ These files are reviewed examples of supported Keyboard Helper metadata. Tests
 should reuse them before inventing a private schema variant.
 
 - `layouts/` contains minimal layouts that preserve the same positional,
-  layered, combo/chord, BLE, and input-source shapes as production layouts.
+  layered, per-layer self-test metadata, combo/chord, BLE, and input-source
+  shapes as production layouts.
 - `configs/` contains startup, external-layout, and intentionally invalid draft
   configurations.
 - `ble/` contains transport-state examples and reviewed Keyboard Helper BLE v1 capability/event

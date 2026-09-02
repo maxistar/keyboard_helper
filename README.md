@@ -93,13 +93,13 @@ The first release uses curated English words and keeps results only for the curr
 Open the overlay menu, expand **Keyboard**, and choose **Keyboard Self-test**. The desktop app opens one separate test window (or focuses the existing one), initially selecting the overlay's current layout and its base layer.
 
 1. Choose a configured built-in or external layout and the layer you want to verify.
-2. Activate that layer on the physical keyboard yourself, then choose **Start guided test**.
+2. Choose **Start guided test**. If the layout explicitly maps that layer and writable BLE layer control is ready, Keyboard Helper activates it and waits for authoritative confirmation. Otherwise activate the layer manually and continue in HID-only mode.
 3. Press and release the highlighted physical position. An unexpected output can be retried or recorded as a problem; use **Skip this position** when a key produces no event.
 4. Review passed, unexpected, skipped, and not-testable positions. You can retest only the problems or return to choose another layer.
 
-The self-test window is a compact controller; the existing overlay remains the only keyboard visualization. Guided outlines are added by physical position while normal live pressed-key highlighting continues, so the expected position and the received key can be seen together. The controller does not switch the overlay or firmware layer—make sure its layout/layer selectors match what the overlay and keyboard currently show.
+The self-test window is a compact controller; the existing overlay remains the only keyboard visualization. Guided outlines are added by physical position while normal live pressed-key highlighting continues, so the expected position and the received key can be seen together. A confirmed automatic layer selection is temporary: input-source reconciliation is deferred during the lease, an unexpected authoritative layer change pauses the test, and Stop, completion, Test another layer, or close conditionally restores the preceding layer without overwriting newer user intent.
 
-The report exists only until the self-test window closes. It verifies the configured global HID output, not raw ZMK switch or matrix health: events can come from any attached keyboard, and combos, macros, hold-tap timing, layer activation, and unsupported/multi-step codes are outside the first version.
+The report exists only until the self-test window closes. System HID events are the sole authority for ordinary Passed and Unexpected results, so stock ZMK and non-ZMK keyboards remain testable without custom telemetry. Optional BLE key telemetry only corroborates a physical position or adds a warning; it may be unavailable or disabled for privacy and never blocks a correct HID verdict. Without corroboration, events can come from any attached keyboard. Explicit firmware combo items remain BLE-authoritative, while raw matrix health and unsupported or multi-step behaviors are outside the test.
 
 ## Release process
 
@@ -129,7 +129,8 @@ Advanced users can still edit the compatible JSON configuration directly. The ap
   - `defaultLayout`: key of the layout to select at startup (must exist in `layouts`).
   - `layouts`: object mapping layout keys to either `true` (use built-in) or a filesystem path (load external JSON).
 - Layout combos (layout-specific): add a `combos` array inside a layout file with entries like `{ "key1": { "row": 1, "col": 4 }, "key2": { "row": 1, "col": 5 }, "code": "Enter" }`.
-- Layout file format: JSON with `name`, optional `bleLayerSource`, optional `inputSourceSync`, `keySize` (`w`, `h`, `gap` in px), `keyPositions` (array of `{row,col}` with optional `w`/`h` overrides), and `keyLayers`. `keyLayers` can be an object with `default`, `shift`, etc., or an array where index 0 is the base layer. Each layer entry is `[label, code]` (or an object with `text`/`image` for custom labels).
+- Layout file format: JSON with `name`, optional `bleLayerSource`, optional `inputSourceSync`, optional `layerMetadata`, `keySize` (`w`, `h`, `gap` in px), `keyPositions` (array of `{row,col}` with optional `w`/`h` overrides), and `keyLayers`. `keyLayers` can be an object with `default`, `shift`, etc., or an array where index 0 is the base layer. Each layer entry is `[label, code]` (or an object with `text`/`image` for custom labels).
+- `layerMetadata` optionally maps the exact raw `keyLayers` key to `{ "firmwareLayerIndex": 2, "selfTestExcludedPositions": [24, 39] }`. The non-negative firmware index enables confirmed automatic layer activation during self-test; it is never inferred from JSON order or the displayed name. Excluded positions are zero-based `keyPositions` indexes for layer-control, dual-role, or other firmware behaviors that must not be exercised while that layer is forced. Empty or unsupported HID codes remain automatically not testable.
 - `bleLayerSource` is optional and enables BLE-authoritative layer updates for the selected keyboard only. Shape:
   - `deviceName`: BLE keyboard name to match
   - `serviceUuid`: custom GATT service UUID

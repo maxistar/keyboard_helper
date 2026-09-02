@@ -13,6 +13,14 @@
       <button id="closeButton" class="button ghost" type="button">Close</button>
     </header>
 
+    <section class="layer-control" aria-label="Test layer activation">
+      <p id="layerControlStatus" role="status" aria-live="polite">Layer activation will be selected when the test starts.</p>
+      <div id="layerControlActions" class="actions" hidden>
+        <button id="layerRetryButton" class="button primary" type="button">Retry layer activation</button>
+        <button id="manualContinueButton" class="button secondary" type="button">Continue manually</button>
+      </div>
+    </section>
+
     <section id="setupView" class="panel" aria-labelledby="setupTitle">
       <h2 id="setupTitle">Choose what to test</h2>
       <div class="selectors">
@@ -22,7 +30,7 @@
       <div id="catalogErrors" class="error-list" role="alert"></div>
       <div id="transportDiagnostics" class="error-list" role="status" aria-live="polite"></div>
       <p id="testability" class="testability" role="status" aria-live="polite">Loading layouts…</p>
-      <div class="notice"><strong>Activate the selected layer and release all keys before starting.</strong> A ready BLE event stream tests physical positions and firmware-resolved combos. Otherwise the test falls back to global HID events from any attached keyboard. Modifier chords pass only after the trigger and every modifier are released.</div>
+      <div class="notice"><strong>System HID output determines every ordinary Passed result.</strong> When the layout and keyboard support writable BLE layer control, the selected layer is activated and confirmed automatically. Otherwise activate it manually. BLE key telemetry is optional position evidence and may be unavailable or disabled for privacy. Modifier chords pass only after the trigger and every modifier are released.</div>
       <button id="startButton" class="button primary" type="button" disabled>Start guided test</button>
     </section>
 
@@ -49,8 +57,9 @@
     <section id="resultsView" class="panel" aria-labelledby="resultsTitle" hidden>
       <h2 id="resultsTitle">Test complete</h2>
       <div id="resultCounts" class="result-counts"></div>
+      <p id="resultEvidence" class="testability"></p>
       <ul id="problemList" class="problem-list"></ul>
-      <p class="notice">Results identify whether the session used physical BLE telemetry or global HID fallback. Transport diagnostics remain visible above.</p>
+      <p class="notice">Ordinary results verify system HID output. BLE position corroboration is reported separately and never substitutes for or blocks that verdict.</p>
       <div class="actions">
         <button id="retestButton" class="button primary" type="button">Retest problems</button>
         <button id="anotherLayerButton" class="button secondary" type="button">Test another layer</button>

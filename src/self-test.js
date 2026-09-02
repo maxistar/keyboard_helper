@@ -3,6 +3,7 @@ import { buildTestPlan, createSelfTestController } from "./self_test/controller.
 import { createOverlayPresentationPayload } from "./self_test/overlay_presentation.js";
 import { initializeSecondaryWindow, SECONDARY_WINDOWS } from "./secondary_window_ready.js";
 import { normalizeBleKeyboardFrame, normalizeSystemKeyEvent } from "./input_events.js";
+import { createSelfTestLayerSession } from "./self_test/layer_session.js";
 
 const elements = Object.fromEntries([
   "setupView", "activeView", "resultsView", "layoutSelect", "layerSelect", "catalogErrors", "testability",
@@ -10,6 +11,7 @@ const elements = Object.fromEntries([
   "receivedCode", "mismatchActions", "waitingActions", "retryButton", "problemButton", "skipButton", "stopButton",
   "resultCounts", "problemList", "retestButton", "anotherLayerButton", "closeButton", "closeResultsButton", "liveStatus",
   "transportDiagnostics",
+  "layerControlStatus", "layerControlActions", "layerRetryButton", "manualContinueButton", "resultEvidence",
 ].map((id) => [id, document.getElementById(id)]));
 
 const tauri = window.__TAURI__;
@@ -17,6 +19,9 @@ let catalog = null;
 let selectedLayoutKey = null;
 let selectedLayerIndex = 0;
 let effectiveInputSource = "system";
+let layerSessionState = { mode: "idle", message: null };
+let layerSession = null;
+let handledCompletionRevision = 0;
 
 async function readConfig() {
   if (!tauri?.core?.invoke) return null;
@@ -26,18 +31,24 @@ async function readConfig() {
 
 function currentData() {
   const definition = catalog?.definitions[selectedLayoutKey];
-  const normalized = normalizeLayerData(definition?.keyLayers);
+  const normalized = normalizeLayerData(
+    definition?.keyLayers,
+    definition?.layerMetadata,
+    definition?.keyPositions?.length,
+  );
   return { definition, ...normalized };
 }
 
 function buildSelectedPlan() {
-  const { definition, layers, names } = currentData();
+  const { definition, layers, names, layerKeys, layerMetadata } = currentData();
   if (!definition) return null;
   return buildTestPlan({
     layoutKey: selectedLayoutKey,
     definition,
     layers,
     layerNames: names,
+    layerKeys,
+    layerMetadata,
     layerIndex: selectedLayerIndex,
     inputSource: effectiveInputSource,
   });
@@ -57,10 +68,22 @@ function renderSetup() {
   const notTestable = plan?.entries.filter((entry) => entry.kind === "key" && !entry.testable).length ?? 0;
   const combos = plan?.entries.filter((entry) => entry.kind === "combo").length ?? 0;
   elements.testability.textContent = plan
-    ? `${testable} guided items${combos ? ` · ${combos} firmware combos` : ""} · source: ${effectiveInputSource === "ble" ? "BLE physical events" : "global HID"}${notTestable ? ` · ${notTestable} not testable` : ""}`
+    ? `${testable} guided items${combos ? ` · ${combos} firmware combos` : ""} · HID output verification${effectiveInputSource === "ble" ? " · optional BLE position diagnostics" : " · no BLE position telemetry"}${notTestable ? ` · ${notTestable} not testable` : ""}`
     : "No compatible layout is available.";
-  elements.startButton.disabled = testable === 0;
+  const activating = layerSessionState.mode === "activating";
+  elements.startButton.disabled = testable === 0 || activating;
+  elements.layoutSelect.disabled = !layers.length || activating;
+  elements.layerSelect.disabled = !layers.length || activating;
   elements.selectionLabel.textContent = definition ? `${definition.name} · ${names[selectedLayerIndex] ?? "Layer"}` : "";
+}
+
+function renderLayerControlState() {
+  const { mode, message } = layerSessionState;
+  elements.layerControlStatus.dataset.state = mode;
+  elements.layerControlStatus.textContent = message ?? (mode === "idle"
+    ? "Layer activation will be selected when the test starts."
+    : "");
+  elements.layerControlActions.hidden = !["lost", "error"].includes(mode);
 }
 
 function publishOverlay(snapshot) {
@@ -72,7 +95,7 @@ function publishOverlay(snapshot) {
 
 function renderResults(snapshot) {
   elements.resultCounts.innerHTML = "";
-  for (const [status, label] of Object.entries({ passed: "Passed", unexpected: "Unexpected", skipped: "Skipped", "not-testable": "Not testable" })) {
+  for (const [status, label] of Object.entries({ passed: "Passed (HID)", unexpected: "Unexpected", skipped: "Skipped", "not-testable": "Not testable" })) {
     const item = document.createElement("div"); item.innerHTML = `<strong>${snapshot.counts[status]}</strong>${label}`; elements.resultCounts.appendChild(item);
   }
   elements.problemList.innerHTML = "";
@@ -84,10 +107,15 @@ function renderResults(snapshot) {
     elements.problemList.appendChild(item);
   }
   elements.retestButton.disabled = snapshot.counts.unexpected + snapshot.counts.skipped === 0;
+  const passedResults = Object.values(snapshot.results).filter((result) => result.status === "passed");
+  const corroborated = passedResults.filter((result) => result.bleCorroborated).length;
+  const warnings = passedResults.filter((result) => result.blePositionWarning).length;
+  elements.resultEvidence.textContent = `${snapshot.counts.passed} ordinary items passed from system HID evidence. ${corroborated} had matching BLE position corroboration.${warnings ? ` ${warnings} had a BLE position warning.` : ""}`;
   elements.liveStatus.textContent = `Test complete. ${snapshot.counts.passed} passed, ${snapshot.counts.unexpected} unexpected, ${snapshot.counts.skipped} skipped.`;
 }
 
 function render(snapshot) {
+  renderLayerControlState();
   const latestDiagnostic = snapshot.diagnostics?.at(-1);
   elements.transportDiagnostics.textContent = latestDiagnostic
     ? `BLE diagnostic: ${latestDiagnostic.code}${latestDiagnostic.message ? ` — ${latestDiagnostic.message}` : ""}`
@@ -108,6 +136,8 @@ function render(snapshot) {
     ? "Release all keys to continue"
     : snapshot.phase === "chord-active"
       ? `Release ${keyLabel}${current.descriptor.modifiers.length ? " and its modifiers" : ""}`
+      : snapshot.phase === "paused"
+        ? (snapshot.pauseReason ?? "Layer confirmation is required before continuing")
       : snapshot.phase === "mismatch"
         ? "Unexpected output received"
         : `Press ${keyLabel}`;
@@ -115,24 +145,43 @@ function render(snapshot) {
   elements.receivedCode.textContent = snapshot.received ?? "—";
   elements.mismatchActions.hidden = snapshot.phase !== "mismatch";
   elements.waitingActions.hidden = snapshot.phase === "mismatch";
-  elements.skipButton.disabled = snapshot.phase === "waiting-clean";
+  elements.skipButton.disabled = ["waiting-clean", "paused"].includes(snapshot.phase);
   elements.liveStatus.textContent = `${elements.instruction.textContent}. Expected ${current.rawCode}${snapshot.received ? `. Received ${snapshot.received}` : ""}.`;
   if (snapshot.phase === "mismatch") elements.retryButton.focus();
 }
 
 const controller = createSelfTestController({
   onChange: (snapshot) => {
+    layerSession?.handleControllerSnapshot(snapshot);
     render(snapshot);
     publishOverlay(snapshot);
+    if (snapshot.phase === "complete" && snapshot.completionRevision > handledCompletionRevision) {
+      handledCompletionRevision = snapshot.completionRevision;
+      void layerSession?.release();
+    }
   },
 });
 
-function startSelectedPlan() {
+layerSession = createSelfTestLayerSession({
+  emit: (event, payload) => tauri?.event?.emitTo
+    ? tauri.event.emitTo("overlay", event, payload)
+    : Promise.resolve(),
+  startPlan: (plan) => controller.start(plan),
+  pauseTest: (reason) => controller.pause(reason),
+  resumeTest: () => controller.resume(),
+  onState: (state) => {
+    layerSessionState = state;
+    render(controller.getSnapshot());
+  },
+});
+
+async function startSelectedPlan() {
   const plan = buildSelectedPlan();
-  if (plan) controller.start(plan);
+  if (plan) await layerSession.start(plan);
 }
 
 async function closeWindow() {
+  await layerSession.release();
   controller.dispose();
   const handle = tauri?.window?.getCurrentWindow?.();
   if (handle?.destroy) await handle.destroy(); else if (handle?.close) await handle.close(); else globalThis.close?.();
@@ -144,9 +193,21 @@ elements.startButton.addEventListener("click", startSelectedPlan);
 elements.retryButton.addEventListener("click", () => controller.retry());
 elements.problemButton.addEventListener("click", () => controller.markProblem());
 elements.skipButton.addEventListener("click", () => controller.skip());
-elements.stopButton.addEventListener("click", () => { if (globalThis.confirm("Stop this test and discard its progress?")) controller.stop(); });
-elements.retestButton.addEventListener("click", () => controller.retestProblems());
-elements.anotherLayerButton.addEventListener("click", () => controller.stop());
+elements.stopButton.addEventListener("click", async () => {
+  if (!globalThis.confirm("Stop this test and discard its progress?")) return;
+  await layerSession.release();
+  controller.stop();
+});
+elements.retestButton.addEventListener("click", async () => {
+  const plan = controller.createRetestPlan();
+  if (plan) await layerSession.start(plan);
+});
+elements.anotherLayerButton.addEventListener("click", async () => {
+  await layerSession.release();
+  controller.stop();
+});
+elements.layerRetryButton.addEventListener("click", () => layerSession.retry());
+elements.manualContinueButton.addEventListener("click", () => layerSession.continueManually());
 elements.closeButton.addEventListener("click", closeWindow);
 elements.closeResultsButton.addEventListener("click", closeWindow);
 
@@ -168,7 +229,6 @@ async function initialize() {
     renderSetup();
     if (tauri?.event?.listen) {
       await tauri.event.listen("key_event", (event) => {
-        if (effectiveInputSource !== "system") return;
         const input = normalizeSystemKeyEvent(event.payload);
         if (input) controller.handleKey(input.code, input.action);
       });
@@ -193,6 +253,9 @@ async function initialize() {
         controller.handleSourceTransition(previous, next, event.payload?.reason);
         if (controller.getSnapshot().phase === "setup") renderSetup();
       });
+      await tauri.event.listen("self-test-layer-lease-status", (event) => {
+        layerSession.handleLeaseStatus(event.payload ?? {});
+      });
       await tauri.event.emitTo("overlay", "self-test-source-request", {});
     }
     publishOverlay(controller.getSnapshot());
@@ -203,7 +266,10 @@ async function initialize() {
   }
 }
 
-window.addEventListener("beforeunload", () => controller.dispose());
+window.addEventListener("beforeunload", () => {
+  void layerSession.release();
+  controller.dispose();
+});
 initializeSecondaryWindow({
   invoke: tauri?.core?.invoke,
   label: SECONDARY_WINDOWS.selfTest.label,
