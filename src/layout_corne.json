@@ -2,8 +2,8 @@
   "name": "Corne (split)",
   "bleLayerSource": {
     "deviceName": "Corney",
-    "serviceUuid": "12341234-1234-5678-7856-123412345678",
-    "characteristicUuid": "12341234-1234-5678-7856-123412345679",
+    "serviceUuid": "b34a0001-e782-4706-8f9c-6c056c416507",
+    "characteristicUuid": "b34a0002-e782-4706-8f9c-6c056c416507",
     "format": "int32-le"
   },
   "keySize": {"w": 57,"h": 45,"gap": 10},
@@ -12,6 +12,15 @@
     {"row": 1,"col": 1},{"row": 1,"col": 2},{"row": 1,"col": 3},{"row": 1,"col": 4},{"row": 1,"col": 5},{"row": 1,"col": 6},{"row": 1,"col": 10},{"row": 1,"col": 11},{"row": 1,"col": 12},{"row": 1,"col": 13},{"row": 1,"col": 14},{"row": 1,"col": 15},
     {"row": 2,"col": 1},{"row": 2,"col": 2},{"row": 2,"col": 3},{"row": 2,"col": 4},{"row": 2,"col": 5},{"row": 2,"col": 6},{"row": 2,"col": 10},{"row": 2,"col": 11},{"row": 2,"col": 12},{"row": 2,"col": 13},{"row": 2,"col": 14},{"row": 2,"col": 15},
     {"row": 3.2,"col": 5,"cls": "action"},{"row": 3.2,"col": 6,"cls": "action","angle": 5},{"row": 3.4,"col": 7,"cls": "action","angle": 10},{"row": 3.4,"col": 9,"cls": "action","angle": -10},{"row": 3.2,"col": 10,"cls": "action","angle": -5},{"row": 3.2,"col": 11,"cls": "action"}],
+  "combos": [
+    {"id": 1, "positions": [1, 2], "code": "Escape"},
+    {"id": 2, "positions": [15, 16], "code": "Return"},
+    {"id": 3, "positions": [19, 20], "code": "Return"},
+    {"id": 4, "positions": [27, 28], "code": "Backspace"},
+    {"id": 5, "positions": [31, 32], "code": "Backspace"},
+    {"id": 6, "positions": [40, 41], "code": "MouseLayer"},
+    {"id": 7, "positions": [36, 37], "code": "MouseLayer"}
+  ],
   "keyLayers": {
     "default": [["Tab", "Tab"],["q", "KeyQ"],["w", "KeyW"],["e", "KeyE"],["r", "KeyR"],["t", "KeyT"],["z", "KeyY"],["u", "KeyU"],["i", "KeyI"],["o", "KeyO"],["p", "KeyP"],["⌫", "Backspace"],["Ctrl", "ControlLeft"],["a", "KeyA"],["s", "KeyS"],["d", "KeyD"],["f", "KeyF"],["g", "KeyG"],["h", "KeyH"],["j", "KeyJ"],["k", "KeyK"],["l", "KeyL"],["ö", "SemiColon"],["ä", "Quote"],["⇧", "ShiftLeft"],["y", "KeyZ"],["x", "KeyX"],["c", "KeyC"],["v", "KeyV"],["b", "KeyB"],["n", "KeyN"],["m", "KeyM"],[",", "Comma"],[".", "Dot"],["/", "Slash"],["ESC", "Escape"],["Alt", "Alt"],["Low", ""],["SPACE", "Enter"],["ENTER", "Return"],["Up", ""],["ALT", "AltGr"]],
     "layer1": [null,["Q", "KeyQ"],["W", "KeyW"],["E", "KeyE"],["R", "KeyR"],["T", "KeyT"],["Z", "KeyY"],["U", "KeyU"],["I", "KeyI"],["O", "KeyO"],["P", "KeyP"],null,null,["A", "KeyA"],["S", "KeyS"],["D", "KeyD"],["F", "KeyF"],["G", "KeyG"],["H", "KeyH"],["J", "KeyJ"],["K", "KeyK"],["L", "KeyL"],["Ö", "SemiColon"],["Ä", "Quote"],null,["Y", "KeyZ"],["X", "KeyX"],["C", "KeyC"],["V", "KeyV"],["B", "KeyB"],["N", "KeyM"],["M", "KeyM"],null,null,null,null,null,null,null,null,null,null,null],

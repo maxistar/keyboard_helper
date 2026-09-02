@@ -12,13 +12,23 @@ export function createOverlayPresentationPayload(snapshot) {
   if (!snapshot?.plan || snapshot.phase === "setup") return { active: false, states: {} };
   const states = {};
   for (const entry of snapshot.plan.entries) {
-    if (!entry.descriptor.supported && !entry.excludedFromRetest) states[entry.index] = "not-testable";
+    if (entry.kind !== "combo" && !entry.testable && !entry.excludedFromRetest) states[entry.index] = "not-testable";
   }
   for (const [index, result] of Object.entries(snapshot.results ?? {})) {
-    if (SELF_TEST_KEY_STATES.includes(result.status)) states[index] = result.status;
+    if (!SELF_TEST_KEY_STATES.includes(result.status)) continue;
+    const entry = snapshot.plan.entries[Number(index)];
+    if (entry?.kind === "combo") {
+      for (const position of entry.positions) states[position] = result.status;
+    } else {
+      states[index] = result.status;
+    }
   }
   if (snapshot.current && snapshot.phase !== "waiting-clean") {
-    states[snapshot.current.index] = snapshot.phase === "mismatch" ? "unexpected" : "expected";
+    if (snapshot.current.kind === "combo") {
+      for (const position of snapshot.current.positions) states[position] = "expected";
+    } else {
+      states[snapshot.current.index] = snapshot.phase === "mismatch" ? "unexpected" : "expected";
+    }
   }
   return {
     active: true,

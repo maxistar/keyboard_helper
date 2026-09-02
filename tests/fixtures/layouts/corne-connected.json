@@ -1,0 +1,53 @@
+{
+  "name": "Golden Corne",
+  "keySize": { "w": 46, "h": 46, "gap": 4 },
+  "keyPositions": [
+    { "row": 0, "col": 0 },
+    { "row": 0, "col": 1 },
+    { "row": 1, "col": 0 },
+    { "row": 1, "col": 1 },
+    { "row": 2, "col": 0, "angle": 12 }
+  ],
+  "keyLayers": {
+    "de": [["q", "KeyQ"], ["w", "KeyW"], ["a", "KeyA"], ["s", "KeyS"], ["LANG", "F18"]],
+    "deShift": [["Q", "Shift+KeyQ"], ["W", "Shift+KeyW"], ["A", "Shift+KeyA"], ["S", "Shift+KeyS"], null],
+    "ru": [["й", "KeyQ"], ["ц", "KeyW"], ["ф", "KeyA"], ["ы", "KeyS"], ["LANG", "F18"]],
+    "ruShift": [["Й", "Shift+KeyQ"], ["Ц", "Shift+KeyW"], ["Ф", "Shift+KeyA"], ["Ы", "Shift+KeyS"], null],
+    "utility": [["BT", "F19"], null, null, null, null]
+  },
+  "combos": [
+    {
+      "id": "escape-combo",
+      "key1": { "row": 0, "col": 0 },
+      "key2": { "row": 0, "col": 1 },
+      "code": "Escape"
+    }
+  ],
+  "bleLayerSource": {
+    "deviceName": "Golden Corne",
+    "serviceUuid": "12345678-1234-5678-1234-56789abcdef0",
+    "characteristicUuid": "12345678-1234-5678-1234-56789abcdef1",
+    "format": "int32-le"
+  },
+  "inputSourceSync": {
+    "macos": {
+      "sources": [
+        {
+          "id": "de",
+          "label": "Deutsch",
+          "inputSourceId": "com.apple.keylayout.German",
+          "baseLayer": 0,
+          "layers": [0, 1]
+        },
+        {
+          "id": "ru",
+          "label": "Русский",
+          "inputSourceId": "com.apple.keylayout.Russian",
+          "baseLayer": 2,
+          "layers": [2, 3]
+        }
+      ],
+      "neutralLayers": [4]
+    }
+  }
+}

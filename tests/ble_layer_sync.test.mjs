@@ -10,16 +10,16 @@ test("normalizeBleLayerSource accepts valid BLE metadata", () => {
   const result = normalizeBleLayerSource({
     bleLayerSource: {
       deviceName: "Corney",
-      serviceUuid: "12341234-1234-5678-7856-123412345678",
-      characteristicUuid: "12341234-1234-5678-7856-123412345679",
+      serviceUuid: "b34a0001-e782-4706-8f9c-6c056c416507",
+      characteristicUuid: "b34a0002-e782-4706-8f9c-6c056c416507",
       format: "int32-le",
     },
   });
 
   assert.deepEqual(result, {
     deviceName: "Corney",
-    serviceUuid: "12341234-1234-5678-7856-123412345678",
-    characteristicUuid: "12341234-1234-5678-7856-123412345679",
+    serviceUuid: "b34a0001-e782-4706-8f9c-6c056c416507",
+    characteristicUuid: "b34a0002-e782-4706-8f9c-6c056c416507",
     format: "int32-le",
   });
 });
@@ -28,7 +28,7 @@ test("normalizeBleLayerSource rejects incomplete metadata", () => {
   const result = normalizeBleLayerSource({
     bleLayerSource: {
       deviceName: "Corney",
-      serviceUuid: "12341234-1234-5678-7856-123412345678",
+      serviceUuid: "b34a0001-e782-4706-8f9c-6c056c416507",
     },
   });
 
@@ -80,8 +80,8 @@ test("BLE controller starts sync and forwards authoritative layer updates", asyn
 
   await controller.start("corney", {
     deviceName: "Corney",
-    serviceUuid: "12341234-1234-5678-7856-123412345678",
-    characteristicUuid: "12341234-1234-5678-7856-123412345679",
+    serviceUuid: "b34a0001-e782-4706-8f9c-6c056c416507",
+    characteristicUuid: "b34a0002-e782-4706-8f9c-6c056c416507",
     format: "int32-le",
   });
 
@@ -121,8 +121,8 @@ test("BLE controller validates and forwards a generation-bound layer write", asy
   });
   await controller.start("corney", {
     deviceName: "Corney",
-    serviceUuid: "12341234-1234-5678-7856-123412345678",
-    characteristicUuid: "12341234-1234-5678-7856-123412345679",
+    serviceUuid: "b34a0001-e782-4706-8f9c-6c056c416507",
+    characteristicUuid: "b34a0002-e782-4706-8f9c-6c056c416507",
     format: "int32-le",
   });
 

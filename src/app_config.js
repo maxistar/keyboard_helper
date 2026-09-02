@@ -26,7 +26,6 @@ const MODIFIER_KEYS = new Set([
   "Shift", "ShiftLeft", "ShiftRight", "Control", "ControlLeft", "ControlRight",
   "Alt", "AltLeft", "AltRight", "Meta", "MetaLeft", "MetaRight",
 ]);
-
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -95,8 +94,10 @@ export function normalizeConfig(value) {
   const defaultLayout = requestedDefault && Object.hasOwn(layouts, requestedDefault)
     ? requestedDefault
     : Object.keys(layouts)[0] ?? defaults.defaultLayout;
+  const normalized = { ...value };
+  delete normalized.highlightingSource;
   return {
-    ...value,
+    ...normalized,
     defaultLayout,
     toggleHotkey: normalizeHotkey(value.toggleHotkey),
     layouts,
@@ -104,7 +105,8 @@ export function normalizeConfig(value) {
 }
 
 export function serializeConfig(original, draft) {
-  const base = isPlainObject(original) ? original : {};
+  const base = isPlainObject(original) ? { ...original } : {};
+  delete base.highlightingSource;
   return {
     ...base,
     defaultLayout: draft.defaultLayout,

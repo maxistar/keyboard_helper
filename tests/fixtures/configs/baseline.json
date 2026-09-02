@@ -1,0 +1,5 @@
+{
+  "defaultLayout": "qwerty",
+  "toggleHotkey": "Shift+Meta+KeyK",
+  "layouts": { "qwerty": true, "corne": true }
+}

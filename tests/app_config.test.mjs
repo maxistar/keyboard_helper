@@ -14,17 +14,14 @@ import {
   serializeConfig,
   validateConfigDraft,
 } from "../src/app_config.js";
+import { readJsonFixture } from "./fixture_helpers.mjs";
 
-const validLayout = {
-  name: "My Board",
-  keySize: { w: 50, h: 50, gap: 4 },
-  keyPositions: [{ row: 0, col: 0 }],
-  keyLayers: { default: [["A", "KeyA"]] },
-};
+const validLayout = readJsonFixture("layouts/external-minimal.json");
 
 test("defaults enable every built-in layout and select QWERTY", () => {
   const config = createDefaultConfig();
   assert.equal(config.defaultLayout, "qwerty");
+  assert.equal(Object.hasOwn(config, "highlightingSource"), false);
   assert.deepEqual(Object.keys(config.layouts), Object.keys(BUILTIN_LAYOUTS));
   assert.ok(Object.values(config.layouts).every((source) => source === true));
   assert.equal(config.toggleHotkey, null);
@@ -33,19 +30,21 @@ test("defaults enable every built-in layout and select QWERTY", () => {
 test("normalization keeps valid known and unknown data while repairing defaults", () => {
   const config = normalizeConfig({
     defaultLayout: "missing",
+    highlightingSource: "ble",
     toggleHotkey: "cmd+shift+k",
     layouts: { corne: true, bad: false, external: "/tmp/layout.json" },
     futureSetting: { enabled: true },
   });
   assert.equal(config.defaultLayout, "corne");
   assert.equal(config.toggleHotkey, "Shift+Meta+KeyK");
+  assert.equal(Object.hasOwn(config, "highlightingSource"), false);
   assert.deepEqual(config.layouts, { corne: true, external: "/tmp/layout.json" });
   assert.deepEqual(config.futureSetting, { enabled: true });
 });
 
 test("serialization preserves unknown top-level fields", () => {
   const saved = serializeConfig(
-    { futureSetting: 42, defaultLayout: "qwerty" },
+    { futureSetting: 42, defaultLayout: "qwerty", highlightingSource: "ble" },
     { defaultLayout: "corne", toggleHotkey: "Ctrl+KeyK", layouts: { corne: true } },
   );
   assert.deepEqual(saved, {

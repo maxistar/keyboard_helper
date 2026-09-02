@@ -152,3 +152,20 @@ test("write rejection becomes an explicit error", async () => {
   assert.equal(reconciler.getState().status, "error");
   assert.match(reconciler.getState().message, /confirmation timeout/);
 });
+
+test("self-test suspension cancels reconciliation and resumes from authoritative state", async () => {
+  const { reconciler, writes, runScheduled } = harness();
+  reconciler.setBleStatus("connected", true);
+  reconciler.setLayer(4);
+  reconciler.setSource("ru.source");
+  assert.equal(reconciler.getState().status, "settling");
+  reconciler.setSuspended(true);
+  assert.equal(reconciler.getState().status, "suspended");
+  await runScheduled();
+  assert.deepEqual(writes, []);
+  reconciler.setLayer(10);
+  assert.equal(reconciler.getState().status, "suspended");
+  reconciler.setSuspended(false);
+  assert.equal(reconciler.getState().status, "synced");
+  assert.deepEqual(writes, []);
+});

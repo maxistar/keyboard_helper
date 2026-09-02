@@ -7,11 +7,13 @@ export function formatLayerName(rawName, index) {
 }
 
 export function normalizeLayerData(layerSource) {
-  if (!layerSource) return { layers: [], names: [] };
+  if (!layerSource) return { layers: [], names: [], layerKeys: [] };
   if (Array.isArray(layerSource)) {
+    const layerKeys = layerSource.map((_, index) => String(index));
     return {
       layers: layerSource,
       names: layerSource.map((_, index) => `Layer ${index + 1}`),
+      layerKeys,
     };
   }
 
@@ -24,6 +26,7 @@ export function normalizeLayerData(layerSource) {
   return {
     layers: entries.map(([, layer]) => layer),
     names: entries.map(([name], index) => formatLayerName(name, index)),
+    layerKeys: entries.map(([name]) => name),
   };
 }
 

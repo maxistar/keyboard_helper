@@ -21,16 +21,39 @@ const DISCOVERY_TIMEOUT: Duration = Duration::from_secs(5);
 const READ_TIMEOUT: Duration = Duration::from_secs(3);
 const NOTIFY_STATE_TIMEOUT: Duration = Duration::from_secs(3);
 const WRITE_TIMEOUT: Duration = Duration::from_secs(3);
+const CAPABILITIES_UUID: &str = "b34a0003-e782-4706-8f9c-6c056c416507";
+const EVENT_UUID: &str = "b34a0004-e782-4706-8f9c-6c056c416507";
+const BATTERY_SERVICE_UUID: &str = "0000180f-0000-1000-8000-00805f9b34fb";
+const BATTERY_LEVEL_UUID: &str = "00002a19-0000-1000-8000-00805f9b34fb";
+const DEVICE_INFORMATION_SERVICE_UUID: &str = "0000180a-0000-1000-8000-00805f9b34fb";
+
+pub enum Notification {
+    Layer(u32),
+    KeyboardEvent(Vec<u8>),
+    Battery(Vec<u8>),
+}
+
+pub struct NotificationSubscriptions {
+    pub events: bool,
+    pub event_issue: Option<String>,
+}
 
 pub struct ConnectedKeyboard {
     _delegate: Retained<CoreBluetoothDelegate>,
     _manager: Retained<CBCentralManager>,
     peripheral: Retained<CBPeripheral>,
     layer_char: Retained<CBCharacteristic>,
+    capabilities_char: Option<Retained<CBCharacteristic>>,
+    event_char: Option<Retained<CBCharacteristic>>,
+    battery_char: Option<Retained<CBCharacteristic>>,
+    device_information_available: bool,
     events: Receiver<DelegateEvent>,
     deferred_events: Mutex<VecDeque<DelegateEvent>>,
     peripheral_id: Uuid,
     layer_char_uuid: Uuid,
+    capabilities_char_uuid: Uuid,
+    event_char_uuid: Uuid,
+    battery_char_uuid: Uuid,
 }
 
 impl ConnectedKeyboard {
@@ -76,66 +99,135 @@ impl ConnectedKeyboard {
     }
 
     pub fn read_active_layer(&self) -> Result<u32> {
+        decode_active_layer(&self.read_characteristic(&self.layer_char, self.layer_char_uuid)?)
+    }
+
+    pub fn has_capabilities_characteristic(&self) -> bool {
+        self.capabilities_char.is_some()
+    }
+
+    pub fn has_battery_characteristic(&self) -> bool {
+        self.battery_char.is_some()
+    }
+
+    pub fn has_device_information_service(&self) -> bool {
+        self.device_information_available
+    }
+
+    pub fn read_capabilities(&self) -> Result<Option<Vec<u8>>> {
+        self.capabilities_char
+            .as_ref()
+            .map(|characteristic| {
+                self.read_characteristic(characteristic, self.capabilities_char_uuid)
+            })
+            .transpose()
+    }
+
+    pub fn read_battery(&self) -> Result<Option<Vec<u8>>> {
+        self.battery_char
+            .as_ref()
+            .filter(|characteristic| {
+                unsafe { characteristic.properties() }
+                    .contains(CBCharacteristicProperties::CBCharacteristicPropertyRead)
+            })
+            .map(|characteristic| self.read_characteristic(characteristic, self.battery_char_uuid))
+            .transpose()
+    }
+
+    fn read_characteristic(
+        &self,
+        characteristic: &CBCharacteristic,
+        characteristic_uuid: Uuid,
+    ) -> Result<Vec<u8>> {
         unsafe {
-            self.peripheral.readValueForCharacteristic(&self.layer_char);
+            self.peripheral.readValueForCharacteristic(characteristic);
         }
 
-        let data: Vec<u8> = wait_for_event_preserving(
-            &self.events,
-            &self.deferred_events,
-            READ_TIMEOUT,
-            |event| match event {
-                DelegateEvent::CharacteristicValue(peripheral_id, characteristic_uuid, result)
+        wait_for_event_preserving(&self.events, &self.deferred_events, READ_TIMEOUT, |event| {
+            match event {
+                DelegateEvent::CharacteristicValue(peripheral_id, observed_uuid, result)
                     if *peripheral_id == self.peripheral_id
-                        && *characteristic_uuid == self.layer_char_uuid =>
+                        && *observed_uuid == characteristic_uuid =>
                 {
                     Some(result.clone())
                 }
                 _ => None,
-            },
-        )?
-        .map_err(|error| anyhow!(error))?;
-
-        decode_active_layer(&data)
+            }
+        })?
+        .map_err(|error| anyhow!(error))
     }
 
-    pub fn start_notifications(&self) -> Result<()> {
-        let properties = unsafe { self.layer_char.properties() };
+    pub fn start_notifications(&self, enable_events: bool) -> Result<NotificationSubscriptions> {
+        self.start_notification(&self.layer_char, self.layer_char_uuid)?;
+        let (events, event_issue) = if enable_events {
+            if let Some(characteristic) = &self.event_char {
+                match self.start_notification(characteristic, self.event_char_uuid) {
+                    Ok(()) => (true, None),
+                    Err(error) => (
+                        false,
+                        Some(super::event_subscription_issue(&format!("{error:#}"))),
+                    ),
+                }
+            } else {
+                (
+                    false,
+                    Some("extension-event-characteristic-unavailable".into()),
+                )
+            }
+        } else {
+            (false, None)
+        };
+        if let Some(characteristic) = &self.battery_char {
+            let _ = self.start_notification(characteristic, self.battery_char_uuid);
+        }
+        Ok(NotificationSubscriptions {
+            events,
+            event_issue,
+        })
+    }
+
+    fn start_notification(
+        &self,
+        characteristic: &CBCharacteristic,
+        characteristic_uuid: Uuid,
+    ) -> Result<()> {
+        let properties = unsafe { characteristic.properties() };
         if !properties.contains(CBCharacteristicProperties::CBCharacteristicPropertyNotify) {
             return Err(anyhow!(
-                "Layer characteristic does not support notifications"
+                "Characteristic {characteristic_uuid} does not support notifications"
             ));
         }
 
-        if unsafe { self.layer_char.isNotifying() } {
+        if unsafe { characteristic.isNotifying() } {
             return Ok(());
         }
 
         unsafe {
             self.peripheral
-                .setNotifyValue_forCharacteristic(true, &self.layer_char);
+                .setNotifyValue_forCharacteristic(true, characteristic);
         }
 
-        wait_for_event_preserving(
+        let result = wait_for_event_preserving(
             &self.events,
             &self.deferred_events,
             NOTIFY_STATE_TIMEOUT,
             |event| match event {
-                DelegateEvent::NotificationState(peripheral_id, characteristic_uuid, result)
+                DelegateEvent::NotificationState(peripheral_id, observed_uuid, result)
                     if *peripheral_id == self.peripheral_id
-                        && *characteristic_uuid == self.layer_char_uuid =>
+                        && *observed_uuid == characteristic_uuid =>
                 {
                     Some(result.clone())
                 }
                 _ => None,
             },
-        )?
-        .map_err(|error| anyhow!(error))?;
+        );
 
-        Ok(())
+        result?
+            .map_err(|error| anyhow!(error))
+            .with_context(|| format!("failed to enable notifications for {characteristic_uuid}"))
     }
 
-    pub fn wait_for_notification_layer_timeout(&self, timeout: Duration) -> Result<Option<u32>> {
+    pub fn wait_for_notification_timeout(&self, timeout: Duration) -> Result<Option<Notification>> {
         let deferred = self
             .deferred_events
             .lock()
@@ -158,7 +250,33 @@ impl ConnectedKeyboard {
                     && characteristic_uuid == self.layer_char_uuid =>
             {
                 let data = result.map_err(|error| anyhow!(error))?;
-                Ok(Some(decode_active_layer(&data)?))
+                Ok(Some(Notification::Layer(decode_active_layer(&data)?)))
+            }
+            DelegateEvent::CharacteristicValue(peripheral_id, characteristic_uuid, result)
+                if peripheral_id == self.peripheral_id
+                    && characteristic_uuid == self.event_char_uuid =>
+            {
+                Ok(Some(Notification::KeyboardEvent(
+                    result.map_err(|error| anyhow!(error))?,
+                )))
+            }
+            DelegateEvent::CharacteristicValue(peripheral_id, characteristic_uuid, result)
+                if peripheral_id == self.peripheral_id
+                    && characteristic_uuid == self.battery_char_uuid =>
+            {
+                Ok(Some(Notification::Battery(
+                    result.map_err(|error| anyhow!(error))?,
+                )))
+            }
+            DelegateEvent::Disconnected(peripheral_id, error)
+                if peripheral_id == self.peripheral_id =>
+            {
+                Err(anyhow!(match error {
+                    Some(error) if !error.is_empty() => {
+                        format!("Bluetooth peripheral disconnected: {error}")
+                    }
+                    _ => "Bluetooth peripheral disconnected".to_string(),
+                }))
             }
             _ => Ok(None),
         }
@@ -170,6 +288,11 @@ pub fn find_connected_keyboard(
     char_uuid: Uuid,
     name_filter: Option<&str>,
 ) -> Result<Option<ConnectedKeyboard>> {
+    let capabilities_char_uuid = Uuid::parse_str(CAPABILITIES_UUID)?;
+    let event_char_uuid = Uuid::parse_str(EVENT_UUID)?;
+    let battery_service_uuid = Uuid::parse_str(BATTERY_SERVICE_UUID)?;
+    let battery_char_uuid = Uuid::parse_str(BATTERY_LEVEL_UUID)?;
+    let device_information_service_uuid = Uuid::parse_str(DEVICE_INFORMATION_SERVICE_UUID)?;
     let (sender, receiver) = mpsc::channel();
     let delegate = CoreBluetoothDelegate::new(sender);
 
@@ -222,7 +345,13 @@ pub fn find_connected_keyboard(
         }
 
         let requested_service = uuid_to_cbuuid(service_uuid);
-        let service_array = NSArray::from_id_slice(&[requested_service.clone()]);
+        let requested_battery_service = uuid_to_cbuuid(battery_service_uuid);
+        let requested_device_information_service = uuid_to_cbuuid(device_information_service_uuid);
+        let service_array = NSArray::from_id_slice(&[
+            requested_service.clone(),
+            requested_battery_service.clone(),
+            requested_device_information_service.clone(),
+        ]);
         unsafe {
             peripheral.discoverServices(Some(&service_array));
         }
@@ -238,10 +367,8 @@ pub fn find_connected_keyboard(
         let service = find_service(&peripheral, service_uuid)
             .with_context(|| format!("Service {service_uuid} not found on connected keyboard"))?;
 
-        let requested_char = uuid_to_cbuuid(char_uuid);
-        let char_array = NSArray::from_id_slice(&[requested_char.clone()]);
         unsafe {
-            peripheral.discoverCharacteristics_forService(Some(&char_array), &service);
+            peripheral.discoverCharacteristics_forService(None, &service);
         }
 
         wait_for_event(&receiver, DISCOVERY_TIMEOUT, |event| match event {
@@ -257,6 +384,34 @@ pub fn find_connected_keyboard(
         let layer_char = find_characteristic(&service, char_uuid).with_context(|| {
             format!("Characteristic {char_uuid} not found on connected keyboard")
         })?;
+        let capabilities_char = find_optional_characteristic(&service, capabilities_char_uuid)?;
+        let event_char = find_optional_characteristic(&service, event_char_uuid)?;
+
+        let battery_char = if let Some(battery_service) =
+            find_optional_service(&peripheral, battery_service_uuid)?
+        {
+            let requested_battery_char = uuid_to_cbuuid(battery_char_uuid);
+            let battery_chars = NSArray::from_id_slice(&[requested_battery_char.clone()]);
+            unsafe {
+                peripheral
+                    .discoverCharacteristics_forService(Some(&battery_chars), &battery_service);
+            }
+            wait_for_event(&receiver, DISCOVERY_TIMEOUT, |event| match event {
+                DelegateEvent::CharacteristicsDiscovered(id, discovered_service_uuid, result)
+                    if *id == peripheral_id && *discovered_service_uuid == battery_service_uuid =>
+                {
+                    Some(result.clone())
+                }
+                _ => None,
+            })?
+            .map_err(|error| anyhow!(error))?;
+            find_optional_characteristic(&battery_service, battery_char_uuid)?
+        } else {
+            None
+        };
+
+        let device_information_available =
+            find_optional_service(&peripheral, device_information_service_uuid)?.is_some();
 
         let properties = unsafe { layer_char.properties() };
         if !properties.contains(CBCharacteristicProperties::CBCharacteristicPropertyRead) {
@@ -268,10 +423,17 @@ pub fn find_connected_keyboard(
             _manager: manager,
             peripheral,
             layer_char,
+            capabilities_char,
+            event_char,
+            battery_char,
+            device_information_available,
             events: receiver,
             deferred_events: Mutex::new(VecDeque::new()),
             peripheral_id,
             layer_char_uuid: char_uuid,
+            capabilities_char_uuid,
+            event_char_uuid,
+            battery_char_uuid,
         }));
     }
 
@@ -290,6 +452,7 @@ enum DelegateEvent {
     ManagerState(CBManagerState),
     Connected(Uuid),
     ConnectionFailed(Uuid, String),
+    Disconnected(Uuid, Option<String>),
     ServicesDiscovered(Uuid, Result<(), String>),
     CharacteristicsDiscovered(Uuid, Uuid, Result<(), String>),
     NotificationState(Uuid, Uuid, Result<(), String>),
@@ -341,6 +504,21 @@ declare_class!(
                 self.send(DelegateEvent::ConnectionFailed(
                     id,
                     localized_description(error),
+                ));
+            }
+        }
+
+        #[method(centralManager:didDisconnectPeripheral:error:)]
+        fn central_manager_did_disconnect_peripheral_error(
+            &self,
+            _central: &CBCentralManager,
+            peripheral: &CBPeripheral,
+            error: Option<&NSError>,
+        ) {
+            if let Ok(id) = nsuuid_to_uuid(unsafe { peripheral.identifier() }.as_ref()) {
+                self.send(DelegateEvent::Disconnected(
+                    id,
+                    error.map(|error| error.localizedDescription().to_string()),
                 ));
             }
         }
@@ -531,6 +709,20 @@ fn find_service(peripheral: &CBPeripheral, expected: Uuid) -> Result<Retained<CB
     Err(anyhow!("Service not found"))
 }
 
+fn find_optional_service(
+    peripheral: &CBPeripheral,
+    expected: Uuid,
+) -> Result<Option<Retained<CBService>>> {
+    let services =
+        unsafe { peripheral.services() }.ok_or_else(|| anyhow!("No services discovered"))?;
+    for service in services {
+        if cbuuid_to_uuid(unsafe { service.UUID() }.as_ref())? == expected {
+            return Ok(Some(service));
+        }
+    }
+    Ok(None)
+}
+
 fn find_characteristic(service: &CBService, expected: Uuid) -> Result<Retained<CBCharacteristic>> {
     let chars = unsafe { service.characteristics() }
         .ok_or_else(|| anyhow!("No characteristics discovered"))?;
@@ -540,6 +732,20 @@ fn find_characteristic(service: &CBService, expected: Uuid) -> Result<Retained<C
         }
     }
     Err(anyhow!("Characteristic not found"))
+}
+
+fn find_optional_characteristic(
+    service: &CBService,
+    expected: Uuid,
+) -> Result<Option<Retained<CBCharacteristic>>> {
+    let chars = unsafe { service.characteristics() }
+        .ok_or_else(|| anyhow!("No characteristics discovered"))?;
+    for characteristic in chars {
+        if cbuuid_to_uuid(unsafe { characteristic.UUID() }.as_ref())? == expected {
+            return Ok(Some(characteristic));
+        }
+    }
+    Ok(None)
 }
 
 fn get_characteristic_value(characteristic: &CBCharacteristic) -> Vec<u8> {
@@ -553,8 +759,16 @@ fn nsuuid_to_uuid(uuid: &objc2_foundation::NSUUID) -> Result<Uuid> {
 }
 
 fn cbuuid_to_uuid(uuid: &CBUUID) -> Result<Uuid> {
-    Uuid::parse_str(&unsafe { uuid.UUIDString() }.to_string())
-        .context("invalid service/characteristic UUID")
+    parse_cbuuid_string(&unsafe { uuid.UUIDString() }.to_string())
+}
+
+fn parse_cbuuid_string(value: &str) -> Result<Uuid> {
+    let normalized = match value.len() {
+        4 => format!("0000{value}-0000-1000-8000-00805f9b34fb"),
+        8 => format!("{value}-0000-1000-8000-00805f9b34fb"),
+        _ => value.to_string(),
+    };
+    Uuid::parse_str(&normalized).context("invalid service/characteristic UUID")
 }
 
 fn uuid_to_cbuuid(uuid: Uuid) -> Retained<CBUUID> {
@@ -584,3 +798,32 @@ unsafe extern "C" {
 
 #[cfg_attr(target_os = "macos", link(name = "AppKit", kind = "framework"))]
 unsafe extern "C" {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn expands_sig_assigned_cbuuid_strings() {
+        assert_eq!(
+            parse_cbuuid_string("180F").unwrap(),
+            Uuid::parse_str(BATTERY_SERVICE_UUID).unwrap()
+        );
+        assert_eq!(
+            parse_cbuuid_string("2A19").unwrap(),
+            Uuid::parse_str(BATTERY_LEVEL_UUID).unwrap()
+        );
+        assert_eq!(
+            parse_cbuuid_string("0000180A").unwrap(),
+            Uuid::parse_str(DEVICE_INFORMATION_SERVICE_UUID).unwrap()
+        );
+    }
+
+    #[test]
+    fn preserves_custom_128_bit_cbuuid_strings() {
+        assert_eq!(
+            parse_cbuuid_string("B34A0004-E782-4706-8F9C-6C056C416507").unwrap(),
+            Uuid::parse_str(EVENT_UUID).unwrap()
+        );
+    }
+}

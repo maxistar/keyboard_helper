@@ -5,68 +5,45 @@ on:
     branches: ["master"]
     tags: ["v[0-9]*.[0-9]*.[0-9]*"]
     paths-ignore:
-      - 'website/**'
+      - "website/**"
 
 permissions:
   contents: write
 
-env:
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
 jobs:
+  quality:
+    uses: ./.github/workflows/quality.yml
+
   prepare:
     runs-on: ubuntu-latest
     outputs:
       is_release: ${{ steps.context.outputs.is_release }}
-      release_id: ${{ steps.create_release.outputs.id }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Determine release context
         id: context
+        shell: bash
         run: |
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             echo "is_release=true" >> "$GITHUB_OUTPUT"
           else
             echo "is_release=false" >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Verify tag matches versions
+      - name: Verify tag matches all source versions
         if: steps.context.outputs.is_release == 'true'
+        shell: bash
         run: |
-          TAG="${GITHUB_REF#refs/tags/}"
-          EXPECTED="${TAG#v}"
+          EXPECTED="${GITHUB_REF_NAME#v}"
           PKG_VERSION=$(jq -r '.version' package.json)
           TAURI_VERSION=$(jq -r '.version' src-tauri/tauri.conf.json)
-          if [[ "$PKG_VERSION" != "$EXPECTED" ]]; then
-            echo "package.json version ($PKG_VERSION) does not match tag ($EXPECTED)" >&2
-            exit 1
-          fi
-          if [[ "$TAURI_VERSION" != "$EXPECTED" ]]; then
-            echo "tauri.conf.json version ($TAURI_VERSION) does not match tag ($EXPECTED)" >&2
-            exit 1
-          fi
-
-      - name: Create GitHub release
-        id: create_release
-        if: steps.context.outputs.is_release == 'true'
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref_name }}
-          release_name: ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-          body: |
-            Automated Keyboard Helper release.
-
-            macOS downloads labelled `apple-silicon` and `intel` are ad-hoc-signed, unnotarized preview builds. Apple has not verified them; follow the macOS installation guidance in the README if Gatekeeper blocks the first launch.
+          CARGO_VERSION=$(sed -n '/^\[package\]/,/^\[/s/^version = "\([^"]*\)"/\1/p' src-tauri/Cargo.toml)
+          test "$PKG_VERSION" = "$EXPECTED"
+          test "$TAURI_VERSION" = "$EXPECTED"
+          test "$CARGO_VERSION" = "$EXPECTED"
 
   build:
-    name: Build (${{ matrix.artifact_label }})
-    needs: prepare
+    name: Package (${{ matrix.artifact_label }})
+    needs: [quality, prepare]
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -94,78 +71,85 @@ jobs:
             expected_arch: x86_64
             tauri_args: --target x86_64-apple-darwin
             artifact_path: dist/macos/macos-intel/**
-
     env:
       CI: true
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
-
-      - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
+      - uses: dtolnay/rust-toolchain@stable
       - name: Add explicit macOS Rust target
         if: matrix.platform == 'macos'
         run: rustup target add ${{ matrix.rust_target }}
-
       - name: Install Linux dependencies
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            libgtk-3-dev \
-            libwebkit2gtk-4.1-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev
-
-      - name: Install JS dependencies
-        run: npm ci
-
-      - name: Build non-macOS Tauri app (attach to release)
-        if: matrix.platform != 'macos' && needs.prepare.outputs.is_release == 'true'
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+      - run: npm ci
+      - name: Build non-macOS package
+        if: matrix.platform != 'macos'
         uses: tauri-apps/tauri-action@v0
-        with:
-          releaseId: ${{ needs.prepare.outputs.release_id }}
-
-      - name: Build non-macOS Tauri app (no release)
-        if: matrix.platform != 'macos' && needs.prepare.outputs.is_release != 'true'
-        uses: tauri-apps/tauri-action@v0
-
       - name: Build ad-hoc-signed macOS preview
         if: matrix.platform == 'macos'
         uses: tauri-apps/tauri-action@v0
         env:
-          # CI preview only. A future Developer ID job must supply its own identity.
           APPLE_SIGNING_IDENTITY: "-"
         with:
           args: ${{ matrix.tauri_args }}
-
       - name: Verify and stage macOS preview
         if: matrix.platform == 'macos'
+        shell: bash
         run: >-
           bash .github/scripts/verify-macos-ad-hoc.sh
           "${{ matrix.rust_target }}"
           "${{ matrix.expected_arch }}"
           "${{ matrix.artifact_label }}"
-
-      - name: Attach verified macOS preview to release
-        if: matrix.platform == 'macos' && needs.prepare.outputs.is_release == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Exercise secondary windows
+        if: matrix.platform == 'windows'
+        timeout-minutes: 3
+        shell: pwsh
         run: |
-          assets=("dist/macos/${{ matrix.artifact_label }}"/*)
-          gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber
-
-      - name: Upload build artifacts
+          $env:KEYBOARD_HELPER_SMOKE_REPORT = "$PWD\secondary-window-smoke.json"
+          $process = Start-Process -FilePath "src-tauri\target\release\keyboard-app.exe" -ArgumentList "--quality-smoke-secondary-windows" -Wait -PassThru
+          if ($process.ExitCode -ne 0) { exit $process.ExitCode }
+          $report = Get-Content $env:KEYBOARD_HELPER_SMOKE_REPORT | ConvertFrom-Json
+          if (-not $report.passed) { throw "Secondary-window smoke did not pass" }
+      - name: Retain Windows smoke diagnostics
+        if: matrix.platform == 'windows' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-secondary-window-smoke
+          path: secondary-window-smoke.json
+          if-no-files-found: warn
+      - name: Upload package artifacts
         uses: actions/upload-artifact@v4
         with:
           name: tauri-release-${{ matrix.artifact_label }}
           path: ${{ matrix.artifact_path }}
           if-no-files-found: error
+
+  publish:
+    name: Publish GitHub release
+    if: needs.prepare.outputs.is_release == 'true'
+    needs: [quality, prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download verified platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: tauri-release-*
+          path: release-assets
+          merge-multiple: true
+      - name: Create completed release only after all gates
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          mapfile -d '' assets < <(find release-assets -type f -print0)
+          test "${#assets[@]}" -gt 0
+          gh release create "$GITHUB_REF_NAME" "${assets[@]}" \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Automated Keyboard Helper release. macOS downloads are ad-hoc-signed, unnotarized preview builds."

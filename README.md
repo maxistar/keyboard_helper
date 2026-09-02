@@ -93,25 +93,32 @@ The first release uses curated English words and keeps results only for the curr
 Open the overlay menu, expand **Keyboard**, and choose **Keyboard Self-test**. The desktop app opens one separate test window (or focuses the existing one), initially selecting the overlay's current layout and its base layer.
 
 1. Choose a configured built-in or external layout and the layer you want to verify.
-2. Activate that layer on the physical keyboard yourself, then choose **Start guided test**.
+2. Choose **Start guided layer test**. If the layout explicitly maps that layer and writable BLE layer control is ready, Keyboard Helper activates it and waits for authoritative confirmation. Otherwise activate the layer manually and continue in HID-only mode.
 3. Press and release the highlighted physical position. An unexpected output can be retried or recorded as a problem; use **Skip this position** when a key produces no event.
 4. Review passed, unexpected, skipped, and not-testable positions. You can retest only the problems or return to choose another layer.
 
-The self-test window is a compact controller; the existing overlay remains the only keyboard visualization. Guided outlines are added by physical position while normal live pressed-key highlighting continues, so the expected position and the received key can be seen together. The controller does not switch the overlay or firmware layer—make sure its layout/layer selectors match what the overlay and keyboard currently show.
+Layout-wide firmware combos are not repeated in each layer test. When detailed BLE telemetry is ready and permitted, choose **Test global combos** to run one separate firmware-authoritative plan. Only combo definitions with a non-empty `code` are included, and this test does not activate or lease a firmware layer. If BLE telemetry is unavailable or disabled for privacy, the combo action is unavailable without affecting ordinary HID layer testing.
 
-The report exists only until the self-test window closes. It verifies the configured global HID output, not raw ZMK switch or matrix health: events can come from any attached keyboard, and combos, macros, hold-tap timing, layer activation, and unsupported/multi-step codes are outside the first version.
+The self-test window is a compact controller; the existing overlay remains the only keyboard visualization. Guided outlines are added by physical position while normal live pressed-key highlighting continues, so the expected position and the received key can be seen together. A confirmed automatic layer selection is temporary: input-source reconciliation is deferred during the lease, an unexpected authoritative layer change pauses the test, and Stop, completion, Test another layer, or close conditionally restores the preceding layer without overwriting newer user intent.
+
+The report exists only until the self-test window closes. System HID events are the sole authority for ordinary Passed and Unexpected results, so stock ZMK and non-ZMK keyboards remain testable without custom telemetry. Optional BLE key telemetry only corroborates a physical position or adds a warning; it may be unavailable or disabled for privacy and never blocks a correct HID verdict. Without corroboration, events can come from any attached keyboard. The separate global combo test remains BLE-authoritative, while raw matrix health and unsupported or multi-step behaviors are outside the test.
 
 ## Release process
 
 Releases are cut from `master` with semantic version tags.
 
+The required source matrix, website production build, platform packages, and
+Windows secondary-window smoke all finish before CI creates a GitHub release.
+See [Product quality gates](docs/quality-gates.md) for local commands, platform
+constraints, retained artifacts, and failure recovery.
+
 - Version source: keep `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml` on the same semver (e.g., `0.2.0`). Update all three before tagging so the JS package, Tauri config, and Rust crate stay aligned.
-- Trigger: create an annotated tag `vMAJOR.MINOR.PATCH` on `master` and push it; CI will build macOS/Windows/Linux bundles and publish a GitHub release with the assets attached. macOS release downloads are explicitly labelled `macos-apple-silicon` or `macos-intel`, include SHA-256 files, and remain unnotarized previews. The job should fail if the tag does not match the version in both files.
+- Trigger: create an annotated tag `vMAJOR.MINOR.PATCH` on `master` and push it; CI will build macOS/Windows/Linux bundles and publish a GitHub release with the assets attached. macOS release downloads are explicitly labelled `macos-apple-silicon` or `macos-intel`, include SHA-256 files, and remain unnotarized previews. The job fails if the tag does not match all three version sources.
 - Steps:
   1. Bump the version in `package.json`, `src-tauri/tauri.conf.json`, and `src-tauri/Cargo.toml`, commit, and merge to `master`.
   2. Draft release notes (highlights, fixes, platform notes). Keep them short and paste them into the GitHub release description after CI creates it.
   3. Tag the merge commit (`git tag -a v0.2.0 -m "Release v0.2.0"`) and push the tag (`git push origin v0.2.0`).
-  4. Watch the release workflow in GitHub Actions; when it finishes, open the generated GitHub release for `v0.2.0`, paste the release notes into the description, and publish/save.
+  4. Watch the release workflow in GitHub Actions. A failed prerequisite creates no normal release; use its retained artifacts to diagnose the failure and rerun the complete tagged workflow. After success, open the generated release for `v0.2.0` and replace the automated notes with the prepared notes.
 - Non-tag pushes to `master` still run the build and upload architecture-specific artifacts to the workflow run but do not create a GitHub release entry or stable release downloads.
 
 ## App configuration & external layouts
@@ -125,6 +132,7 @@ Advanced users can still edit the compatible JSON configuration directly. The ap
   - `layouts`: object mapping layout keys to either `true` (use built-in) or a filesystem path (load external JSON).
 - Layout combos (layout-specific): add a `combos` array inside a layout file with entries like `{ "key1": { "row": 1, "col": 4 }, "key2": { "row": 1, "col": 5 }, "code": "Enter" }`.
 - Layout file format: JSON with `name`, optional `bleLayerSource`, optional `inputSourceSync`, `keySize` (`w`, `h`, `gap` in px), `keyPositions` (array of `{row,col}` with optional `w`/`h` overrides), and `keyLayers`. `keyLayers` can be an object with `default`, `shift`, etc., or an array where index 0 is the base layer. Each layer entry is `[label, code]` (or an object with `text`/`image` for custom labels).
+- The normalized zero-based `keyLayers` order must match ZMK firmware layer numbering. Self-test uses that order for automatic layer activation and treats empty or unsupported output codes as not testable; layout JSON has no separate self-test mapping or exclusion metadata.
 - `bleLayerSource` is optional and enables BLE-authoritative layer updates for the selected keyboard only. Shape:
   - `deviceName`: BLE keyboard name to match
   - `serviceUuid`: custom GATT service UUID
