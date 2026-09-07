@@ -9,6 +9,9 @@
     "check:js": "npm run lint && npm test",
     "test:privacy": "node scripts/run-js-tests.mjs tests/privacy",
     "test:compatibility": "node scripts/run-js-tests.mjs tests/compatibility",
+    "android:init": "tauri android init --ci --skip-targets-install",
+    "android:dev": "tauri android dev",
+    "android:build": "tauri android build --debug --target aarch64 --apk true --aab false --ci",
     "tauri": "tauri"
   },
   "devDependencies": {

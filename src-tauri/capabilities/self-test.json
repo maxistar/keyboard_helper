@@ -3,6 +3,7 @@
   "identifier": "self-test",
   "description": "Capability for the Keyboard Self-test window",
   "windows": ["keyboard-self-test"],
+  "platforms": ["macOS", "windows", "linux"],
   "permissions": [
     "core:default",
     "core:window:allow-close",

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Keyboard Helper Companion",
+  "identifier": "me.maxistar.keyboardhelper.companion",
+  "build": {
+    "frontendDist": "../src-mobile"
+  },
+  "app": {
+    "macOSPrivateApi": false,
+    "windows": [
+      {
+        "label": "mobile",
+        "title": "Keyboard Helper Companion"
+      }
+    ]
+  },
+  "bundle": {
+    "android": {
+      "minSdkVersion": 24
+    }
+  }
+}

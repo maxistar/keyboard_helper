@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "mobile-shell",
+  "description": "Minimal capability for the Android companion shell",
+  "windows": ["mobile"],
+  "platforms": ["android"],
+  "permissions": [
+    "core:default"
+  ]
+}
