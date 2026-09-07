@@ -26,17 +26,23 @@ test("Android configuration keeps a distinct companion identity and frontend", a
   assert.equal(android.app.macOSPrivateApi, false);
 });
 
-test("mobile surface is bounded to bootstrap status", async () => {
+test("mobile surface is bounded to the foreground BLE transport proof", async () => {
   const html = await read("src-mobile/index.html");
+  const app = await read("src-mobile/app.js");
 
-  assert.match(html, /data-surface="android-companion-shell"/);
+  assert.match(html, /data-surface="android-ble-transport-proof"/);
   assert.match(html, /Keyboard Helper Companion/);
-  assert.match(html, /Mobile shell ready/);
-  assert.doesNotMatch(html, /main\.js|greet|overlay|typing-invaders|self-test|remote layer/i);
-  assert.doesNotMatch(html, /<script\b/i);
+  assert.match(html, /Scan 10 seconds/);
+  assert.match(html, /Discover and read/);
+  assert.match(html, /Subscribe to events/);
+  assert.match(html, /src="app\.js"/);
+  assert.doesNotMatch(html, /main\.js|greet|overlay|typing-invaders|self-test|remote layer|write layer/i);
+  assert.match(app, /elements\.battery\.textContent = "Unavailable"/);
+  assert.match(app, /elements\.capabilities\.textContent = "Stock keyboard \/ extension unavailable"/);
+  assert.match(app, /Bluetooth permission is blocked\. Open Android app settings/);
 });
 
-test("mobile capability grants no deferred companion permissions", async () => {
+test("mobile capability grants only the foreground transport plugin", async () => {
   const capability = JSON.parse(await read("src-tauri/capabilities/mobile-shell.json"));
   const desktopCapabilities = await Promise.all(
     ["default", "self-test", "settings", "typing-invaders"].map(async (name) =>
@@ -46,21 +52,24 @@ test("mobile capability grants no deferred companion permissions", async () => {
 
   assert.deepEqual(capability.windows, ["mobile"]);
   assert.deepEqual(capability.platforms, ["android"]);
-  assert.deepEqual(capability.permissions, ["core:default"]);
-  assert.doesNotMatch(JSON.stringify(capability), /bluetooth|scan|location|notification|background/i);
+  assert.deepEqual(capability.permissions, ["core:default", "keyboard-helper-ble:default"]);
+  assert.doesNotMatch(JSON.stringify(capability), /notification|background|write/i);
   for (const desktopCapability of desktopCapabilities) {
     assert.deepEqual(desktopCapability.platforms, ["macOS", "windows", "linux"]);
   }
 });
 
-test("mobile native entry has no demonstration or desktop service registration", async () => {
+test("mobile native entry registers only the target-gated BLE adapter", async () => {
   const mobileRust = await read("src-tauri/src/lib.rs");
   const cargoToml = await read("src-tauri/Cargo.toml");
 
   assert.match(mobileRust, /mobile_entry_point/);
   assert.match(mobileRust, /Keyboard Helper Companion/);
-  assert.doesNotMatch(mobileRust, /greet|plugin\(|invoke_handler|rdev|tray|ble_|input_source/i);
+  assert.match(mobileRust, /cfg\(target_os = "android"\)/);
+  assert.match(mobileRust, /tauri_plugin_keyboard_helper_ble::init/);
+  assert.doesNotMatch(mobileRust, /greet|invoke_handler|rdev|tray|ble_layer|input_source/i);
   assert.match(cargoToml, /cfg\(not\(any\(target_os = "android", target_os = "ios"\)\)\)/);
+  assert.match(cargoToml, /cfg\(target_os = "android"\)[\s\S]*tauri-plugin-keyboard-helper-ble/);
   assert.match(cargoToml, /cfg\(target_os = "macos"\)[\s\S]*macos-private-api/);
 });
 

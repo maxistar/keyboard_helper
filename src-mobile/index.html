@@ -8,20 +8,46 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="shell" data-surface="android-companion-shell">
+    <main class="shell" data-surface="android-ble-transport-proof">
       <section class="status-card" aria-labelledby="companion-title">
         <div class="keyboard-mark" aria-hidden="true">
           <span></span><span></span><span></span>
           <span></span><span></span><span></span>
         </div>
-        <p class="eyebrow">Android foundation</p>
+        <p class="eyebrow">Android BLE transport proof</p>
         <h1 id="companion-title">Keyboard Helper Companion</h1>
-        <p class="status">Mobile shell ready</p>
-        <p class="detail">
-          This first stage verifies the standalone mobile application. Keyboard discovery and BLE
-          controls will arrive in the next verified stage.
-        </p>
+        <div class="status-grid" aria-label="Transport state">
+          <span>Permission <strong id="permission">unknown</strong></span>
+          <span>Connection <strong id="connection">idle</strong></span>
+        </div>
+        <p id="diagnostic" class="diagnostic" aria-live="polite">Transport ready for user action</p>
+
+        <div class="actions" aria-label="BLE proof controls">
+          <button id="request-permission" type="button">Grant Bluetooth</button>
+          <button id="start-scan" type="button">Scan 10 seconds</button>
+          <button id="stop-scan" type="button" disabled>Stop scan</button>
+          <button id="connect" type="button" disabled>Connect selected</button>
+          <button id="discover" type="button" disabled>Discover and read</button>
+          <button id="subscribe" type="button" disabled>Subscribe to events</button>
+          <button id="disconnect" type="button" disabled>Disconnect</button>
+          <button id="reconnect" type="button" disabled>Reconnect</button>
+        </div>
+
+        <section class="evidence" aria-labelledby="devices-title">
+          <h2 id="devices-title">Observed devices</h2>
+          <ul id="devices"><li class="empty">No devices observed yet</li></ul>
+        </section>
+        <section class="evidence" aria-labelledby="gatt-title">
+          <h2 id="gatt-title">Local bounded evidence</h2>
+          <dl>
+            <dt>Services</dt><dd id="services">Not discovered</dd>
+            <dt>Battery</dt><dd id="battery">Not read</dd>
+            <dt>Capabilities</dt><dd id="capabilities">Not read</dd>
+            <dt>Latest notification</dt><dd id="notification">None</dd>
+          </dl>
+        </section>
       </section>
     </main>
+    <script type="module" src="app.js"></script>
   </body>
 </html>

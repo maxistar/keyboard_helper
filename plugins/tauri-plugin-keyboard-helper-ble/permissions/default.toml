@@ -1,0 +1,14 @@
+[default]
+description = "Foreground read-only Keyboard Helper BLE transport proof"
+permissions = [
+  "allow-permission-status",
+  "allow-request-permissions",
+  "allow-start-scan",
+  "allow-stop-scan",
+  "allow-connect",
+  "allow-list-services",
+  "allow-read",
+  "allow-subscribe",
+  "allow-unsubscribe",
+  "allow-disconnect",
+]

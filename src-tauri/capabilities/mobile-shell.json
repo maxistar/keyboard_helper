@@ -1,10 +1,11 @@
 {
   "$schema": "../gen/schemas/mobile-schema.json",
   "identifier": "mobile-shell",
-  "description": "Minimal capability for the Android companion shell",
+  "description": "Foreground Android BLE transport proof",
   "windows": ["mobile"],
   "platforms": ["android"],
   "permissions": [
-    "core:default"
+    "core:default",
+    "keyboard-helper-ble:default"
   ]
 }

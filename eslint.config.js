@@ -12,7 +12,7 @@ export default [
   },
   js.configs.recommended,
   {
-    files: ["src/**/*.js"],
+    files: ["src/**/*.js", "src-mobile/**/*.js"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",

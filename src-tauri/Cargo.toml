@@ -40,6 +40,9 @@ tauri = { version = "2", features = ["macos-private-api"] }
 objc2 = "0.5.2"
 core-foundation-sys = "0.8"
 
+[target.'cfg(target_os = "android")'.dependencies]
+tauri-plugin-keyboard-helper-ble = { path = "../plugins/tauri-plugin-keyboard-helper-ble" }
+
 [target.'cfg(target_os = "macos")'.dependencies.objc2-core-bluetooth]
 version = "0.2.2"
 features = [

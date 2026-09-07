@@ -1,6 +1,10 @@
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(tauri_plugin_keyboard_helper_ble::init());
+
+    builder
         .run(tauri::generate_context!())
         .expect("error while running Keyboard Helper Companion");
 }
