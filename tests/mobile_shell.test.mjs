@@ -26,24 +26,23 @@ test("Android configuration keeps a distinct companion identity and frontend", a
   assert.equal(android.app.macOSPrivateApi, false);
 });
 
-test("mobile surface is bounded to the foreground BLE transport proof", async () => {
+test("mobile surface composes the product connection overview and independent viewer", async () => {
   const html = await read("src-mobile/index.html");
   const app = await read("src-mobile/app.js");
 
-  assert.match(html, /data-surface="android-ble-transport-proof"/);
+  assert.match(html, /data-surface="mobile-connection-overview"/);
   assert.match(html, /data-viewer="mobile-layout-viewer"/);
   assert.match(html, /No keyboard connection is required/);
   assert.match(html, /Keyboard Helper Companion/);
-  assert.match(html, /Scan 10 seconds/);
-  assert.match(html, /Discover and read/);
-  assert.match(html, /Subscribe to events/);
+  assert.match(html, /Find keyboard/);
+  assert.match(html, /Keyboard details/);
+  assert.doesNotMatch(html, /Discover and read|Subscribe to events|Latest notification/);
   assert.match(html, /src="app\.js"/);
   assert.doesNotMatch(html, /main\.js|greet|overlay|typing-invaders|self-test|remote layer|write layer/i);
-  assert.match(app, /elements\.battery\.textContent = "Unavailable"/);
-  assert.match(app, /elements\.capabilities\.textContent = "Stock keyboard \/ extension unavailable"/);
-  assert.match(app, /Bluetooth permission is blocked\. Open Android app settings/);
+  assert.match(app, /ConnectionEvidenceController/);
+  assert.match(app, /createMobileConnectionOverviewView/);
   assert.match(app, /mountMobileLayoutViewer\(\)/);
-  assert.match(app, /querySelectorAll\("\.status-card button"\)/);
+  assert.match(app, /querySelectorAll\("\.connection-card button"\)/);
   assert.doesNotMatch(app, /querySelectorAll\("button"\)/);
 });
 

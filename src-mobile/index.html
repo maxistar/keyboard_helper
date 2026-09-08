@@ -8,10 +8,58 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="shell" data-surface="android-ble-transport-proof">
+    <main class="shell" data-surface="mobile-connection-overview">
+      <section id="connection-overview" class="connection-card" aria-labelledby="connection-title">
+        <div class="keyboard-mark" aria-hidden="true">
+          <span></span><span></span><span></span>
+          <span></span><span></span><span></span>
+        </div>
+        <p class="eyebrow">Keyboard connection</p>
+        <h1 id="connection-title">Connect your keyboard</h1>
+        <div id="connection-status" class="connection-status" role="status" aria-live="polite" aria-busy="false">
+          <strong id="connection-status-title">Getting ready</strong>
+          <span id="connection-status-detail">Checking Bluetooth availability.</span>
+        </div>
+
+        <dl class="connection-summary" aria-label="Current keyboard connection">
+          <dt>Keyboard</dt><dd id="connection-device-name">None selected</dd>
+          <dt>Capability</dt><dd id="connection-capability">Not determined</dd>
+          <dt id="connection-retry-label">Reconnect</dt><dd id="connection-retry" aria-labelledby="connection-retry-label" hidden>Not active</dd>
+        </dl>
+
+        <div class="connection-actions" aria-label="Keyboard connection actions">
+          <button id="connection-action-find" type="button">Find keyboard</button>
+          <button id="connection-action-find-again" type="button" hidden>Find another keyboard</button>
+          <button id="connection-action-stop-scan" type="button" hidden>Stop scan</button>
+          <button id="connection-action-connect" type="button" hidden>Connect</button>
+          <button id="connection-action-disconnect" class="secondary" type="button" hidden>Disconnect</button>
+          <button id="connection-action-reconnect" type="button" hidden>Reconnect</button>
+        </div>
+        <p id="connection-live" class="connection-live" role="status" aria-live="polite">No connection action is running.</p>
+
+        <section class="connection-devices" aria-labelledby="connection-devices-title">
+          <h2 id="connection-devices-title">Nearby keyboards</h2>
+          <p id="connection-device-empty" class="connection-empty">No keyboard selected. Choose Find keyboard to scan.</p>
+          <ul id="connection-devices"></ul>
+        </section>
+
+        <details class="connection-evidence">
+          <summary>Keyboard details</summary>
+          <p id="connection-evidence-status" role="status" aria-live="polite" aria-busy="false">Keyboard details appear after a connection is ready.</p>
+          <dl>
+            <dt>Battery</dt><dd id="connection-battery">Not available</dd>
+            <dt>Manufacturer</dt><dd id="connection-manufacturer">Not available</dd>
+            <dt>Model</dt><dd id="connection-model">Not available</dd>
+            <dt>Firmware</dt><dd id="connection-firmware">Not available</dd>
+            <dt>Hardware</dt><dd id="connection-hardware">Not available</dd>
+            <dt>Software</dt><dd id="connection-software">Not available</dd>
+          </dl>
+        </details>
+      </section>
+
       <section class="viewer-card" data-viewer="mobile-layout-viewer" aria-labelledby="viewer-title">
         <p class="eyebrow">Mobile layout viewer</p>
-        <h1 id="viewer-title">Explore your keyboard</h1>
+        <h2 id="viewer-title">Explore your keyboard</h2>
         <p class="viewer-intro">Choose a bundled layout and browse every layer. No keyboard connection is required.</p>
         <div class="viewer-controls">
           <label for="viewer-layout">Keyboard layout</label>
@@ -30,52 +78,6 @@
         >
           <div id="viewer-keyboard" class="viewer-keyboard"></div>
         </div>
-      </section>
-
-      <section class="status-card" aria-labelledby="companion-title">
-        <div class="keyboard-mark" aria-hidden="true">
-          <span></span><span></span><span></span>
-          <span></span><span></span><span></span>
-        </div>
-        <p class="eyebrow">Connection lab</p>
-        <h2 id="companion-title">BLE diagnostics</h2>
-        <div class="status-grid" aria-label="Lifecycle state">
-          <span>Permission <strong id="permission">unknown</strong></span>
-          <span>Connection <strong id="connection">idle</strong></span>
-          <span>Visibility <strong id="visibility">foreground</strong></span>
-          <span>Intent <strong id="intent">none</strong></span>
-          <span>Bluetooth <strong id="bluetooth">unknown</strong></span>
-          <span>Generation <strong id="generation">0 / transport 0</strong></span>
-          <span>Capability <strong id="capability-mode">unknown</strong></span>
-          <span>Retry <strong id="retry">0/3</strong></span>
-          <span>Reason <strong id="reason">none</strong></span>
-        </div>
-        <p id="diagnostic" class="diagnostic" aria-live="polite">Transport ready for user action</p>
-
-        <div class="actions" aria-label="BLE proof controls">
-          <button id="request-permission" type="button">Grant Bluetooth</button>
-          <button id="start-scan" type="button">Scan 10 seconds</button>
-          <button id="stop-scan" type="button" disabled>Stop scan</button>
-          <button id="connect" type="button" disabled>Connect selected</button>
-          <button id="discover" type="button" disabled>Discover and read</button>
-          <button id="subscribe" type="button" disabled>Subscribe to events</button>
-          <button id="disconnect" type="button" disabled>Disconnect</button>
-          <button id="reconnect" type="button" disabled>Reconnect</button>
-        </div>
-
-        <section class="evidence" aria-labelledby="devices-title">
-          <h2 id="devices-title">Observed devices</h2>
-          <ul id="devices"><li class="empty">No devices observed yet</li></ul>
-        </section>
-        <section class="evidence" aria-labelledby="gatt-title">
-          <h2 id="gatt-title">Local bounded evidence</h2>
-          <dl>
-            <dt>Services</dt><dd id="services">Not discovered</dd>
-            <dt>Battery</dt><dd id="battery">Not read</dd>
-            <dt>Capabilities</dt><dd id="capabilities">Not read</dd>
-            <dt>Latest notification</dt><dd id="notification">None</dd>
-          </dl>
-        </section>
       </section>
     </main>
     <script type="module" src="app.js"></script>
