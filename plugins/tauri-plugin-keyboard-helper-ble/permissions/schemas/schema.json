@@ -295,6 +295,18 @@
       "type": "string",
       "oneOf": [
         {
+          "description": "Enables the bluetooth_availability command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-bluetooth-availability",
+          "markdownDescription": "Enables the bluetooth_availability command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the bluetooth_availability command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-bluetooth-availability",
+          "markdownDescription": "Denies the bluetooth_availability command without any pre-configured scope."
+        },
+        {
           "description": "Enables the connect command without any pre-configured scope.",
           "type": "string",
           "const": "allow-connect",
@@ -329,6 +341,18 @@
           "type": "string",
           "const": "deny-list-services",
           "markdownDescription": "Denies the list_services command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the observe_bluetooth_availability command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-observe-bluetooth-availability",
+          "markdownDescription": "Enables the observe_bluetooth_availability command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the observe_bluetooth_availability command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-observe-bluetooth-availability",
+          "markdownDescription": "Denies the observe_bluetooth_availability command without any pre-configured scope."
         },
         {
           "description": "Enables the permission_status command without any pre-configured scope.",
@@ -379,6 +403,18 @@
           "markdownDescription": "Denies the start_scan command without any pre-configured scope."
         },
         {
+          "description": "Enables the stop_observing_bluetooth_availability command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-stop-observing-bluetooth-availability",
+          "markdownDescription": "Enables the stop_observing_bluetooth_availability command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the stop_observing_bluetooth_availability command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-stop-observing-bluetooth-availability",
+          "markdownDescription": "Denies the stop_observing_bluetooth_availability command without any pre-configured scope."
+        },
+        {
           "description": "Enables the stop_scan command without any pre-configured scope.",
           "type": "string",
           "const": "allow-stop-scan",
@@ -415,10 +451,10 @@
           "markdownDescription": "Denies the unsubscribe command without any pre-configured scope."
         },
         {
-          "description": "Foreground read-only Keyboard Helper BLE transport proof\n#### This default permission set includes:\n\n- `allow-permission-status`\n- `allow-request-permissions`\n- `allow-start-scan`\n- `allow-stop-scan`\n- `allow-connect`\n- `allow-list-services`\n- `allow-read`\n- `allow-subscribe`\n- `allow-unsubscribe`\n- `allow-disconnect`",
+          "description": "Foreground read-only Keyboard Helper BLE transport proof\n#### This default permission set includes:\n\n- `allow-permission-status`\n- `allow-request-permissions`\n- `allow-bluetooth-availability`\n- `allow-observe-bluetooth-availability`\n- `allow-stop-observing-bluetooth-availability`\n- `allow-start-scan`\n- `allow-stop-scan`\n- `allow-connect`\n- `allow-list-services`\n- `allow-read`\n- `allow-subscribe`\n- `allow-unsubscribe`\n- `allow-disconnect`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Foreground read-only Keyboard Helper BLE transport proof\n#### This default permission set includes:\n\n- `allow-permission-status`\n- `allow-request-permissions`\n- `allow-start-scan`\n- `allow-stop-scan`\n- `allow-connect`\n- `allow-list-services`\n- `allow-read`\n- `allow-subscribe`\n- `allow-unsubscribe`\n- `allow-disconnect`"
+          "markdownDescription": "Foreground read-only Keyboard Helper BLE transport proof\n#### This default permission set includes:\n\n- `allow-permission-status`\n- `allow-request-permissions`\n- `allow-bluetooth-availability`\n- `allow-observe-bluetooth-availability`\n- `allow-stop-observing-bluetooth-availability`\n- `allow-start-scan`\n- `allow-stop-scan`\n- `allow-connect`\n- `allow-list-services`\n- `allow-read`\n- `allow-subscribe`\n- `allow-unsubscribe`\n- `allow-disconnect`"
         }
       ]
     }

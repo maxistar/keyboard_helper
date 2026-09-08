@@ -2,10 +2,12 @@
 
 ## Scope
 
-The current Android target is the Stage 1 Keyboard Helper Companion shell. It verifies mobile
-application startup and lifecycle separation from the desktop app. It does not request Bluetooth
-permissions, scan for keyboards, connect to BLE devices, render keyboard layouts, or control
-firmware layers.
+The current Android target is the foreground Keyboard Helper Companion through the BLE lifecycle
+stabilization stage. It supports an explicit permission, bounded scan, selected-device connection,
+read-only discovery/read/subscription flow, and bounded foreground reconnect. It does not render
+keyboard layouts, control firmware layers, persist devices or payloads, or run BLE work in the
+background. See `android-ble-transport-proof.md` for the selected native adapter and
+`android-ble-lifecycle.md` for lifecycle policy and acceptance.
 
 ## Agreed Platform Values
 

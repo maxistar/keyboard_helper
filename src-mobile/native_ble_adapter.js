@@ -9,6 +9,8 @@ export class NativeBleAdapter {
     this.scanChannel = null;
     this.disconnectChannel = null;
     this.notificationChannel = null;
+    this.availabilityChannel = null;
+    this.lastAvailability = null;
     this.devices = new Map();
   }
 
@@ -16,6 +18,34 @@ export class NativeBleAdapter {
     const command = request ? "request_permissions" : "permission_status";
     const result = await this.invoke(`plugin:keyboard-helper-ble|${command}`);
     return result.state;
+  }
+
+  async checkBluetoothAvailability() {
+    return Object.freeze({
+      ...normalizeAvailability(await this.invoke("plugin:keyboard-helper-ble|bluetooth_availability")),
+      attempt: this.attempt,
+    });
+  }
+
+  async observeBluetoothAvailability(handler) {
+    const channel = new this.Channel();
+    channel.onmessage = (event) => {
+      const availability = Object.freeze({ ...normalizeAvailability(event), attempt: this.attempt });
+      const fingerprint = `${availability.state}:${availability.supported}`;
+      if (fingerprint === this.lastAvailability) return;
+      this.lastAvailability = fingerprint;
+      handler(availability);
+    };
+    this.availabilityChannel = channel;
+    await this.invoke("plugin:keyboard-helper-ble|observe_bluetooth_availability", {
+      onEvent: channel,
+    });
+    return () => {
+      if (this.availabilityChannel !== channel) return;
+      this.availabilityChannel = null;
+      this.lastAvailability = null;
+      void this.invoke("plugin:keyboard-helper-ble|stop_observing_bluetooth_availability");
+    };
   }
 
   async startScan(handler, timeoutMs) {
@@ -45,7 +75,7 @@ export class NativeBleAdapter {
     const attempt = ++this.attempt;
     const channel = new this.Channel();
     channel.onmessage = (event) => {
-      if (event.attempt === attempt) onDisconnect?.();
+      if (event.attempt === attempt && event.explicit !== true) onDisconnect?.(event);
     };
     this.disconnectChannel = channel;
     await this.invoke("plugin:keyboard-helper-ble|connect", {
@@ -100,4 +130,11 @@ export class NativeBleAdapter {
     this.disconnectChannel = null;
     this.notificationChannel = null;
   }
+}
+
+function normalizeAvailability(value) {
+  const state = ["unknown", "available", "unavailable"].includes(value?.state)
+    ? value.state
+    : "unknown";
+  return Object.freeze({ state, supported: value?.supported !== false });
 }

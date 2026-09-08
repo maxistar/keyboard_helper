@@ -10,6 +10,13 @@ pub struct PermissionStatus {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct BluetoothAvailability {
+    pub state: String,
+    pub supported: bool,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DiscoveredDevice {
     pub address: String,
     pub name: String,
@@ -68,6 +75,12 @@ pub struct Notification {
 pub(crate) struct StartScanRequest {
     pub timeout_ms: u64,
     pub on_event: Channel<ScanEvent>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ObserveAvailabilityRequest {
+    pub on_event: Channel<BluetoothAvailability>,
 }
 
 #[derive(Serialize)]

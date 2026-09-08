@@ -27,6 +27,9 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
         .invoke_handler(tauri::generate_handler![
             commands::permission_status,
             commands::request_permissions,
+            commands::bluetooth_availability,
+            commands::observe_bluetooth_availability,
+            commands::stop_observing_bluetooth_availability,
             commands::start_scan,
             commands::stop_scan,
             commands::connect,

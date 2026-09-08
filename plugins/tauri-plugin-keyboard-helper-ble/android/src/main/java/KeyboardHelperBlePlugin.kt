@@ -16,11 +16,15 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
+import android.content.BroadcastReceiver
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
 import app.tauri.annotation.Permission
@@ -68,6 +72,11 @@ class SubscribeArgs : GattArgs() {
     var onNotification: Channel? = null
 }
 
+@InvokeArg
+class AvailabilityArgs {
+    var onEvent: Channel? = null
+}
+
 @TauriPlugin(
     permissions = [
         Permission(
@@ -96,6 +105,77 @@ class KeyboardHelperBlePlugin(private val activity: Activity) : Plugin(activity)
     private var pendingDiscovery: Invoke? = null
     private var pendingRead: Invoke? = null
     private var pendingSubscription: Invoke? = null
+    private var availabilityChannel: Channel? = null
+    private var availabilityReceiver: BroadcastReceiver? = null
+    private var lastAvailabilityFingerprint: String? = null
+
+    @SuppressLint("MissingPermission")
+    @Command
+    fun bluetoothAvailability(invoke: Invoke) {
+        invoke.resolve(availabilityResponse())
+    }
+
+    @Command
+    fun observeBluetoothAvailability(invoke: Invoke) {
+        val args = invoke.parseArgs(AvailabilityArgs::class.java)
+        availabilityChannel = args.onEvent
+            ?: return invoke.reject("invalid-request: availability channel is required")
+        ensureAvailabilityReceiver()
+        emitAvailability(force = true)
+        invoke.resolve()
+    }
+
+    @Command
+    fun stopObservingBluetoothAvailability(invoke: Invoke) {
+        stopAvailabilityReceiver()
+        invoke.resolve()
+    }
+
+    private fun ensureAvailabilityReceiver() {
+        if (availabilityReceiver != null) return
+        availabilityReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == BluetoothAdapter.ACTION_STATE_CHANGED) emitAvailability()
+            }
+        }.also { receiver ->
+            ContextCompat.registerReceiver(
+                activity,
+                receiver,
+                IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED),
+                ContextCompat.RECEIVER_EXPORTED,
+            )
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun availabilityResponse(): JSObject {
+        val currentAdapter = adapter
+        return JSObject().apply {
+            val state = when {
+                currentAdapter == null -> "unavailable"
+                !permissionsGranted() -> "unknown"
+                currentAdapter.isEnabled -> "available"
+                else -> "unavailable"
+            }
+            put("state", state)
+            put("supported", currentAdapter != null)
+        }
+    }
+
+    private fun emitAvailability(force: Boolean = false) {
+        val response = availabilityResponse()
+        val fingerprint = "${response.getString("state")}:${response.getBoolean("supported")}"
+        if (!force && fingerprint == lastAvailabilityFingerprint) return
+        lastAvailabilityFingerprint = fingerprint
+        availabilityChannel?.send(response)
+    }
+
+    private fun stopAvailabilityReceiver() {
+        availabilityReceiver?.let { receiver -> runCatching { activity.unregisterReceiver(receiver) } }
+        availabilityReceiver = null
+        availabilityChannel = null
+        lastAvailabilityFingerprint = null
+    }
 
     @Command
     fun permissionStatus(invoke: Invoke) {
@@ -248,6 +328,7 @@ class KeyboardHelperBlePlugin(private val activity: Activity) : Plugin(activity)
                 status != BluetoothGatt.GATT_SUCCESS -> {
                     pendingConnect?.reject(gattError("connection-failed", status))
                     pendingConnect = null
+                    emitDisconnect(status)
                     closeGatt()
                 }
             }
@@ -321,7 +402,11 @@ class KeyboardHelperBlePlugin(private val activity: Activity) : Plugin(activity)
     }
 
     private fun gattError(code: String, status: Int): String {
-        val category = if (status == 5 || status == 15) "security-required" else code
+        val category = when (status) {
+            5, 15 -> "security-required"
+            17, 143 -> "capacity-unavailable"
+            else -> code
+        }
         return "$category: Android GATT status $status"
     }
 
@@ -332,6 +417,9 @@ class KeyboardHelperBlePlugin(private val activity: Activity) : Plugin(activity)
             put("characteristicUuid", "")
             put("bytes", JSArray())
             put("status", status)
+            put("code", if (status == BluetoothGatt.GATT_SUCCESS) "connection-lost" else gattError("connection-lost", status).substringBefore(':'))
+            put("message", "Bluetooth connection lost with Android GATT status $status")
+            put("explicit", false)
         })
     }
 
@@ -497,5 +585,15 @@ class KeyboardHelperBlePlugin(private val activity: Activity) : Plugin(activity)
         pendingSubscription = null
         gatt?.close()
         gatt = null
+    }
+
+    override fun onDestroy() {
+        stopActiveScan()
+        stopAvailabilityReceiver()
+        notificationChannel = null
+        subscribedCharacteristic = null
+        disconnectChannel = null
+        closeGatt()
+        super.onDestroy()
     }
 }

@@ -1,6 +1,9 @@
 const COMMANDS: &[&str] = &[
     "permission_status",
     "request_permissions",
+    "bluetooth_availability",
+    "observe_bluetooth_availability",
+    "stop_observing_bluetooth_availability",
     "start_scan",
     "stop_scan",
     "connect",

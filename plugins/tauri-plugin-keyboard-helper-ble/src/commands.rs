@@ -13,6 +13,30 @@ pub(crate) async fn request_permissions<R: Runtime>(app: AppHandle<R>) -> Result
 }
 
 #[command]
+pub(crate) async fn bluetooth_availability<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<BluetoothAvailability> {
+    app.keyboard_helper_ble().bluetooth_availability()
+}
+
+#[command]
+pub(crate) async fn observe_bluetooth_availability<R: Runtime>(
+    app: AppHandle<R>,
+    on_event: Channel<BluetoothAvailability>,
+) -> Result<()> {
+    app.keyboard_helper_ble()
+        .observe_bluetooth_availability(ObserveAvailabilityRequest { on_event })
+}
+
+#[command]
+pub(crate) async fn stop_observing_bluetooth_availability<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<()> {
+    app.keyboard_helper_ble()
+        .stop_observing_bluetooth_availability()
+}
+
+#[command]
 pub(crate) async fn start_scan<R: Runtime>(
     app: AppHandle<R>,
     timeout_ms: u64,

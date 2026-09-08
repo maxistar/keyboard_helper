@@ -26,6 +26,25 @@ impl<R: Runtime> KeyboardHelperBle<R> {
         Ok(self.0.run_mobile_plugin("requestBlePermissions", ())?)
     }
 
+    pub(crate) fn bluetooth_availability(&self) -> Result<BluetoothAvailability> {
+        Ok(self.0.run_mobile_plugin("bluetoothAvailability", ())?)
+    }
+
+    pub(crate) fn observe_bluetooth_availability(
+        &self,
+        request: ObserveAvailabilityRequest,
+    ) -> Result<()> {
+        Ok(self
+            .0
+            .run_mobile_plugin("observeBluetoothAvailability", request)?)
+    }
+
+    pub(crate) fn stop_observing_bluetooth_availability(&self) -> Result<()> {
+        Ok(self
+            .0
+            .run_mobile_plugin("stopObservingBluetoothAvailability", ())?)
+    }
+
     pub(crate) fn start_scan(&self, request: StartScanRequest) -> Result<()> {
         Ok(self.0.run_mobile_plugin("startScan", request)?)
     }

@@ -31,6 +31,27 @@ test("native adapter preserves the platform permission prompt state", async () =
   assert.equal(await adapter.checkPermissions(false), "prompt");
 });
 
+test("native adapter normalizes and deduplicates Bluetooth availability", async () => {
+  const command = "plugin:keyboard-helper-ble|bluetooth_availability";
+  const { tauri, calls } = createTauri(new Map([[command, { state: "available", supported: true }]]));
+  const adapter = new NativeBleAdapter(tauri);
+  assert.deepEqual(await adapter.checkBluetoothAvailability(), { state: "available", supported: true, attempt: 0 });
+
+  const events = [];
+  const unsubscribe = await adapter.observeBluetoothAvailability((event) => events.push(event));
+  const observe = calls.find(([name]) => name.endsWith("|observe_bluetooth_availability"));
+  observe[1].onEvent.onmessage({ state: "unavailable", supported: true });
+  observe[1].onEvent.onmessage({ state: "unavailable", supported: true });
+  observe[1].onEvent.onmessage({ state: "unexpected", supported: false });
+  unsubscribe();
+
+  assert.deepEqual(events, [
+    { state: "unavailable", supported: true, attempt: 0 },
+    { state: "unknown", supported: false, attempt: 0 },
+  ]);
+  assert.ok(calls.some(([name]) => name.endsWith("|stop_observing_bluetooth_availability")));
+});
+
 test("native adapter deduplicates scan events before exposing discoveries", async () => {
   const { tauri, calls } = createTauri();
   const adapter = new NativeBleAdapter(tauri);
@@ -70,7 +91,7 @@ test("native adapter tags connection, GATT and notification calls with one attem
   await adapter.subscribe("characteristic", "service", (bytes) => notifications.push(bytes));
   const connectCall = calls.find(([command]) => command.endsWith("|connect"));
   const subscribeCall = calls.find(([command]) => command.endsWith("|subscribe"));
-  connectCall[1].onDisconnect.onmessage({ attempt: 1 });
+  connectCall[1].onDisconnect.onmessage({ attempt: 1, status: 8, explicit: false });
   subscribeCall[1].onNotification.onmessage({ attempt: 1, bytes: [1, 2] });
 
   assert.equal(disconnected, true);

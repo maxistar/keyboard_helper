@@ -6,6 +6,9 @@ Foreground read-only Keyboard Helper BLE transport proof
 
 - `allow-permission-status`
 - `allow-request-permissions`
+- `allow-bluetooth-availability`
+- `allow-observe-bluetooth-availability`
+- `allow-stop-observing-bluetooth-availability`
 - `allow-start-scan`
 - `allow-stop-scan`
 - `allow-connect`
@@ -23,6 +26,32 @@ Foreground read-only Keyboard Helper BLE transport proof
 <th>Description</th>
 </tr>
 
+
+<tr>
+<td>
+
+`keyboard-helper-ble:allow-bluetooth-availability`
+
+</td>
+<td>
+
+Enables the bluetooth_availability command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`keyboard-helper-ble:deny-bluetooth-availability`
+
+</td>
+<td>
+
+Denies the bluetooth_availability command without any pre-configured scope.
+
+</td>
+</tr>
 
 <tr>
 <td>
@@ -98,6 +127,32 @@ Enables the list_services command without any pre-configured scope.
 <td>
 
 Denies the list_services command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`keyboard-helper-ble:allow-observe-bluetooth-availability`
+
+</td>
+<td>
+
+Enables the observe_bluetooth_availability command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`keyboard-helper-ble:deny-observe-bluetooth-availability`
+
+</td>
+<td>
+
+Denies the observe_bluetooth_availability command without any pre-configured scope.
 
 </td>
 </tr>
@@ -202,6 +257,32 @@ Enables the start_scan command without any pre-configured scope.
 <td>
 
 Denies the start_scan command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`keyboard-helper-ble:allow-stop-observing-bluetooth-availability`
+
+</td>
+<td>
+
+Enables the stop_observing_bluetooth_availability command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`keyboard-helper-ble:deny-stop-observing-bluetooth-availability`
+
+</td>
+<td>
+
+Denies the stop_observing_bluetooth_availability command without any pre-configured scope.
 
 </td>
 </tr>

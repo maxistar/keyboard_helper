@@ -23,12 +23,18 @@ export class BleTransportError extends Error {
   }
 }
 
-function transportError(error, fallbackCode) {
+export function normalizeTransportError(error, fallbackCode = "failed") {
   if (error instanceof BleTransportError) return error;
   const message = error instanceof Error ? error.message : String(error);
   const normalized = message.toLowerCase();
   let code = fallbackCode;
-  if (/permission|denied|not allowed/.test(normalized)) code = "permission-denied";
+  const explicitCode = normalized.match(/^([a-z][a-z0-9-]+):/)?.[1];
+  if (explicitCode) code = explicitCode;
+  if (/permission-required/.test(normalized)) code = "permission-required";
+  else if (/permission|denied|not allowed/.test(normalized)) code = "permission-denied";
+  else if (/capacity-unavailable|insufficient resources|status (17|143)\b/.test(normalized)) code = "capacity-unavailable";
+  else if (/unsupported|not supported|no bluetooth adapter/.test(normalized)) code = "unsupported";
+  else if (/adapter-unavailable|bluetooth.{0,20}(disabled|unavailable|off)/.test(normalized)) code = "bluetooth-unavailable";
   else if (/encrypt|auth|bond|pair|security/.test(normalized)) code = "security-required";
   else if (/timeout|timed out/.test(normalized)) code = "timeout";
   else if (/disconnect|not connected/.test(normalized)) code = "disconnected";
@@ -107,6 +113,7 @@ export class AndroidBleTransport {
     this.lastDeviceId = null;
     this.scanTimer = null;
     this.subscription = null;
+    this.connectionLossListeners = new Set();
   }
 
   snapshot() {
@@ -134,7 +141,7 @@ export class AndroidBleTransport {
       }
       return this.permission;
     } catch (error) {
-      throw transportError(error, "permission-failed");
+      throw normalizeTransportError(error, "permission-failed");
     }
   }
 
@@ -163,7 +170,7 @@ export class AndroidBleTransport {
       return this.snapshot();
     } catch (error) {
       this.finishScan();
-      throw transportError(error, "scan-failed");
+      throw normalizeTransportError(error, "scan-failed");
     }
   }
 
@@ -180,7 +187,7 @@ export class AndroidBleTransport {
       await this.adapter.stopScan();
       return this.snapshot();
     } catch (error) {
-      throw transportError(error, "scan-stop-failed");
+      throw normalizeTransportError(error, "scan-stop-failed");
     }
   }
 
@@ -197,7 +204,7 @@ export class AndroidBleTransport {
     const attempt = ++this.connectionAttempt;
     this.connection = ConnectionState.CONNECTING;
     try {
-      await this.adapter.connect(id, () => this.handleDisconnect(attempt));
+      await this.adapter.connect(id, (event) => this.handleDisconnect(attempt, event));
       if (attempt !== this.connectionAttempt) {
         throw new BleTransportError("stale-operation", "Connection completed for an inactive attempt.");
       }
@@ -210,16 +217,41 @@ export class AndroidBleTransport {
         this.connection = ConnectionState.FAILED;
         this.connectedDeviceId = null;
       }
-      throw transportError(error, "connection-failed");
+      throw normalizeTransportError(error, "connection-failed");
     }
   }
 
-  handleDisconnect(attempt) {
+  handleDisconnect(attempt, event = {}) {
     if (attempt !== this.connectionAttempt) return false;
     this.subscription = null;
     this.connectedDeviceId = null;
     this.connection = ConnectionState.DISCONNECTED;
+    const loss = Object.freeze({
+      code: event.code ?? "connection-lost",
+      message: event.message ?? `Bluetooth connection was lost${Number.isInteger(event.status) ? ` (status ${event.status})` : ""}.`,
+      status: Number.isInteger(event.status) ? event.status : null,
+      attempt,
+      explicit: false,
+    });
+    for (const listener of this.connectionLossListeners) listener(loss);
     return true;
+  }
+
+  onConnectionLoss(listener) {
+    this.connectionLossListeners.add(listener);
+    return () => this.connectionLossListeners.delete(listener);
+  }
+
+  async checkBluetoothAvailability() {
+    try {
+      return await this.adapter.checkBluetoothAvailability();
+    } catch (error) {
+      throw normalizeTransportError(error, "bluetooth-unavailable");
+    }
+  }
+
+  async observeBluetoothAvailability(listener) {
+    return this.adapter.observeBluetoothAvailability(listener);
   }
 
   requireConnection() {
@@ -238,7 +270,7 @@ export class AndroidBleTransport {
       }
       return Array.isArray(services) ? services.map(normalizeService) : [];
     } catch (error) {
-      throw transportError(error, "discovery-failed");
+      throw normalizeTransportError(error, "discovery-failed");
     }
   }
 
@@ -251,7 +283,7 @@ export class AndroidBleTransport {
       }
       return normalizeBytes(value);
     } catch (error) {
-      throw transportError(error, "read-failed");
+      throw normalizeTransportError(error, "read-failed");
     }
   }
 
@@ -278,7 +310,7 @@ export class AndroidBleTransport {
       this.subscription = { service, characteristic, attempt };
       return Object.freeze({ ...this.subscription });
     } catch (error) {
-      throw transportError(error, "subscription-failed");
+      throw normalizeTransportError(error, "subscription-failed");
     }
   }
 
@@ -301,7 +333,7 @@ export class AndroidBleTransport {
     } catch (error) {
       this.connectedDeviceId = null;
       this.connection = ConnectionState.FAILED;
-      throw transportError(error, "disconnect-failed");
+      throw normalizeTransportError(error, "disconnect-failed");
     }
   }
 
