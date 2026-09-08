@@ -31,6 +31,8 @@ test("mobile surface is bounded to the foreground BLE transport proof", async ()
   const app = await read("src-mobile/app.js");
 
   assert.match(html, /data-surface="android-ble-transport-proof"/);
+  assert.match(html, /data-viewer="mobile-layout-viewer"/);
+  assert.match(html, /No keyboard connection is required/);
   assert.match(html, /Keyboard Helper Companion/);
   assert.match(html, /Scan 10 seconds/);
   assert.match(html, /Discover and read/);
@@ -40,6 +42,9 @@ test("mobile surface is bounded to the foreground BLE transport proof", async ()
   assert.match(app, /elements\.battery\.textContent = "Unavailable"/);
   assert.match(app, /elements\.capabilities\.textContent = "Stock keyboard \/ extension unavailable"/);
   assert.match(app, /Bluetooth permission is blocked\. Open Android app settings/);
+  assert.match(app, /mountMobileLayoutViewer\(\)/);
+  assert.match(app, /querySelectorAll\("\.status-card button"\)/);
+  assert.doesNotMatch(app, /querySelectorAll\("button"\)/);
 });
 
 test("mobile capability grants only the foreground transport plugin", async () => {

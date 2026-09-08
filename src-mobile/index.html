@@ -9,13 +9,36 @@
   </head>
   <body>
     <main class="shell" data-surface="android-ble-transport-proof">
+      <section class="viewer-card" data-viewer="mobile-layout-viewer" aria-labelledby="viewer-title">
+        <p class="eyebrow">Mobile layout viewer</p>
+        <h1 id="viewer-title">Explore your keyboard</h1>
+        <p class="viewer-intro">Choose a bundled layout and browse every layer. No keyboard connection is required.</p>
+        <div class="viewer-controls">
+          <label for="viewer-layout">Keyboard layout</label>
+          <select id="viewer-layout" aria-describedby="viewer-summary"></select>
+        </div>
+        <div id="viewer-layers" class="viewer-layers" role="group" aria-label="Keyboard layers"></div>
+        <p id="viewer-summary" class="viewer-summary" role="status" aria-live="polite"></p>
+        <p id="viewer-diagnostic" class="viewer-diagnostic" role="status" aria-live="polite" hidden></p>
+        <p id="viewer-empty" class="viewer-empty" role="status" hidden>No bundled keyboard layout is available.</p>
+        <div
+          id="viewer-scroller"
+          class="viewer-scroller"
+          role="region"
+          aria-label="Scrollable physical keyboard layout"
+          tabindex="0"
+        >
+          <div id="viewer-keyboard" class="viewer-keyboard"></div>
+        </div>
+      </section>
+
       <section class="status-card" aria-labelledby="companion-title">
         <div class="keyboard-mark" aria-hidden="true">
           <span></span><span></span><span></span>
           <span></span><span></span><span></span>
         </div>
-        <p class="eyebrow">Android BLE transport proof</p>
-        <h1 id="companion-title">Keyboard Helper Companion</h1>
+        <p class="eyebrow">Connection lab</p>
+        <h2 id="companion-title">BLE diagnostics</h2>
         <div class="status-grid" aria-label="Lifecycle state">
           <span>Permission <strong id="permission">unknown</strong></span>
           <span>Connection <strong id="connection">idle</strong></span>

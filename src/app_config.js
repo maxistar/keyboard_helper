@@ -1,3 +1,7 @@
+import { validateLayoutDefinition } from "./layout_semantics.js";
+
+export { validateLayoutDefinition } from "./layout_semantics.js";
+
 export const BUILTIN_LAYOUTS = Object.freeze({
   qwerty: Object.freeze({ name: "QWERTY", file: "layout_qwerty.json" }),
   qwertz: Object.freeze({ name: "QWERTZ", file: "layout_qwertz.json" }),
@@ -130,33 +134,6 @@ export function validateConfigDraft(draft) {
     warnings.toggleHotkey = "An unmodified shortcut may trigger while typing.";
   }
   return { valid: Object.keys(errors).length === 0, errors, warnings };
-}
-
-function normalizeLayers(source) {
-  if (Array.isArray(source)) return source;
-  if (!isPlainObject(source)) return [];
-  return Object.values(source).filter(Boolean);
-}
-
-export function validateLayoutDefinition(value) {
-  if (!isPlainObject(value)) return { valid: false, error: "The layout must be a JSON object." };
-  if (typeof value.name !== "string" || !value.name.trim()) {
-    return { valid: false, error: "The layout needs a display name." };
-  }
-  const size = value.keySize;
-  if (!isPlainObject(size) || ![size.w, size.h].every((number) => Number.isFinite(number) && number > 0)) {
-    return { valid: false, error: "The layout needs positive key width and height values." };
-  }
-  if (!Array.isArray(value.keyPositions) || value.keyPositions.length === 0 || value.keyPositions.some(
-    (key) => !isPlainObject(key) || !Number.isFinite(key.row) || !Number.isFinite(key.col),
-  )) {
-    return { valid: false, error: "The layout needs positioned keys with numeric rows and columns." };
-  }
-  const layers = normalizeLayers(value.keyLayers);
-  if (!layers.length || !layers.some((layer) => Array.isArray(layer) && layer.length > 0)) {
-    return { valid: false, error: "The layout needs at least one compatible key layer." };
-  }
-  return { valid: true, error: null, definition: value };
 }
 
 export function parseExternalLayout(raw) {

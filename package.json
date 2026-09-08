@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "eslint src tests scripts",
+    "sync:mobile-layouts": "node scripts/sync-mobile-layouts.mjs",
+    "lint": "eslint src src-mobile tests scripts",
     "test": "node scripts/run-js-tests.mjs",
     "check:js": "npm run lint && npm test",
     "test:privacy": "node scripts/run-js-tests.mjs tests/privacy",

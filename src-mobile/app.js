@@ -9,6 +9,7 @@ import {
   LifecyclePhase,
 } from "./ble_lifecycle.js";
 import { NativeBleAdapter } from "./native_ble_adapter.js";
+import { mountMobileLayoutViewer } from "./layout_viewer.js";
 
 const UUIDS = Object.freeze({
   batteryService: normalizeUuid("180f"),
@@ -28,6 +29,8 @@ const elements = Object.fromEntries(
 );
 
 let coordinator;
+
+mountMobileLayoutViewer();
 
 function hex(bytes, limit = 20) {
   return bytes.slice(0, limit).map((byte) => byte.toString(16).padStart(2, "0")).join(" ");
@@ -178,5 +181,5 @@ try {
   coordinator.initialize().catch((error) => setDiagnostic(error.message, "error"));
 } catch (error) {
   setDiagnostic(error.message, "error");
-  document.querySelectorAll("button").forEach((button) => { button.disabled = true; });
+  document.querySelectorAll(".status-card button").forEach((button) => { button.disabled = true; });
 }
