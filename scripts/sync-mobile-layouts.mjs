@@ -7,6 +7,8 @@ import { BUILTIN_LAYOUTS, validateLayoutDefinition } from "../src/app_config.js"
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const canonicalSemanticsPath = path.join(projectRoot, "src", "layout_semantics.js");
 const mobileSemanticsPath = path.join(projectRoot, "src-mobile", "layout_semantics.generated.js");
+const mobileSharedPath = path.join(projectRoot, "src-mobile", "shared-generated");
+const sharedRuntimeFiles = ["input_events.js", "ble_keyboard_decoder.js"];
 const definitions = {};
 const imagePaths = new Set();
 
@@ -39,6 +41,10 @@ const generated = [
 
 await writeFile(path.join(projectRoot, "src-mobile", "bundled_layout_definitions.js"), generated);
 await copyFile(canonicalSemanticsPath, mobileSemanticsPath);
+await mkdir(mobileSharedPath, { recursive: true });
+for (const filename of sharedRuntimeFiles) {
+  await copyFile(path.join(projectRoot, "src", filename), path.join(mobileSharedPath, filename));
+}
 for (const relativePath of imagePaths) {
   const destination = path.join(projectRoot, "src-mobile", relativePath);
   await mkdir(path.dirname(destination), { recursive: true });

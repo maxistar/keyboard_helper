@@ -75,6 +75,41 @@ export class LifecycleError extends Error {
   }
 }
 
+export class ReadyGattOperationSerializer {
+  constructor(isCurrent) {
+    if (typeof isCurrent !== "function") throw new TypeError("ReadyGattOperationSerializer requires an ownership predicate.");
+    this.isCurrent = isCurrent;
+    this.queue = Promise.resolve();
+    this.epoch = 0;
+    this.disposed = false;
+  }
+
+  run(generation, operation) {
+    if (typeof operation !== "function") throw new TypeError("A GATT operation function is required.");
+    const epoch = this.epoch;
+    const assertCurrent = () => {
+      if (this.disposed || epoch !== this.epoch || !this.isCurrent(generation)) {
+        throw new LifecycleError("stale-operation", "GATT operation belongs to an inactive ready generation.");
+      }
+    };
+    const pending = this.queue.then(async () => {
+      assertCurrent();
+      const value = await operation();
+      assertCurrent();
+      return value;
+    });
+    this.queue = pending.catch(() => {});
+    return pending;
+  }
+
+  invalidate() { this.epoch += 1; }
+
+  dispose() {
+    this.disposed = true;
+    this.invalidate();
+  }
+}
+
 const TERMINAL_REASONS = new Set(["permission-denied", "permission-required", "bluetooth-unavailable", "unsupported", "capacity-unavailable"]);
 
 function freezeReason(reason) {
@@ -375,6 +410,8 @@ export class BleLifecycleCoordinator {
     this.listeners = new Set();
     this.generationListeners = new Set();
     this.queue = Promise.resolve();
+    this.gattOperations = new ReadyGattOperationSerializer((generation) =>
+      this.state.phase === LifecyclePhase.READY && this.state.generation === generation);
     this.timers = { scan: null, retry: null, background: null, lease: null };
     this.services = [];
     this.capabilities = [];
@@ -403,6 +440,7 @@ export class BleLifecycleCoordinator {
     const transition = reduceLifecycle(this.state, event);
     this.state = transition.snapshot;
     if (previousGeneration !== this.state.generation) {
+      this.gattOperations.invalidate();
       this.services = [];
       this.capabilities = [];
       for (const listener of this.generationListeners) listener(this.state.generation);
@@ -446,22 +484,25 @@ export class BleLifecycleCoordinator {
   async read(serviceUuid, characteristicUuid) {
     if (this.state.phase !== LifecyclePhase.READY) throw new LifecycleError("invalid-event", "Read requires a ready lifecycle.");
     const generation = this.state.generation;
-    const bytes = await this.transport.read(serviceUuid, characteristicUuid);
-    if (generation !== this.state.generation) throw new LifecycleError("stale-operation", "Read completed for an inactive generation.");
-    return bytes;
+    return this.gattOperations.run(generation, () => this.transport.read(serviceUuid, characteristicUuid));
   }
 
   async subscribeNotifications(serviceUuid, characteristicUuid, handler) {
     if (this.state.phase !== LifecyclePhase.READY || this.state.capabilityMode !== CapabilityMode.ENHANCED) throw new LifecycleError("invalid-event", "Notifications require a ready enhanced keyboard.");
-    await this.dispatch({ type: LifecycleEvent.LEASE_ACQUIRED });
     const generation = this.state.generation;
-    try {
-      return await this.transport.subscribe(serviceUuid, characteristicUuid, (event) => {
-        if (generation === this.state.generation) handler?.(event);
-      });
-    } finally {
-      void this.dispatch({ type: LifecycleEvent.LEASE_RELEASED, generation });
-    }
+    return this.gattOperations.run(generation, async () => {
+      if (this.state.capabilityMode !== CapabilityMode.ENHANCED) {
+        throw new LifecycleError("stale-operation", "Notification enrollment belongs to an inactive enhanced generation.");
+      }
+      await this.dispatch({ type: LifecycleEvent.LEASE_ACQUIRED });
+      try {
+        return await this.transport.subscribe(serviceUuid, characteristicUuid, (event) => {
+          if (generation === this.state.generation && this.state.phase === LifecyclePhase.READY) handler?.(event);
+        });
+      } finally {
+        await this.dispatch({ type: LifecycleEvent.LEASE_RELEASED, generation });
+      }
+    });
   }
 
   async runEffect(nextEffect) {
@@ -566,9 +607,13 @@ export class BleLifecycleCoordinator {
   async runDiscoveryEffect(nextEffect) {
     try {
       const services = await this.transport.discoverServices();
-      const enhanced = this.extensionServiceUuid && services.some(({ uuid }) => uuid === this.extensionServiceUuid);
+      const extensionService = this.extensionServiceUuid
+        ? services.find(({ uuid }) => uuid === this.extensionServiceUuid)
+        : null;
+      const enhanced = Boolean(extensionService && this.capabilitiesCharacteristicUuid
+        && extensionService.characteristics?.some(({ uuid }) => uuid === this.capabilitiesCharacteristicUuid));
       let capabilities = [];
-      if (enhanced && this.capabilitiesCharacteristicUuid) {
+      if (enhanced) {
         capabilities = await this.transport.read(this.extensionServiceUuid, this.capabilitiesCharacteristicUuid);
       }
       if (nextEffect.generation === this.state.generation) {
@@ -582,6 +627,7 @@ export class BleLifecycleCoordinator {
   }
 
   async dispose() {
+    this.gattOperations.dispose();
     for (const name of Object.keys(this.timers)) this.clearTimer(name);
     this.availabilityUnsubscribe?.();
     this.connectionUnsubscribe?.();

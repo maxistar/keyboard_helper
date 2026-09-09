@@ -32,10 +32,12 @@ npm run check:js
 
 The sync command validates every canonical definition, regenerates
 `src-mobile/bundled_layout_definitions.js`, copies the canonical pure semantics module from
-`src/layout_semantics.js` to `src-mobile/layout_semantics.generated.js`, and copies only referenced
-images into `src-mobile/assets/images/`. Do not edit either generated mobile file directly. Tests
-require exact source equality for the semantics module plus exact catalog and presentation parity
-for every layout and layer.
+`src/layout_semantics.js` to `src-mobile/layout_semantics.generated.js`, copies the shared input-event
+and BLE decoder modules into `src-mobile/shared-generated/`, and copies only referenced images into
+`src-mobile/assets/images/`. The generated copies keep `src/` authoritative while ensuring every
+runtime import stays inside Android's packaged `src-mobile/` frontend. Do not edit generated mobile
+files directly. Tests require exact shared-source equality plus exact catalog and presentation
+parity for every layout and layer.
 
 ## Troubleshooting
 

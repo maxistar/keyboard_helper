@@ -61,6 +61,8 @@ function viewHarness(model = new MobileLayoutViewerModel()) {
   const ids = [
     "viewer-layout", "viewer-layers", "viewer-summary", "viewer-diagnostic",
     "viewer-scroller", "viewer-keyboard", "viewer-empty",
+    "viewer-mode-browse", "viewer-mode-live", "viewer-stream-status", "viewer-current-layer",
+    "viewer-combo-status", "viewer-telemetry-guidance",
   ];
   const elements = new Map(ids.map((id) => [id, new ElementStub(id === "viewer-layout" ? "select" : "div")]));
   const document = {
@@ -189,6 +191,9 @@ test("viewer markup, styles, and modules enforce responsive accessible isolation
   ]);
   assert.match(html, /data-viewer="mobile-layout-viewer"/);
   assert.match(html, /aria-label="Keyboard layers"/);
+  assert.match(html, /aria-label="Layout presentation mode"/);
+  assert.match(html, /id="viewer-mode-browse"[\s\S]*>Browse</);
+  assert.match(html, /id="viewer-mode-live"[\s\S]*>Live</);
   assert.match(html, /aria-label="Scrollable physical keyboard layout"/);
   assert.match(html, /id="viewer-scroller"[\s\S]*tabindex="0"/);
   assert.match(html, /role="status" aria-live="polite"/);

@@ -60,13 +60,21 @@
       <section class="viewer-card" data-viewer="mobile-layout-viewer" aria-labelledby="viewer-title">
         <p class="eyebrow">Mobile layout viewer</p>
         <h2 id="viewer-title">Explore your keyboard</h2>
-        <p class="viewer-intro">Choose a bundled layout and browse every layer. No keyboard connection is required.</p>
+        <p class="viewer-intro">Browse any bundled layout, or follow read-only Live events from an enhanced keyboard. No keyboard connection is required for Browse.</p>
+        <div class="viewer-mode-controls" role="group" aria-label="Layout presentation mode">
+          <button id="viewer-mode-browse" type="button" aria-pressed="true">Browse</button>
+          <button id="viewer-mode-live" type="button" aria-pressed="false" disabled>Live</button>
+        </div>
+        <p id="viewer-stream-status" class="viewer-stream-status" role="status" aria-live="polite">Browse mode</p>
+        <p id="viewer-telemetry-guidance" class="viewer-telemetry-guidance">Connect an enhanced keyboard to follow its live state.</p>
         <div class="viewer-controls">
           <label for="viewer-layout">Keyboard layout</label>
           <select id="viewer-layout" aria-describedby="viewer-summary"></select>
         </div>
         <div id="viewer-layers" class="viewer-layers" role="group" aria-label="Keyboard layers"></div>
+        <p id="viewer-current-layer" class="viewer-current-layer">Browsing: Layer 1</p>
         <p id="viewer-summary" class="viewer-summary" role="status" aria-live="polite"></p>
+        <p id="viewer-combo-status" class="viewer-combo-status" hidden>No active firmware-resolved combo.</p>
         <p id="viewer-diagnostic" class="viewer-diagnostic" role="status" aria-live="polite" hidden></p>
         <p id="viewer-empty" class="viewer-empty" role="status" hidden>No bundled keyboard layout is available.</p>
         <div

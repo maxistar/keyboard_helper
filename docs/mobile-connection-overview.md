@@ -96,9 +96,11 @@ relaunch. The stock run must reach `ready / stock`; the restored enhanced run mu
 | Date | Phone / API | Firmware | Result |
 |---|---|---|---|
 | 2026-09-08 | Xiaomi `2511FPC34G`, Android 16 / API 36, arm64 | Enhanced | Pass: permission, bounded scan, selection, connection, standard details, recovery, explicit disconnect, background/resume, and cold relaunch behaved as specified. Capability was additive; no key, combo, layer, raw-notification, subscription, or remote-control interaction was exposed. |
+| 2026-09-09 | Xiaomi `2511FPC34G`, Android 16 / API 36, arm64 | Stock (`corney-left-stock`) | Pass: connection reached `ready / stock`; discovered standard services `1800`, `1801`, `180f`, `180a`, and `1812`, while Keyboard Helper service `b34a0001-e782-4706-8f9c-6c056c416507` was absent. Optional BAS/DIS evidence remained partial and honest, the layout viewer stayed available, no enhanced controls appeared, explicit Disconnect started no automatic reconnect, and explicit reconnection returned to `ready / stock`. |
+| 2026-09-09 | Xiaomi `2511FPC34G`, Android 16 / API 36, arm64 | Restored enhanced (`corney-left-enhanced`, accepted CI run `33996037540`) | Pass: both halves were flashed with `settings-reset` and then the matching accepted enhanced pair, stale phone bonding was removed, fresh pairing reached `ready / enhanced`, both halves produced normal input, and capabilities returned `01 00 77 00 14 01 00 00`. The base overview remained unchanged and exposed no extension interaction. |
 
-On 2026-09-08 the maintainer explicitly deferred the stock-firmware run to avoid reflashing the
-keyboard during this change. Deterministic extension-absent, missing/partial BAS/DIS, malformed,
-failed-read, and generation-race coverage passed. No restoration run was needed because enhanced
-firmware remained installed. Physical `ready / stock`, the actual BAS/DIS subset, disconnect, and
-reconnect remain a required recorded gate before Stage 6 enhanced telemetry implementation begins.
+The stock run deferred on 2026-09-08 was completed on 2026-09-09 with the reproducible Corney stock
+artifact. Deterministic extension-absent, missing/partial BAS/DIS, malformed, failed-read, and
+generation-race coverage had already passed. Clean restoration to the accepted enhanced firmware
+and its `ready / enhanced` smoke test also passed on 2026-09-09. The deferred physical entry gate is
+complete, so Stage 6 telemetry implementation may begin.

@@ -59,7 +59,10 @@ class FakeTransport {
     this.lossHandler = null;
     this.availabilityHandler = null;
     this.calls = [];
-    this.services = [{ uuid: extensionServiceUuid, characteristics: [] }];
+    this.services = [{
+      uuid: extensionServiceUuid,
+      characteristics: [{ uuid: "b34a0003-e782-4706-8f9c-6c056c416507" }],
+    }];
     this.connectFailures = [];
   }
 
@@ -78,7 +81,7 @@ class FakeTransport {
   }
   async discoverServices() { this.calls.push(["discover"]); return this.services; }
   async disconnect() { this.calls.push(["disconnect"]); this.connectionAttempt += 1; }
-  async read() { return [81]; }
+  async read() { this.calls.push(["read"]); return [81]; }
   async subscribe(_service, _characteristic, handler) { this.notificationHandler = handler; }
 }
 
@@ -215,6 +218,16 @@ test("stock discovery remains ready and does not become unsupported", async () =
   assert.equal(coordinator.snapshot().capabilityMode, CapabilityMode.STOCK);
 });
 
+test("an extension service without v1 capabilities remains ready as extension-incomplete stock", async () => {
+  const { coordinator, transport } = await readyCoordinator({
+    services: [{ uuid: extensionServiceUuid, characteristics: [{ uuid: "b34a0002-e782-4706-8f9c-6c056c416507" }] }],
+  });
+  assert.equal(coordinator.snapshot().phase, LifecyclePhase.READY);
+  assert.equal(coordinator.snapshot().capabilityMode, CapabilityMode.STOCK);
+  assert.deepEqual(coordinator.capabilities, []);
+  assert.equal(transport.calls.filter(([name]) => name === "read").length, 0);
+});
+
 test("unexpected loss uses exactly 500, 1500, and 3000ms before exhaustion", async () => {
   const { coordinator, transport, clock } = await readyCoordinator();
   transport.connectFailures.push(new Error("connection failed"), new Error("connection failed"), new Error("connection failed"));
@@ -346,4 +359,52 @@ test("generation changes filter stale notifications", async () => {
   await coordinator.disconnect();
   transport.notificationHandler({ bytes: [2] });
   assert.deepEqual(values, [{ bytes: [1] }]);
+});
+
+test("ready reads and CCC enrollment share one lifecycle-owned GATT queue", async () => {
+  const { coordinator, transport } = await readyCoordinator();
+  const gate = deferred();
+  const calls = [];
+  transport.read = async () => {
+    calls.push("read-start");
+    await gate.promise;
+    calls.push("read-end");
+    return [81];
+  };
+  transport.subscribe = async (_service, _characteristic, handler) => {
+    calls.push("enroll");
+    transport.notificationHandler = handler;
+    return { subscribed: true };
+  };
+
+  const read = coordinator.read("180f", "2a19");
+  const enrollment = coordinator.subscribeNotifications(extensionServiceUuid, "b34a0004-e782-4706-8f9c-6c056c416507");
+  await Promise.resolve();
+  assert.deepEqual(calls, ["read-start"]);
+  gate.resolve();
+  assert.deepEqual(await read, [81]);
+  assert.deepEqual(await enrollment, { subscribed: true });
+  assert.deepEqual(calls, ["read-start", "read-end", "enroll"]);
+
+  transport.read = async () => { calls.push("later-read"); return [82]; };
+  assert.deepEqual(await coordinator.read("180f", "2a19"), [82]);
+  assert.equal(calls.at(-1), "later-read");
+});
+
+test("disconnect invalidates running and queued ready-generation GATT operations", async () => {
+  const { coordinator, transport } = await readyCoordinator();
+  const gate = deferred();
+  let enrollmentStarted = false;
+  transport.read = () => gate.promise;
+  transport.subscribe = async () => { enrollmentStarted = true; };
+
+  const read = coordinator.read("180f", "2a19");
+  const enrollment = coordinator.subscribeNotifications(extensionServiceUuid, "b34a0004-e782-4706-8f9c-6c056c416507");
+  await Promise.resolve();
+  await coordinator.disconnect();
+  gate.resolve([81]);
+
+  await assert.rejects(read, (error) => error.code === "stale-operation");
+  await assert.rejects(enrollment, (error) => error.code === "stale-operation");
+  assert.equal(enrollmentStarted, false);
 });

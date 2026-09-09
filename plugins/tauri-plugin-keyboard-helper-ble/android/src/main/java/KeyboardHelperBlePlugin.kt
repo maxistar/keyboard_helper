@@ -77,6 +77,12 @@ class AvailabilityArgs {
     var onEvent: Channel? = null
 }
 
+private enum class DescriptorOperation {
+    SUBSCRIBE_RESET,
+    SUBSCRIBE_ENABLE,
+    UNSUBSCRIBE,
+}
+
 @TauriPlugin(
     permissions = [
         Permission(
@@ -105,6 +111,7 @@ class KeyboardHelperBlePlugin(private val activity: Activity) : Plugin(activity)
     private var pendingDiscovery: Invoke? = null
     private var pendingRead: Invoke? = null
     private var pendingSubscription: Invoke? = null
+    private var pendingDescriptorOperation: DescriptorOperation? = null
     private var availabilityChannel: Channel? = null
     private var availabilityReceiver: BroadcastReceiver? = null
     private var lastAvailabilityFingerprint: String? = null
@@ -366,8 +373,42 @@ class KeyboardHelperBlePlugin(private val activity: Activity) : Plugin(activity)
             descriptor: BluetoothGattDescriptor,
             status: Int,
         ) {
-            finish(pendingSubscription, status, "subscription-failed")
+            val pending = pendingSubscription ?: return
+            val operation = pendingDescriptorOperation ?: return
+            val errorCode = if (operation == DescriptorOperation.UNSUBSCRIBE) {
+                "unsubscribe-failed"
+            } else {
+                "subscription-failed"
+            }
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                pending.reject(gattError(errorCode, status))
+                if (operation != DescriptorOperation.UNSUBSCRIBE) {
+                    notificationChannel = null
+                    subscribedCharacteristic = null
+                }
+                pendingSubscription = null
+                pendingDescriptorOperation = null
+                return
+            }
+            if (operation == DescriptorOperation.SUBSCRIBE_RESET) {
+                pendingDescriptorOperation = DescriptorOperation.SUBSCRIBE_ENABLE
+                if (!writeDescriptor(
+                        connection,
+                        descriptor,
+                        BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE,
+                    )
+                ) {
+                    notificationChannel = null
+                    subscribedCharacteristic = null
+                    pendingSubscription = null
+                    pendingDescriptorOperation = null
+                    pending.reject("subscription-failed: Android rejected CCC enable")
+                }
+                return
+            }
+            pending.resolve()
             pendingSubscription = null
+            pendingDescriptorOperation = null
         }
 
         @Deprecated("Used on Android 12 and older")
@@ -482,6 +523,20 @@ class KeyboardHelperBlePlugin(private val activity: Activity) : Plugin(activity)
     }
 
     @SuppressLint("MissingPermission")
+    private fun writeDescriptor(
+        connection: BluetoothGatt,
+        descriptor: BluetoothGattDescriptor,
+        value: ByteArray,
+    ): Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        connection.writeDescriptor(descriptor, value) == BluetoothGatt.GATT_SUCCESS
+    } else {
+        @Suppress("DEPRECATION")
+        descriptor.value = value
+        @Suppress("DEPRECATION")
+        connection.writeDescriptor(descriptor)
+    }
+
+    @SuppressLint("MissingPermission")
     @Command
     fun subscribe(invoke: Invoke) {
         val args = invoke.parseArgs(SubscribeArgs::class.java)
@@ -496,19 +551,18 @@ class KeyboardHelperBlePlugin(private val activity: Activity) : Plugin(activity)
         notificationChannel = args.onNotification
         subscribedCharacteristic = characteristic
         pendingSubscription = invoke
-        val accepted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            connection.writeDescriptor(descriptor, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE) == BluetoothGatt.GATT_SUCCESS
-        } else {
-            @Suppress("DEPRECATION")
-            descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-            @Suppress("DEPRECATION")
-            connection.writeDescriptor(descriptor)
-        }
+        pendingDescriptorOperation = DescriptorOperation.SUBSCRIBE_RESET
+        val accepted = writeDescriptor(
+            connection,
+            descriptor,
+            BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE,
+        )
         if (!accepted) {
             pendingSubscription = null
+            pendingDescriptorOperation = null
             notificationChannel = null
             subscribedCharacteristic = null
-            invoke.reject("subscription-failed: Android rejected CCC write")
+            invoke.reject("subscription-failed: Android rejected CCC reset")
         }
     }
 
@@ -517,11 +571,22 @@ class KeyboardHelperBlePlugin(private val activity: Activity) : Plugin(activity)
     fun unsubscribe(invoke: Invoke) {
         val args = invoke.parseArgs(GattArgs::class.java)
         val connection = activeConnection(invoke, args.attempt) ?: return
-        val characteristic = subscribedCharacteristic
-        if (characteristic != null) connection.setCharacteristicNotification(characteristic, false)
+        if (pendingRead != null || pendingSubscription != null) return invoke.reject("invalid-state: GATT operation already active")
+        val characteristic = subscribedCharacteristic ?: return invoke.resolve()
+        val descriptor = characteristic.getDescriptor(CLIENT_CONFIGURATION_UUID)
+            ?: return invoke.reject("unsubscribe-failed: characteristic has no CCC descriptor")
+        if (!connection.setCharacteristicNotification(characteristic, false)) {
+            return invoke.reject("unsubscribe-failed: Android rejected local notification disable")
+        }
         notificationChannel = null
         subscribedCharacteristic = null
-        invoke.resolve()
+        pendingSubscription = invoke
+        pendingDescriptorOperation = DescriptorOperation.UNSUBSCRIBE
+        if (!writeDescriptor(connection, descriptor, BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)) {
+            pendingSubscription = null
+            pendingDescriptorOperation = null
+            invoke.reject("unsubscribe-failed: Android rejected CCC write")
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -583,6 +648,7 @@ class KeyboardHelperBlePlugin(private val activity: Activity) : Plugin(activity)
         pendingDiscovery = null
         pendingRead = null
         pendingSubscription = null
+        pendingDescriptorOperation = null
         gatt?.close()
         gatt = null
     }
