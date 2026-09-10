@@ -223,5 +223,6 @@ jobs:
           mapfile -d '' assets < <(find release-assets -type f -print0)
           test "${#assets[@]}" -gt 0
           gh release create "$GITHUB_REF_NAME" "${assets[@]}" \
+            --repo "$GITHUB_REPOSITORY" \
             --title "$GITHUB_REF_NAME" \
             --notes "Automated Keyboard Helper release. The arm64 Android APK is a signed preview; macOS downloads are ad-hoc-signed, unnotarized preview builds."

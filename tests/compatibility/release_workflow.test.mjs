@@ -12,6 +12,7 @@ test("release publication is downstream of quality, version, and platform packag
   const beforePublish = workflow.slice(0, workflow.indexOf("\n  publish:"));
   assert.match(publish, /needs: \[quality, prepare, build, android\]/);
   assert.match(publish, /gh release create/);
+  assert.match(publish, /--repo "\$GITHUB_REPOSITORY"/);
   assert.doesNotMatch(beforePublish, /gh release create|actions\/create-release/);
   assert.match(workflow, /windows-secondary-window-smoke/);
   assert.match(workflow, /name: Package Android preview \(arm64\)/);
