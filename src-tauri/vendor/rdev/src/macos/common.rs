@@ -133,10 +133,10 @@ pub unsafe fn convert(
         _ => None,
     };
     if let Some(event_type) = option_type {
-        // macOS 15+ asserts when fetching input source data off the main thread
-        // (crash in islGetInputSourceListWithAdditions). We only need the key
-        // code, so skip the localized name lookup entirely to keep the listener
-        // stable across platforms.
+        // Keyboard Helper only needs physical key codes. Resolving Event.name here
+        // calls macOS input-source APIs from the event tap callback and crashes on
+        // macOS 15 for some input methods/layout states, before our callback can
+        // ignore the name. Keep the listener fallible by leaving names unresolved.
         let name = None;
         return Some(Event {
             event_type,

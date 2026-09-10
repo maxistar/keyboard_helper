@@ -5,30 +5,9 @@ import {
   detectRuntimePlatform,
   normalizeInputSourceSync,
 } from "../src/input_source_sync_config.js";
+import { readJsonFixture } from "./fixture_helpers.mjs";
 
-const validDefinition = {
-  inputSourceSync: {
-    macos: {
-      sources: [
-        {
-          id: "de",
-          label: "Deutsch",
-          inputSourceId: "com.apple.keylayout.German",
-          baseLayer: 0,
-          layers: [0, 1],
-        },
-        {
-          id: "ru",
-          label: "Русский",
-          inputSourceId: "com.apple.keylayout.Russian",
-          baseLayer: 2,
-          layers: [2, 3],
-        },
-      ],
-      neutralLayers: [4],
-    },
-  },
-};
+const validDefinition = readJsonFixture("layouts/corne-connected.json");
 
 test("detectRuntimePlatform recognizes supported desktop families", () => {
   assert.equal(detectRuntimePlatform({ platform: "MacIntel" }), "macos");

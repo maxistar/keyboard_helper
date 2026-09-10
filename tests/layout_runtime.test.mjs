@@ -17,6 +17,17 @@ test("normalizes named layers and keeps stable display order", () => {
   assert.deepEqual(normalizeLayerData({ default: base, lower_layer: lower }), {
     layers: [base, lower],
     names: ["Default", "Lower layer"],
+    layerKeys: ["default", "lower_layer"],
+  });
+});
+
+test("normalized layer order is stable for firmware ordinal mapping", () => {
+  const base = [["A", "KeyA"], ["Fn", ""]];
+  const lower = [["1", "Digit1"], null];
+  assert.deepEqual(normalizeLayerData({ Friendly_base: base, lower_layer: lower }), {
+    layers: [base, lower],
+    names: ["Friendly base", "Lower layer"],
+    layerKeys: ["Friendly_base", "lower_layer"],
   });
 });
 

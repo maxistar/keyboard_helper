@@ -73,7 +73,8 @@ body.mini-mode .overlay-stage {
 
 body.mini-mode #menuRoot,
 body.mini-mode .layers-indicator,
-body.mini-mode .key-event-indicator {
+body.mini-mode .key-event-indicator,
+body.mini-mode .ble-keyboard-status {
   display: none;
 }
 
@@ -165,6 +166,17 @@ select {
 
 .key-event-indicator.visible {
   opacity: 1;
+}
+
+.ble-keyboard-status {
+  max-width: 360px;
+  padding: 6px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(17, 22, 40, 0.86);
+  color: #aeb8ce;
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .layout-error {

@@ -3,6 +3,7 @@
   "identifier": "default",
   "description": "Capability for the main window",
   "windows": ["main", "overlay"],
+  "platforms": ["macOS", "windows", "linux"],
   "permissions": [
     "core:default",
     {

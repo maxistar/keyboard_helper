@@ -1,0 +1,44 @@
+{
+  "schema": "keyboard-helper-ble-events-fixture/v1",
+  "protocol": "1.0",
+  "provenance": "Corney v1 encoder golden frames with hardware-verified frame shapes and identifiers, 2026-08-31",
+  "capabilities": {
+    "hex": "0100770014010000",
+    "flags": 119,
+    "reservedBit3Clear": true,
+    "maxFrameSize": 20,
+    "positionSchema": 1
+  },
+  "battery": {
+    "serviceUuid": "180f",
+    "levelCharacteristicUuid": "2a19",
+    "extensionEventType": null
+  },
+  "events": [
+    {
+      "name": "key-down",
+      "hex": "010100032a000000010101",
+      "decoded": { "type": 1, "flags": 0, "sequence": 42, "action": 1, "position": 1, "layer": 1 }
+    },
+    {
+      "name": "combo-activated",
+      "hex": "010200072c00000001000101020102",
+      "decoded": { "type": 2, "flags": 0, "sequence": 44, "comboId": 1, "action": 1, "layer": 1, "positions": [1, 2] }
+    },
+    {
+      "name": "stream-start-layer-snapshot",
+      "hex": "0103030429000000010103ff",
+      "decoded": { "type": 3, "flags": 3, "sequence": 41, "layer": 1, "previousLayer": 1, "cause": 3, "originPosition": 255 }
+    },
+    {
+      "name": "queue-overflow-diagnostic",
+      "hex": "0105040c31000000010001000300000030000000",
+      "decoded": { "type": 5, "flags": 4, "sequence": 49, "code": 1, "source": 1, "count": 3, "lastDroppedSequence": 48 }
+    }
+  ],
+  "reserved": {
+    "capabilityBit": 3,
+    "eventType": 4
+  },
+  "prohibitedPayloadFields": ["text", "keycode", "hidUsage", "unicode"]
+}

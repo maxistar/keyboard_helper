@@ -2,6 +2,7 @@
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import Layout from '../layouts/Layout.astro';
+import { androidPreview } from '../data/releases.js';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 const screenshotDefinitions = [
@@ -103,6 +104,15 @@ const screenshotSlots = screenshotDefinitions.map((shot) => ({
     .workflow p { color: var(--text-muted); line-height: 1.6; }
     .download { margin-top: 56px; }
     .download h2 { font-size: 1.2rem; margin-bottom: 8px; }
+    .status-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+    .status-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 18px; }
+    .status-card h3 { color: var(--accent); font-size: 1rem; margin-bottom: 8px; }
+    .status-card p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.55; }
+    .matrix-wrap { overflow-x: auto; }
+    table { border-collapse: collapse; min-width: 640px; width: 100%; }
+    th, td { border: 1px solid var(--border); padding: 12px; text-align: left; }
+    th { background: var(--bg2); }
+    td { color: var(--text-muted); }
   </style>
 
   <section class="hero">
@@ -117,6 +127,38 @@ const screenshotSlots = screenshotDefinitions.map((shot) => ({
       <a class="btn btn-primary" href={`${base}/setup/`}>Start setup</a>
       <a class="btn btn-outline" href="https://github.com/maxistar/keyboard_helper/releases" target="_blank" rel="noopener">Download release</a>
       <a class="btn btn-outline" href={`${base}/faq/`}>Troubleshooting</a>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="platform-status">
+    <h2 id="platform-status">Platform Status</h2>
+    <p class="section-intro">Desktop remains the primary release. Android packages the accepted read-only companion experience; iOS is planned but unavailable.</p>
+    <div class="status-grid">
+      <article class="status-card"><h3>Desktop</h3><p>Available for macOS, Windows, and Linux with overlay, diagnostics, and desktop-only synchronization tools.</p></article>
+      <article class="status-card"><h3>Android preview</h3><p>{androidPreview.published ? 'Available as a signed API 31+ arm64 APK from GitHub Releases.' : 'Packaging is being prepared. No verified public APK is available yet; the Releases page remains the source of truth.'}</p></article>
+      <article class="status-card"><h3>iOS</h3><p>Planned. No iOS build, signing channel, or availability date is currently promised.</p></article>
+    </div>
+    <div class="cta">
+      <a class="btn btn-outline" href={androidPreview.releaseUrl} target="_blank" rel="noopener">Check GitHub releases</a>
+      <a class="btn btn-outline" href={`${base}/setup/#android-preview`}>Android setup</a>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="mobile-capabilities">
+    <h2 id="mobile-capabilities">Android Firmware Capabilities</h2>
+    <p class="section-intro">Stock mode is useful without the optional extension. Enhanced firmware adds read-only Live telemetry; it does not give the phone control over keyboard layers.</p>
+    <div class="matrix-wrap">
+      <table>
+        <caption class="section-intro">Stock ZMK and optional Keyboard Helper enhanced firmware</caption>
+        <thead><tr><th scope="col">Capability</th><th scope="col">Stock ZMK</th><th scope="col">Enhanced firmware</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Layout Browse</th><td>Yes</td><td>Yes</td></tr>
+          <tr><th scope="row">Connection status</th><td>Yes</td><td>Yes</td></tr>
+          <tr><th scope="row">Battery / device evidence</th><td>When exposed by BAS/DIS</td><td>When exposed by BAS/DIS</td></tr>
+          <tr><th scope="row">Live layer, key, combo, diagnostics</th><td>Unavailable, reported honestly</td><td>Yes, read-only</td></tr>
+          <tr><th scope="row">Remote layer control</th><td>No</td><td>No</td></tr>
+        </tbody>
+      </table>
     </div>
   </section>
 
@@ -173,7 +215,7 @@ const screenshotSlots = screenshotDefinitions.map((shot) => ({
 
   <section class="download">
     <h2>Ready to try it?</h2>
-    <p>Download a release for macOS, Windows, or Linux, then follow the setup guide for first launch, permissions, and configuration.</p>
+    <p>Download a desktop release for macOS, Windows, or Linux. When the signed Android preview is published, this same release channel will include its arm64 APK and checksum.</p>
     <div class="cta">
       <a class="btn btn-primary" href={`${base}/setup/`}>Open setup guide</a>
       <a class="btn btn-outline" href="https://github.com/maxistar/keyboard_helper/releases" target="_blank" rel="noopener">GitHub releases</a>

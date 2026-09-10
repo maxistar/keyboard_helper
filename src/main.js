@@ -6,6 +6,12 @@ import {
   normalizeBleLayerSource,
 } from "./ble_layer_sync.js";
 import { createPressedKeyTracker, resolveKeyElement } from "./key_highlight.js";
+import { normalizeBleKeyboardFrame, normalizeSystemKeyEvent } from "./input_events.js";
+import { createInputSourceController } from "./input_source_controller.js";
+import { createBleHighlightController } from "./ble_highlight.js";
+import { createGlobalOverlayHotkey } from "./global_overlay_hotkey.js";
+import { routeSystemKeyEvent } from "./system_key_event_router.js";
+import { formatBleKeyboardStatus } from "./ble_status.js";
 import { BUILTIN_LAYOUT_FILES, normalizeConfig, pickAvailableLayout } from "./app_config.js";
 import { reloadOverlayAfterSettingsSave } from "./settings_runtime.js";
 import {
@@ -18,6 +24,10 @@ import { createMacosInputSourceController } from "./macos_input_source.js";
 import { createInputSourceLayerReconciler } from "./input_source_layer_reconciler.js";
 import { calcBounds, calcKeyBounds, renderKeyLabel } from "./keyboard_renderer.js";
 import { createSelfTestOverlayPresentation } from "./self_test/overlay_presentation.js";
+import {
+  createSelfTestLayerLeaseCoordinator,
+  matchesOrderedLayerRequest,
+} from "./self_test/layer_lease.js";
 
 const builtinLayoutFiles = BUILTIN_LAYOUT_FILES;
 let layoutDefinitions = {};
@@ -25,13 +35,33 @@ let normalizedLayoutLayers = {};
 let layouts = {};
 let layoutLayers = {};
 let layoutLayerNames = {};
+let layoutLayerKeys = {};
 let layoutSources = {};
 let layoutBleSources = {};
 let layoutInputSourceSync = {};
 let comboDefinitionsByLayout = {};
 let comboBordersByCode = new Map();
+let comboBordersById = new Map();
 let comboBorderEls = [];
 let layoutLoadErrors = [];
+let selfTestSourceStateSubscribed = false;
+let selfTestLayerLease = null;
+let observedBleLayer = null;
+let bleLayerControlStatus = { state: "idle", writable: false };
+
+function publishSelfTestSourceState(status) {
+  if (!selfTestSourceStateSubscribed || !window.__TAURI__?.event?.emitTo) return;
+  window.__TAURI__.event
+    .emitTo("keyboard-self-test", "self-test-source-state", status)
+    .catch(() => { selfTestSourceStateSubscribed = false; });
+}
+
+function publishSelfTestLayerLeaseStatus(status) {
+  if (!window.__TAURI__?.event?.emitTo) return;
+  window.__TAURI__.event
+    .emitTo("keyboard-self-test", "self-test-layer-lease-status", status)
+    .catch(() => {});
+}
 
 async function loadLayoutDefinition(key, source) {
   // source: true (builtin) or string path
@@ -121,15 +151,17 @@ async function loadLayoutDefinitions(config) {
 function rebuildLayoutData() {
   normalizedLayoutLayers = {};
   layoutLayerNames = {};
+  layoutLayerKeys = {};
   layouts = {};
   layoutBleSources = {};
   layoutInputSourceSync = {};
   comboDefinitionsByLayout = {};
 
   for (const [key, def] of Object.entries(layoutDefinitions)) {
-    const { layers, names } = normalizeLayerData(def.keyLayers);
+    const { layers, names, layerKeys } = normalizeLayerData(def.keyLayers);
     normalizedLayoutLayers[key] = layers;
     layoutLayerNames[key] = names;
+    layoutLayerKeys[key] = layerKeys;
     layouts[key] = buildLayout(def, layers);
     layoutBleSources[key] = normalizeBleLayerSource(def);
     const inputSourceSync = normalizeInputSourceSync(def, layers.length);
@@ -138,7 +170,9 @@ function rebuildLayoutData() {
       layoutLoadErrors.push(`${def.name ?? key}: ${inputSourceSync.error}`);
     }
     if (Array.isArray(def.combos)) {
-      comboDefinitionsByLayout[key] = def.combos.map(normalizeCombo).filter(Boolean);
+      comboDefinitionsByLayout[key] = def.combos
+        .map((combo) => normalizeCombo(combo, def.keyPositions))
+        .filter(Boolean);
     }
   }
 
@@ -154,6 +188,7 @@ let keyEventIndicatorEl = null;
 let keyEventHideTimer = null;
 let layoutErrorEl = null;
 let layoutErrorTimer = null;
+let bleKeyboardStatusEl = null;
 let menuControls = null;
 let menuStateController = null;
 let overlayModeController = null;
@@ -173,11 +208,13 @@ let languageMenuState = {
 };
 let shiftHeld = false;
 let altGrHeld = false;
-let metaHeld = false;
-let ctrlHeld = false;
-let altHeld = false;
-let parsedToggleHotkey = null;
 let tauriHandle = null;
+let inputSourceController = null;
+let globalOverlayHotkey = null;
+let bleHighlightController = null;
+let highlightingStatus = null;
+let bleKeyboardStatus = null;
+let bleBatteryLevel = null;
 const pressedKeyTracker = createPressedKeyTracker();
 
 function languageStatusLabel(status) {
@@ -259,6 +296,7 @@ async function startLanguageSync(layoutKey) {
 async function selectLanguage(inputSourceId) {
   if (!macosInputSource || languageMenuState.languagePendingId) return false;
   updateLanguageMenu({ languagePendingId: inputSourceId, languageMessage: null });
+  selfTestLayerLease?.invalidate("input-source-selected");
   try {
     await macosInputSource.select(inputSourceId);
     return true;
@@ -274,7 +312,7 @@ async function selectLanguage(inputSourceId) {
   }
 }
 
-function getAllowedLayoutKeys(config) {
+function getAllowedLayoutKeys(_config) {
   const availableKeys = Object.keys(layoutDefinitions);
   return availableKeys;
 }
@@ -302,13 +340,22 @@ async function loadConfig() {
   }
 }
 
-function normalizeCombo(combo) {
+function normalizeCombo(combo, keyPositions = []) {
   if (!combo || typeof combo !== "object") return null;
-  const { key1, key2, code } = combo;
+  const positions = Array.isArray(combo.positions) ? combo.positions : null;
+  const key1 = combo.key1 ?? (Number.isInteger(positions?.[0]) ? keyPositions[positions[0]] : null);
+  const key2 = combo.key2 ?? (Number.isInteger(positions?.[1]) ? keyPositions[positions[1]] : null);
+  const { code } = combo;
   if (!key1 || !key2 || !code) return null;
   if (typeof key1.row !== "number" || typeof key1.col !== "number") return null;
   if (typeof key2.row !== "number" || typeof key2.col !== "number") return null;
-  return { key1, key2, code: String(code) };
+  return {
+    key1,
+    key2,
+    code: String(code),
+    id: Number.isInteger(combo.id) && combo.id > 0 ? combo.id : null,
+    positions: positions ? [...positions] : null,
+  };
 }
 
 function applyKeySizes({ w, h, gap }) {
@@ -320,6 +367,7 @@ function applyKeySizes({ w, h, gap }) {
 
 function clearComboBorders() {
   comboBordersByCode.clear();
+  comboBordersById.clear();
   comboBorderEls.forEach((el) => el.remove());
   comboBorderEls = [];
 }
@@ -360,6 +408,7 @@ function renderComboBorders(layout, comboDefinitions) {
       comboBordersByCode.set(combo.code, []);
     }
     comboBordersByCode.get(combo.code).push(border);
+    if (combo.id !== null) comboBordersById.set(combo.id, border);
   });
 }
 
@@ -367,6 +416,13 @@ function setComboActive(code, active) {
   const borders = comboBordersByCode.get(code);
   if (!borders) return;
   borders.forEach((border) => border.classList.toggle("active", active));
+}
+
+function setBleComboActive(comboId, active) {
+  const border = comboBordersById.get(comboId);
+  if (!border) return false;
+  border.classList.toggle("active", active);
+  return true;
 }
 
 function renderKeyboard(layout) {
@@ -485,6 +541,19 @@ function ensureLayerIndicator() {
   }
 }
 
+function renderBleKeyboardStatus() {
+  ensureHudContainer();
+  if (!bleKeyboardStatusEl) {
+    bleKeyboardStatusEl = document.createElement("div");
+    bleKeyboardStatusEl.className = "ble-keyboard-status";
+    bleKeyboardStatusEl.setAttribute("role", "status");
+    bleKeyboardStatusEl.setAttribute("aria-live", "polite");
+  }
+  if (!hudContainer.contains(bleKeyboardStatusEl)) hudContainer.appendChild(bleKeyboardStatusEl);
+  const status = formatBleKeyboardStatus(highlightingStatus, bleKeyboardStatus, bleBatteryLevel);
+  bleKeyboardStatusEl.textContent = `${status.summary} · ${status.detail} · ${status.battery}`;
+}
+
 function renderLayerIndicator() {
   ensureLayerIndicator();
   const totalLayers = layoutLayers[currentLayoutKey]?.length ?? 1;
@@ -539,46 +608,6 @@ function applyLayer(index) {
   renderLayerIndicator();
 }
 
-function shiftCorne() {
-  applyLayer(1);
-}
-
-function normalCorne() {
-  applyLayer(0);
-}
-
-function setDactylDefault() {
-  applyLayer(0);
-}
-
-function setDactylLower() {
-  console.log("Setting Dactyl lower layer");
-  applyLayer(1);
-}
-
-function setDactylMagic() {
-  console.log("Setting Dactyl lower layer");
-  applyLayer(2);
-}
-
-function parseToggleHotkey(str) {
-  if (!str) return null;
-  const parts = str.split("+").map((p) => p.trim());
-  const modifiers = { shift: false, meta: false, ctrl: false, alt: false };
-  let triggerKey = null;
-  for (const part of parts) {
-    switch (part.toLowerCase()) {
-      case "shift": modifiers.shift = true; break;
-      case "meta": case "cmd": case "command": modifiers.meta = true; break;
-      case "ctrl": case "control": modifiers.ctrl = true; break;
-      case "alt": case "option": modifiers.alt = true; break;
-      default:
-        triggerKey = part.length === 1 ? `Key${part.toUpperCase()}` : part;
-    }
-  }
-  return triggerKey ? { modifiers, triggerKey } : null;
-}
-
 function handleKey(code, type) {
   const wasShiftHeld = shiftHeld;
   const wasAltGrHeld = altGrHeld;
@@ -586,23 +615,11 @@ function handleKey(code, type) {
   if (type === "down") {
     setComboActive(code, true);
     if (code === "ShiftLeft" || code === "ShiftRight") shiftHeld = true;
-    if (code === "AltGr") { altGrHeld = true; altHeld = true; }
-    if (code === "Alt") altHeld = true;
-    if (code === "MetaLeft" || code === "MetaRight") metaHeld = true;
-    if (code === "ControlLeft" || code === "ControlRight") ctrlHeld = true;
-    if (parsedToggleHotkey && code === parsedToggleHotkey.triggerKey) {
-      const m = parsedToggleHotkey.modifiers;
-      if (shiftHeld === m.shift && metaHeld === m.meta && ctrlHeld === m.ctrl && altHeld === m.alt) {
-        tauriHandle?.core?.invoke("toggle_window").catch(console.error);
-      }
-    }
+    if (code === "AltGr") altGrHeld = true;
   } else if (type === "up") {
     setComboActive(code, false);
     if (code === "ShiftLeft" || code === "ShiftRight") shiftHeld = false;
-    if (code === "AltGr") { altGrHeld = false; altHeld = false; }
-    if (code === "Alt") altHeld = false;
-    if (code === "MetaLeft" || code === "MetaRight") metaHeld = false;
-    if (code === "ControlLeft" || code === "ControlRight") ctrlHeld = false;
+    if (code === "AltGr") altGrHeld = false;
   }
 
   console.log(`Key ${code} ${type}`);
@@ -622,6 +639,20 @@ function handleKey(code, type) {
   }
 }
 
+function clearHighlightState() {
+  bleHighlightController?.clear();
+  document.querySelectorAll(".key.pressed").forEach((element) => element.classList.remove("pressed"));
+  comboBorderEls.forEach((element) => element.classList.remove("active"));
+  pressedKeyTracker.clear();
+  shiftHeld = false;
+  altGrHeld = false;
+}
+
+function handleNormalizedInputEvent(event) {
+  if (event.kind === "key" && event.source === "system") handleKey(event.code, event.action);
+  else if (event.source === "ble") bleHighlightController?.handleEvent(event);
+}
+
 async function refreshExternalLayout(key) {
   const source = layoutSources[key];
   if (typeof source !== "string") return { ok: true, error: null };
@@ -635,6 +666,7 @@ async function refreshExternalLayout(key) {
 }
 
 async function reloadCurrentLayout(key) {
+  selfTestLayerLease?.invalidate("layout-reloaded");
   return reloadActiveExternalLayout({
     key,
     getCurrentLayoutKey: () => currentLayoutKey,
@@ -711,6 +743,7 @@ async function enterMiniMode() {
 }
 
 async function setLayout(key) {
+  if (key !== currentLayoutKey) selfTestLayerLease?.invalidate("layout-changed");
   const previousKey = currentLayoutKey;
   const { ok, error } = await refreshExternalLayout(key);
   if (!ok) {
@@ -776,7 +809,31 @@ window.addEventListener("DOMContentLoaded", async () => {
       .catch((err) => console.error("Failed to listen enter-mini-mode-requested:", err));
   }
   const config = await loadConfig();
-  parsedToggleHotkey = parseToggleHotkey(config?.toggleHotkey ?? null);
+  globalOverlayHotkey = createGlobalOverlayHotkey({
+    hotkey: config?.toggleHotkey ?? null,
+    onToggle: () => tauriHandle?.core?.invoke("toggle_window").catch(console.error),
+  });
+  inputSourceController = createInputSourceController({
+    onEvent: handleNormalizedInputEvent,
+    onClearSourceState: clearHighlightState,
+    onStatusChange: (status) => {
+      highlightingStatus = status;
+      renderBleKeyboardStatus();
+      publishSelfTestSourceState(status);
+    },
+  });
+  bleHighlightController = createBleHighlightController({
+    resolvePosition: (position) => document.querySelector(`.key[data-index="${position}"]`),
+    setComboActive: setBleComboActive,
+    showPositionLabel: (element, event) => showKeyEvent(
+      element.textContent?.trim() || `Position ${event.position}`,
+    ),
+    reportDiagnostic: ({ code, event }) => showLayoutError(
+      code === "unmatched-combo"
+        ? `BLE combo ${event.comboId} is not present in the loaded layout.`
+        : `BLE position ${event.position} is not present in the loaded layout.`,
+    ),
+  });
   await loadLayoutDefinitions(config);
   if (Object.keys(layoutDefinitions).length === 0) {
     console.error("No layouts loaded; cannot initialize UI");
@@ -792,10 +849,17 @@ window.addEventListener("DOMContentLoaded", async () => {
   bleLayerSync = createBleLayerSyncController({
     tauri,
     onLayerChange: (layer) => {
+      observedBleLayer = layer;
+      selfTestLayerLease?.observeLayer(layer);
       applyLayer(layer);
       sourceLayerReconciler?.setLayer(layer);
     },
     onStatusChange: (status) => {
+      bleLayerControlStatus = { state: status.state, writable: Boolean(status.writable) };
+      if (status.state !== "connected") observedBleLayer = null;
+      if (status.state !== "connected" || !status.writable) {
+        selfTestLayerLease?.reportUnavailable(status.message ?? "Writable BLE layer control is unavailable");
+      }
       menuStateController?.handleBleStatus(status);
       if (status.layoutKey === currentLayoutKey) {
         sourceLayerReconciler?.setBleStatus(status.state, status.writable);
@@ -804,6 +868,20 @@ window.addEventListener("DOMContentLoaded", async () => {
         console.warn("BLE layer sync unavailable:", status.message);
       }
     },
+  });
+  selfTestLayerLease = createSelfTestLayerLeaseCoordinator({
+    getActiveLayoutKey: () => currentLayoutKey,
+    getObservedLayer: () => observedBleLayer,
+    isWritable: () => bleLayerControlStatus.state === "connected"
+      && bleLayerControlStatus.writable
+      && bleLayerSync?.getActiveLayoutKey() === currentLayoutKey,
+    validateLayerRequest: (request) => matchesOrderedLayerRequest(
+      layoutLayerKeys[currentLayoutKey],
+      request,
+    ),
+    writeLayer: (layer, acceptableLayers) => bleLayerSync.writeLayer(layer, acceptableLayers),
+    setReconciliationSuspended: (suspended) => sourceLayerReconciler?.setSuspended(suspended),
+    onStatus: publishSelfTestLayerLeaseStatus,
   });
 
   if (tauri?.core?.invoke && tauri?.event?.listen) {
@@ -871,16 +949,99 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     tauri.event
       .listen("key_event", (e) => {
-        const { key, event_type } = e.payload;
-        handleKey(key, event_type);
+        const event = normalizeSystemKeyEvent(e.payload);
+        if (event) {
+          routeSystemKeyEvent(event, {
+            hotkeyController: globalOverlayHotkey,
+            inputSourceController,
+          });
+        }
       })
       .catch((err) => console.error("Failed to listen key_event:", err));
+
+    tauri.event
+      .listen("ble_keyboard_status", (event) => {
+        const payload = event.payload ?? {};
+        if (payload.layout !== currentLayoutKey) return;
+        bleKeyboardStatus = payload;
+        renderBleKeyboardStatus();
+        if (["disconnected", "error", "idle"].includes(payload.state)) {
+          inputSourceController.disconnectBle(payload.reason ?? `ble-${payload.state}`);
+          return;
+        }
+        inputSourceController.setBleConnection({
+          capabilitiesValidated: Boolean(payload.capabilitiesValidated),
+          subscribed: Boolean(payload.subscribed),
+          reason: payload.reason,
+        });
+      })
+      .catch((err) => console.error("Failed to listen ble_keyboard_status:", err));
+
+    tauri.event
+      .listen("ble_keyboard_event", (event) => {
+        const payload = event.payload ?? {};
+        if (payload.layout !== currentLayoutKey) return;
+        const normalized = normalizeBleKeyboardFrame(payload.frame);
+        if (normalized) inputSourceController.handleEvent(normalized);
+      })
+      .catch((err) => console.error("Failed to listen ble_keyboard_event:", err));
+
+    tauri.event
+      .listen("ble_keyboard_diagnostic", (event) => {
+        const payload = event.payload ?? {};
+        if (payload.layout !== currentLayoutKey) return;
+        if (payload.code === "sequence-gap") inputSourceController.reportSequenceGap();
+        if (payload.message) showLayoutError(payload.message);
+      })
+      .catch((err) => console.error("Failed to listen ble_keyboard_diagnostic:", err));
+
+    tauri.event
+      .listen("ble_battery_update", (event) => {
+        const payload = event.payload ?? {};
+        if (payload.layout !== currentLayoutKey) return;
+        bleBatteryLevel = Number.isInteger(payload.level) && payload.level >= 0 && payload.level <= 100
+          ? payload.level
+          : null;
+        renderBleKeyboardStatus();
+      })
+      .catch((err) => console.error("Failed to listen ble_battery_update:", err));
 
     tauri.event
       .listen("self-test-overlay-state", (event) => {
         selfTestOverlayPresentation.update(event.payload);
       })
       .catch((err) => console.error("Failed to listen self-test-overlay-state:", err));
+
+    tauri.event
+      .listen("self-test-source-request", () => {
+        selfTestSourceStateSubscribed = true;
+        publishSelfTestSourceState(inputSourceController.getSnapshot());
+      })
+      .catch((err) => console.error("Failed to listen self-test-source-request:", err));
+
+    tauri.event
+      .listen("self-test-layer-lease-request", (event) => {
+        selfTestLayerLease.acquire(event.payload ?? {});
+      })
+      .catch((err) => console.error("Failed to listen self-test-layer-lease-request:", err));
+
+    tauri.event
+      .listen("self-test-layer-lease-reassert", (event) => {
+        selfTestLayerLease.reassert(event.payload?.generation);
+      })
+      .catch((err) => console.error("Failed to listen self-test-layer-lease-reassert:", err));
+
+    tauri.event
+      .listen("self-test-layer-lease-release", (event) => {
+        selfTestLayerLease.release(event.payload?.generation);
+      })
+      .catch((err) => console.error("Failed to listen self-test-layer-lease-release:", err));
+
+    tauri.event
+      .listen("self-test-layer-lease-manual", (event) => {
+        selfTestLayerLease.invalidateGeneration(event.payload?.generation, "manual-continuation");
+      })
+      .catch((err) => console.error("Failed to listen self-test-layer-lease-manual:", err));
 
     tauri.event
       .listen("layout_selected", (e) => {
@@ -902,5 +1063,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   await setLayout(currentLayoutKey);
   if (layoutLoadErrors.length) {
     showLayoutError(`${layoutLoadErrors[0]} A built-in fallback is active.`);
+  }
+  if (tauri?.core?.invoke && await tauri.core.invoke("quality_smoke_requested")) {
+    await tauri.core.invoke("run_secondary_window_smoke");
   }
 });

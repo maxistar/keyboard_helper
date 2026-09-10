@@ -1,0 +1,13 @@
+{
+  "name": "Golden QWERTY",
+  "keySize": { "w": 48, "h": 48, "gap": 4 },
+  "keyPositions": [
+    { "row": 0, "col": 0 },
+    { "row": 0, "col": 1 },
+    { "row": 0, "col": 2 }
+  ],
+  "keyLayers": {
+    "default": [["a", "KeyA"], ["b", "KeyB"], ["Shift", "ShiftLeft"]],
+    "shift": [["A", "Shift+KeyA"], ["B", "Shift+KeyB"], null]
+  }
+}

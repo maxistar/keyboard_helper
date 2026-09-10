@@ -1,14 +1,28 @@
 {
   "name": "tauri-app",
-  "version": "0.4.0",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/*.test.mjs",
+    "sync:mobile-layouts": "node scripts/sync-mobile-layouts.mjs",
+    "lint": "eslint src src-mobile tests scripts",
+    "test": "node scripts/run-js-tests.mjs",
+    "check:js": "npm run lint && npm test",
+    "test:privacy": "node scripts/run-js-tests.mjs tests/privacy",
+    "test:compatibility": "node scripts/run-js-tests.mjs tests/compatibility",
+    "android:init": "tauri android init --ci --skip-targets-install",
+    "android:configure-signing": "node scripts/configure-android-signing.mjs",
+    "android:write-signing-properties": "node scripts/write-android-signing-properties.mjs",
+    "android:dev": "tauri android dev",
+    "android:build": "tauri android build --debug --target aarch64 --apk true --aab false --ci",
+    "android:build:release": "npm run android:configure-signing && node scripts/run-android-release-build.mjs",
     "tauri": "tauri"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.0.0"
+    "@eslint/js": "^10.0.1",
+    "@tauri-apps/cli": "^2.0.0",
+    "eslint": "^10.9.1",
+    "globals": "^17.11.0"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.9.0"

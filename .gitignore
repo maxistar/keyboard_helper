@@ -15,6 +15,9 @@ dist-ssr
 # Tauri / Rust build output
 src-tauri/target
 src-tauri/gen
+plugins/*/target
+plugins/*/Cargo.lock
+plugins/*/android/build
 
 # Editor directories and files
 .vscode/*

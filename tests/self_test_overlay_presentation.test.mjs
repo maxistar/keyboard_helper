@@ -42,6 +42,28 @@ test("presentation payload maps results and the current physical position", () =
   });
 });
 
+test("combo results and guidance map to participating physical positions", () => {
+  const plan = {
+    layoutKey: "corne", layerIndex: null,
+    entries: [{ index: 0, kind: "combo", positions: [1, 2], testable: true }],
+  };
+  const active = createOverlayPresentationPayload({
+    phase: "waiting-down",
+    plan,
+    current: { index: 0, kind: "combo", positions: [1, 2] },
+    results: {},
+  });
+  assert.deepEqual(active.states, { 1: "expected", 2: "expected" });
+
+  const complete = createOverlayPresentationPayload({
+    phase: "complete",
+    plan,
+    current: null,
+    results: { 0: { status: "passed" } },
+  });
+  assert.deepEqual(complete.states, { 1: "passed", 2: "passed" });
+});
+
 test("self-test outlines coexist with pressed state and clear independently", () => {
   const { elements, body, presentation } = harness();
   presentation.update({ active: true, states: { 0: "expected", 1: "passed", 2: "skipped" } });

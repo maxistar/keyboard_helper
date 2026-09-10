@@ -9,6 +9,7 @@ import {
   persistSettingsDraft,
 } from "./settings_actions.js";
 import { parseExternalLayout } from "./app_config.js";
+import { initializeSecondaryWindow, SECONDARY_WINDOWS } from "./secondary_window_ready.js";
 
 const elements = {
   form: document.getElementById("settingsForm"),
@@ -275,7 +276,7 @@ async function save(event) {
 async function initialize() {
   if (!tauri?.core?.invoke) {
     setStatus("Settings are available in the desktop application only.", "error");
-    return;
+    throw new Error("Tauri API is unavailable");
   }
   try {
     const result = await tauri.core.invoke("read_config_state");
@@ -290,6 +291,7 @@ async function initialize() {
     render();
   } catch (error) {
     setStatus(displayError(error, "Could not load settings."), "error");
+    throw error;
   }
 }
 
@@ -321,4 +323,8 @@ windowHandle?.onCloseRequested?.(async (event) => {
   if (await confirmDiscard()) await closeSettings();
 });
 
-initialize();
+initializeSecondaryWindow({
+  invoke: tauri?.core?.invoke,
+  label: SECONDARY_WINDOWS.settings.label,
+  initialize,
+}).catch((error) => console.error("Settings initialization failed:", error));

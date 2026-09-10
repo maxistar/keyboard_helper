@@ -3,6 +3,7 @@
   "identifier": "settings",
   "description": "Capability for the Settings window",
   "windows": ["settings"],
+  "platforms": ["macOS", "windows", "linux"],
   "permissions": [
     "core:default",
     "core:window:allow-close",

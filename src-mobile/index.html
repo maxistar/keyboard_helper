@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#111827" />
+    <title>Keyboard Helper Companion</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell" data-surface="mobile-connection-overview">
+      <section id="connection-overview" class="connection-card" aria-labelledby="connection-title">
+        <div class="keyboard-mark" aria-hidden="true">
+          <span></span><span></span><span></span>
+          <span></span><span></span><span></span>
+        </div>
+        <p class="eyebrow">Keyboard connection</p>
+        <h1 id="connection-title">Connect your keyboard</h1>
+        <div id="connection-status" class="connection-status" role="status" aria-live="polite" aria-busy="false">
+          <strong id="connection-status-title">Getting ready</strong>
+          <span id="connection-status-detail">Checking Bluetooth availability.</span>
+        </div>
+
+        <dl class="connection-summary" aria-label="Current keyboard connection">
+          <dt>Keyboard</dt><dd id="connection-device-name">None selected</dd>
+          <dt>Capability</dt><dd id="connection-capability">Not determined</dd>
+          <dt id="connection-retry-label">Reconnect</dt><dd id="connection-retry" aria-labelledby="connection-retry-label" hidden>Not active</dd>
+        </dl>
+
+        <div class="connection-actions" aria-label="Keyboard connection actions">
+          <button id="connection-action-find" type="button">Find keyboard</button>
+          <button id="connection-action-find-again" type="button" hidden>Find another keyboard</button>
+          <button id="connection-action-stop-scan" type="button" hidden>Stop scan</button>
+          <button id="connection-action-connect" type="button" hidden>Connect</button>
+          <button id="connection-action-disconnect" class="secondary" type="button" hidden>Disconnect</button>
+          <button id="connection-action-reconnect" type="button" hidden>Reconnect</button>
+        </div>
+        <p id="connection-live" class="connection-live" role="status" aria-live="polite">No connection action is running.</p>
+
+        <section class="connection-devices" aria-labelledby="connection-devices-title">
+          <h2 id="connection-devices-title">Nearby keyboards</h2>
+          <p id="connection-device-empty" class="connection-empty">No keyboard selected. Choose Find keyboard to scan.</p>
+          <ul id="connection-devices"></ul>
+        </section>
+
+        <details class="connection-evidence">
+          <summary>Keyboard details</summary>
+          <p id="connection-evidence-status" role="status" aria-live="polite" aria-busy="false">Keyboard details appear after a connection is ready.</p>
+          <dl>
+            <dt>Battery</dt><dd id="connection-battery">Not available</dd>
+            <dt>Manufacturer</dt><dd id="connection-manufacturer">Not available</dd>
+            <dt>Model</dt><dd id="connection-model">Not available</dd>
+            <dt>Firmware</dt><dd id="connection-firmware">Not available</dd>
+            <dt>Hardware</dt><dd id="connection-hardware">Not available</dd>
+            <dt>Software</dt><dd id="connection-software">Not available</dd>
+          </dl>
+        </details>
+      </section>
+
+      <section class="viewer-card" data-viewer="mobile-layout-viewer" aria-labelledby="viewer-title">
+        <p class="eyebrow">Mobile layout viewer</p>
+        <h2 id="viewer-title">Explore your keyboard</h2>
+        <p class="viewer-intro">Browse any bundled layout, or follow read-only Live events from an enhanced keyboard. No keyboard connection is required for Browse.</p>
+        <div class="viewer-mode-controls" role="group" aria-label="Layout presentation mode">
+          <button id="viewer-mode-browse" type="button" aria-pressed="true">Browse</button>
+          <button id="viewer-mode-live" type="button" aria-pressed="false" disabled>Live</button>
+        </div>
+        <p id="viewer-stream-status" class="viewer-stream-status" role="status" aria-live="polite">Browse mode</p>
+        <p id="viewer-telemetry-guidance" class="viewer-telemetry-guidance">Connect an enhanced keyboard to follow its live state.</p>
+        <div class="viewer-controls">
+          <label for="viewer-layout">Keyboard layout</label>
+          <select id="viewer-layout" aria-describedby="viewer-summary"></select>
+        </div>
+        <div id="viewer-layers" class="viewer-layers" role="group" aria-label="Keyboard layers"></div>
+        <p id="viewer-current-layer" class="viewer-current-layer">Browsing: Layer 1</p>
+        <p id="viewer-summary" class="viewer-summary" role="status" aria-live="polite"></p>
+        <p id="viewer-combo-status" class="viewer-combo-status" hidden>No active firmware-resolved combo.</p>
+        <p id="viewer-diagnostic" class="viewer-diagnostic" role="status" aria-live="polite" hidden></p>
+        <p id="viewer-empty" class="viewer-empty" role="status" hidden>No bundled keyboard layout is available.</p>
+        <div
+          id="viewer-scroller"
+          class="viewer-scroller"
+          role="region"
+          aria-label="Scrollable physical keyboard layout"
+          tabindex="0"
+        >
+          <div id="viewer-keyboard" class="viewer-keyboard"></div>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

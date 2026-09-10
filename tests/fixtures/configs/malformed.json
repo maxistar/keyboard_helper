@@ -1,0 +1,6 @@
+{
+  "defaultLayout": "missing",
+  "toggleHotkey": "Shift",
+  "layouts": { "disabled": false },
+  "expectedDiagnostic": "no enabled layouts and no valid shortcut"
+}

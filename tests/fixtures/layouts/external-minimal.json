@@ -1,0 +1,6 @@
+{
+  "name": "My Board",
+  "keySize": { "w": 44, "h": 44, "gap": 3 },
+  "keyPositions": [{ "row": 0, "col": 0 }],
+  "keyLayers": { "default": [["X", "KeyX"]] }
+}
