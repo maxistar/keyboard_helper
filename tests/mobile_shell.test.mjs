@@ -98,6 +98,10 @@ test("mobile native entry registers only the target-gated BLE adapter", async ()
   assert.doesNotMatch(mobileRust, /greet|invoke_handler|rdev|tray|ble_layer|input_source/i);
   assert.match(cargoToml, /cfg\(not\(any\(target_os = "android", target_os = "ios"\)\)\)/);
   assert.match(cargoToml, /cfg\(target_os = "android"\)[\s\S]*tauri-plugin-keyboard-helper-ble/);
+  assert.match(
+    cargoToml,
+    /\[dependencies\]\s*tauri = \{ version = "2", features = \[\s*"tray-icon"\s*\] \}/,
+  );
   assert.match(cargoToml, /cfg\(target_os = "macos"\)[\s\S]*macos-private-api/);
 });
 
