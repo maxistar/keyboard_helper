@@ -131,10 +131,82 @@ jobs:
           path: ${{ matrix.artifact_path }}
           if-no-files-found: error
 
+  android:
+    name: Package Android preview (arm64)
+    needs: [quality, prepare]
+    runs-on: ubuntu-latest
+    env:
+      CI: true
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Android signing secrets
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        shell: bash
+        run: |
+          missing=0
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is required for signed Android preview builds"
+              missing=1
+            fi
+          done
+          test "$missing" -eq 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: Install recorded Android SDK and NDK
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;30.0.14904198"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - name: Install source dependencies
+        run: npm ci
+      - name: Regenerate Android project and configure signing
+        run: |
+          npm run android:init
+          npm run android:configure-signing
+      - name: Create ephemeral Android signing inputs
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        shell: bash
+        run: |
+          keystore="$RUNNER_TEMP/keyboard-helper-preview.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          chmod 600 "$keystore"
+          ANDROID_KEYSTORE_FILE="$keystore" npm run android:write-signing-properties
+      - name: Build signed arm64 release APK
+        run: ANDROID_NDK_HOME="$ANDROID_SDK_ROOT/ndk/30.0.14904198" npm run android:build:release
+      - name: Verify and stage Android preview
+        shell: bash
+        run: |
+          export ANDROID_AAPT="$ANDROID_SDK_ROOT/build-tools/36.0.0/aapt"
+          export ANDROID_APKSIGNER="$ANDROID_SDK_ROOT/build-tools/36.0.0/apksigner"
+          version=$(jq -r '.version' package.json)
+          node scripts/stage-android-preview.mjs \
+            --input src-tauri/gen/android/app/build/outputs/apk \
+            --output dist/android \
+            --version "$version"
+      - name: Upload verified Android preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-release-android-arm64-preview
+          path: dist/android/**
+          if-no-files-found: error
+
   publish:
     name: Publish GitHub release
     if: needs.prepare.outputs.is_release == 'true'
-    needs: [quality, prepare, build]
+    needs: [quality, prepare, build, android]
     runs-on: ubuntu-latest
     steps:
       - name: Download verified platform artifacts
@@ -152,4 +224,4 @@ jobs:
           test "${#assets[@]}" -gt 0
           gh release create "$GITHUB_REF_NAME" "${assets[@]}" \
             --title "$GITHUB_REF_NAME" \
-            --notes "Automated Keyboard Helper release. macOS downloads are ad-hoc-signed, unnotarized preview builds."
+            --notes "Automated Keyboard Helper release. The arm64 Android APK is a signed preview; macOS downloads are ad-hoc-signed, unnotarized preview builds."

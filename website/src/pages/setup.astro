@@ -32,6 +32,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     <ul>
       <li><a href="#download">Download</a></li>
       <li><a href="#first-launch">First launch</a></li>
+      <li><a href="#android-preview">Android preview</a></li>
       <li><a href="#app-menu">App menu</a></li>
       <li><a href="#configuration">Configuration</a></li>
       <li><a href="#mini-mode">Mini Mode</a></li>
@@ -59,6 +60,21 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   <pre><code>shasum -a 256 -c Keyboard-Helper_*.dmg.sha256</code></pre>
   <div class="note">macOS downloads are ad-hoc-signed, <strong>unnotarized preview builds</strong>. Apple has not verified them, so Gatekeeper is expected to block the first launch.</div>
   <div class="note">Upgrading from an older release? Quit and remove <em>Keyboard Layout.app</em> before installing <em>Keyboard Helper.app</em>. Your existing <code>~/.keyri.json</code> settings remain compatible.</div>
+
+  <h2 id="android-preview">Android companion preview</h2>
+  <span class="tag">API 31+ · arm64 preview</span>
+  <p>The signed Android preview is distributed through GitHub Releases, not Google Play. If the current release has no <code>Keyboard-Helper-Companion_&lt;version&gt;_android-arm64_preview.apk</code> and matching <code>.sha256</code>, no verified public preview is available yet.</p>
+  <ol>
+    <li>Download both files and compare the APK SHA-256 with the sidecar using a trusted checksum-capable file manager or utility.</li>
+    <li>Open the APK and allow unknown-app installation only for the browser or file manager used for this download.</li>
+    <li>Launch <strong>Keyboard Helper Companion</strong> and grant the just-in-time <strong>Nearby devices</strong> permission.</li>
+    <li>Pair the keyboard in Android Settings first. In the companion choose <strong>Connect</strong>, select the bonded keyboard, and wait for <strong>Connection: connected</strong>.</li>
+  </ol>
+  <div class="note">A development/debug APK uses a different signer. Uninstall it once before installing the first preview; app permission state may reset. Android normally retains system-owned keyboard pairing separately.</div>
+  <h3>Browse and Live</h3>
+  <p><strong>Browse</strong> displays bundled layouts for stock and enhanced keyboards. Stock firmware also exposes connection status and any optional standard Battery or Device Information evidence it provides. Missing BAS/DIS values do not mean the keyboard is broken.</p>
+  <p><strong>Live</strong> requires compatible Keyboard Helper enhanced firmware. It follows read-only layer, key, combo, and diagnostic telemetry. The mobile app does not switch keyboard layers; it follows the physical keyboard.</p>
+  <div class="note">The preview is foreground-only and keeps selection and live state process-local. It supports an API 31+ physical baseline and arm64-v8a devices. There is no background BLE promise, Google Play listing, automatic updater, iOS build, or mobile layout editing.</div>
 
   <h2 id="first-launch">2. First launch</h2>
   <ol>
