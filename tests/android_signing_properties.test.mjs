@@ -13,7 +13,7 @@ test("Java signing property values escape separators and control characters", ()
   assert.equal(escapeJavaPropertyValue("  a:b=c\\d#e!f\n"), "\\ \\ a\\:b\\=c\\\\d\\#e\\!f\\n");
 });
 
-test("signing properties are private and contain all four encoded values", async (context) => {
+test("signing properties contain all four encoded values and are private on POSIX", async (context) => {
   const directory = await import("node:fs/promises").then(({ mkdtemp }) => mkdtemp(path.join(tmpdir(), "keyboard-helper-signing-")));
   context.after(async () => import("node:fs/promises").then(({ rm }) => rm(directory, { recursive: true, force: true })));
   const output = path.join(directory, "keystore.properties");
@@ -31,7 +31,11 @@ test("signing properties are private and contain all four encoded values", async
     "keyPassword=key\\#secret",
     "",
   ].join("\n"));
-  assert.equal((await stat(output)).mode & 0o777, 0o600);
+  const outputStat = await stat(output);
+  assert.equal(outputStat.isFile(), true);
+  if (process.platform !== "win32") {
+    assert.equal(outputStat.mode & 0o777, 0o600);
+  }
 });
 
 test("missing-input diagnostics name fields without emitting supplied values", async () => {
