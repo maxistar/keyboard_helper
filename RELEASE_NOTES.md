@@ -1,6 +1,6 @@
 # Release Notes
 
-## v0.6.0
+## v0.6.1
 
 - Added the first Keyboard Helper Companion preview for API 31+ `arm64-v8a` Android phones.
 - Added independent Browse layout viewing plus stock ZMK connection status and available standard
