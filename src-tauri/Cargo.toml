@@ -1,6 +1,6 @@
 [package]
 name = "keyboard-app"
-version = "0.6.0"
+version = "0.6.1"
 description = "A Keyboard App"
 authors = ["you"]
 edition = "2021"
@@ -18,7 +18,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon"] }
+tauri = { version = "2", features = ["macos-private-api", "tray-icon"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 anyhow = "1"
