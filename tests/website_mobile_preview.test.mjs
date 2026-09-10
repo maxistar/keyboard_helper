@@ -10,15 +10,16 @@ async function source(relativePath) {
   return readFile(path.join(root, relativePath), "utf8");
 }
 
-test("pre-publication Android status is honest and release links are base-path safe", async () => {
+test("published Android status points to the verified release and keeps setup links base-path safe", async () => {
   const [index, setup, releaseState] = await Promise.all([
     source("website/src/pages/index.astro"),
     source("website/src/pages/setup.astro"),
     source("website/src/data/releases.js"),
   ]);
-  assert.match(releaseState, /published: false/);
-  assert.match(index, /No verified public APK is available yet/);
-  assert.match(setup, /no verified public preview is available yet/i);
+  assert.match(releaseState, /published: true/);
+  assert.match(releaseState, /releases\/tag\/v0\.6\.4/);
+  assert.match(index, /Available as a signed API 31\+ arm64 APK/);
+  assert.match(setup, /signed Android preview is distributed through GitHub Releases/i);
   assert.match(index, /href={`\$\{base\}\/setup\/#android-preview`}/);
   assert.doesNotMatch(index, /href=["'][^"']*\.apk/);
 });
