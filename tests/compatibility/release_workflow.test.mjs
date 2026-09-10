@@ -13,7 +13,13 @@ test("release publication is downstream of quality, version, and platform packag
   assert.match(publish, /needs: \[quality, prepare, build, android\]/);
   assert.match(publish, /gh release create/);
   assert.match(publish, /--repo "\$GITHUB_REPOSITORY"/);
+  assert.match(publish, /Unexpected release asset/);
+  assert.match(publish, /Duplicate release asset name/);
   assert.doesNotMatch(beforePublish, /gh release create|actions\/create-release/);
+  assert.doesNotMatch(workflow, /artifact_path: src-tauri\/target\/release\/bundle\/\*\*/);
+  for (const publicPackage of ["*.AppImage", "*.deb", "*.rpm", "*.msi", "*.exe"]) {
+    assert.match(workflow, new RegExp(`artifact_path:[\\s\\S]*${publicPackage.replace("*", "\\\\*")}`));
+  }
   assert.match(workflow, /windows-secondary-window-smoke/);
   assert.match(workflow, /name: Package Android preview \(arm64\)/);
   assert.match(workflow, /ANDROID_KEYSTORE_BASE64/);
