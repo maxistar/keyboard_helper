@@ -6,13 +6,15 @@ connection overview and manual Browse viewer usable without starting an event su
 
 ## Browse and Live ownership
 
-Browse retains the user's process-local layout and layer selection. Live is a separate ephemeral
+Browse restores the user's last explicitly selected bundled or custom layout, while its active layer
+remains process-local. Live is a separate ephemeral
 presentation derived from the current BLE lifecycle generation. It becomes authoritative only after
 the phone receives its own valid `STREAM_START | SNAPSHOT` layer frame. Leaving Live or losing the
 generation reveals the unchanged Browse selection and clears all held key and combo highlights.
 
 Firmware layer events own the persistent Live layer. Key and combo layer bytes are context only.
-Physical positions and combo IDs are mapped through the manually selected bundled layout; an absent
+Physical positions and combo IDs are mapped through the manually selected bundled or validated
+custom layout; an absent
 layer, position, or combo produces a bounded mismatch instead of selecting unrelated metadata. This
 is why the mobile app has no remote layer control: unlike desktop input-source synchronization, the
 phone observes the keyboard and must not command it.
@@ -29,7 +31,7 @@ current-generation summary and never expose raw frames or native errors as produ
   CCC reset and enrollment. Pairing/encryption UI may need to complete before the stream boundary.
 - **Sequence gap:** transient key and combo state is cleared immediately. Continued valid frames may
   restore Live state without reconnecting or affecting another subscriber.
-- **Layout mismatch:** select the bundled JSON that matches the flashed keymap. A message such as
+- **Layout mismatch:** select or import the JSON that matches the flashed keymap. A message such as
   `Layer 12 is not available in current layout` describes presentation metadata, not BLE failure.
 - **After backgrounding or Bluetooth loss:** return to the foreground and use the existing connection
   recovery actions. Telemetry owns no independent retry policy.

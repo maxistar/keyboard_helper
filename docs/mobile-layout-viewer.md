@@ -1,12 +1,12 @@
 # Mobile layout viewer
 
-The mobile layout viewer is a local, visual browser for the keyboard layouts bundled with Keyboard
-Helper. It does not require Bluetooth permission, a connected keyboard, or network access. The BLE
+The mobile layout viewer is a local, visual browser for bundled and user-imported Keyboard Helper
+layouts. It does not require Bluetooth permission, a connected keyboard, or network access. The BLE
 diagnostic panel remains a separate surface and does not control viewer state.
 
 ## Using the viewer
 
-1. Choose a bundled keyboard from **Layout**.
+1. Choose a bundled or custom keyboard from **Keyboard layout**.
 2. Choose a layer from the layer controls below it. Changing layouts returns to that layout's first
    layer.
 3. Swipe horizontally inside the labelled keyboard region when a layout is wider than the screen.
@@ -16,9 +16,27 @@ transparent entry on a selected layer falls back to the base-layer legend. Image
 accessible text label. Controls expose programmatic names, visible keyboard focus, and selected
 states that do not rely on color alone.
 
-Selection is intentionally process-local. Rotation during the same process retains the current
-layout and layer; a cold launch or recreated process returns to the deterministic default, QWERTY
-when it is available. The viewer does not save a preference or infer a layout from a BLE device.
+The last explicitly selected layout is saved and restored at its first layer after a cold launch.
+The active layer remains process-local, and the viewer never infers a layout from a BLE device. If
+the saved custom record is missing or invalid, the app repairs the preference to the deterministic
+bundled default (QWERTY when available).
+
+## Importing a custom layout
+
+1. Choose **Import layout** and select one JSON document with Android's system picker.
+2. The app validates the same layout structure and bounds used by the desktop and bundled catalog.
+3. A valid definition is copied into app-private storage and selected. The source URI is not kept.
+
+The first import format supports textual legends only. External image paths, remote URLs, data URIs,
+and other image references are rejected; use text labels instead. An exact duplicate selects the
+existing record without another write. Different content with the same normalized custom name asks
+before replacing the existing record while preserving its identity.
+
+The removal selector lists only custom entries, so you can remove either the selected layout or an
+inactive custom layout without first changing the viewer. Removing the selected entry falls
+back to the bundled default and clears transient layer and Live presentation. Clearing application
+data or uninstalling removes all custom layouts and the saved selection. Layouts are not synchronized
+with the desktop app, another phone, or a cloud service.
 
 ## Updating bundled layouts
 
@@ -42,7 +60,10 @@ parity for every layout and layer.
 ## Troubleshooting
 
 - If one layout is invalid, the viewer reports a bounded diagnostic while keeping other valid
-  layouts available. Fix the canonical JSON and regenerate the bundle.
+  layouts available. For bundled data, fix the canonical JSON and regenerate the bundle. For a
+  custom layout, correct the source JSON and import it again.
+- If import reports an image limitation, replace image legends with text; importing a directory or
+  companion image files is not supported.
 - If no layouts can be loaded, the viewer shows an actionable empty state instead of failing the
   whole mobile shell.
 - If a wide keyboard appears clipped, scroll inside the keyboard region; page-level horizontal

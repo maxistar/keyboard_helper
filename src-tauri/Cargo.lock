@@ -2068,6 +2068,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-dialog",
  "tauri-plugin-keyboard-helper-ble",
+ "tauri-plugin-keyboard-helper-layouts",
  "tauri-plugin-opener",
  "tauri-plugin-single-instance",
  "tokio",
@@ -4114,6 +4115,16 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-keyboard-helper-ble"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "tauri",
+ "tauri-plugin",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "tauri-plugin-keyboard-helper-layouts"
 version = "0.1.0"
 dependencies = [
  "serde",

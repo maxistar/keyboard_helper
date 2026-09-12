@@ -63,8 +63,10 @@ function viewHarness(model = new MobileLayoutViewerModel()) {
     "viewer-scroller", "viewer-keyboard", "viewer-empty",
     "viewer-mode-browse", "viewer-mode-live", "viewer-stream-status", "viewer-current-layer",
     "viewer-combo-status", "viewer-telemetry-guidance",
+    "viewer-import-layout", "viewer-remove-controls", "viewer-remove-target",
+    "viewer-remove-layout", "viewer-layout-status",
   ];
-  const elements = new Map(ids.map((id) => [id, new ElementStub(id === "viewer-layout" ? "select" : "div")]));
+  const elements = new Map(ids.map((id) => [id, new ElementStub(id.includes("layout") || id.includes("target") ? "select" : "div")]));
   const document = {
     createElement: (tagName) => new ElementStub(tagName),
     getElementById: (id) => elements.get(id) ?? null,
@@ -174,6 +176,33 @@ test("view preserves layer control focus objects while legends update atomically
   );
 });
 
+test("view redraws every layer when a custom catalog replaces the bundled catalog", () => {
+  const harness = viewHarness();
+  const customDefinition = {
+    name: "Imported board",
+    keySize: { w: 44, h: 44, gap: 3 },
+    keyPositions: [{ row: 0, col: 0 }],
+    keyLayers: {
+      default: [["A", "KeyA"]],
+      function: [["1", "Num1"]],
+      navigation: [["←", "LeftArrow"]],
+    },
+  };
+  const catalog = createMobileLayoutCatalog({
+    customRecords: [{ id: "11111111-1111-4111-8111-111111111111", definition: customDefinition }],
+  });
+
+  harness.model.replaceCatalog(catalog, "custom:11111111-1111-4111-8111-111111111111");
+
+  const layers = harness.elements.get("viewer-layers");
+  assert.equal(layers.hidden, false);
+  assert.deepEqual(layers.children.map(({ textContent }) => textContent), ["Default", "Function", "Navigation"]);
+  layers.children[1].dispatch("click");
+  assert.equal(harness.model.snapshot().selectedLayerIndex, 1);
+  assert.equal(layers.children.length, 3);
+  assert.equal(layers.children[1].attributes.get("aria-pressed"), "true");
+});
+
 test("view reports empty catalogs without throwing or rendering geometry", () => {
   const harness = viewHarness(new MobileLayoutViewerModel({ definitions: {}, order: ["missing"] }));
   assert.equal(harness.elements.get("viewer-layout").disabled, true);
@@ -197,6 +226,11 @@ test("viewer markup, styles, and modules enforce responsive accessible isolation
   assert.match(html, /aria-label="Scrollable physical keyboard layout"/);
   assert.match(html, /id="viewer-scroller"[\s\S]*tabindex="0"/);
   assert.match(html, /role="status" aria-live="polite"/);
+  assert.match(html, /id="viewer-import-layout"[\s\S]*>Import layout</);
+  assert.match(html, /id="viewer-remove-controls"[\s\S]*hidden/);
+  assert.match(html, /label for="viewer-remove-target">Custom layout to remove</);
+  assert.match(html, /id="viewer-remove-layout"[\s\S]*>Remove custom layout</);
+  assert.match(html, /id="viewer-layout-status"[\s\S]*aria-live="polite"/);
   assert.match(css, /min-height:\s*44px/);
   assert.match(css, /max-width:\s*100%/);
   assert.match(css, /overflow-x:\s*auto/);

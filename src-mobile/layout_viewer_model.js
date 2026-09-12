@@ -11,6 +11,7 @@ import {
 
 export const ViewerCatalogStatus = Object.freeze({ READY: "ready", EMPTY: "empty" });
 export const VIEWER_DIAGNOSTIC_LIMIT = 180;
+export const CUSTOM_LAYOUT_KEY_PREFIX = "custom:";
 
 export class LayoutViewerError extends Error {
   constructor(code, message) {
@@ -52,10 +53,12 @@ export function createMobileLayoutCatalog({
   definitions = MOBILE_BUNDLED_LAYOUT_DEFINITIONS,
   order = MOBILE_BUNDLED_LAYOUT_ORDER,
   defaultLayoutKey = "qwerty",
+  customRecords = [],
+  diagnostics: suppliedDiagnostics = [],
 } = {}) {
   const validDefinitions = {};
   const layouts = [];
-  const diagnostics = [];
+  const diagnostics = suppliedDiagnostics.map(boundedDiagnostic).slice(0, 8);
   for (const key of [...new Set(order)]) {
     const definition = definitions[key];
     const validation = validateLayoutDefinition(definition);
@@ -67,7 +70,29 @@ export function createMobileLayoutCatalog({
     validDefinitions[key] = definition;
     layouts.push({
       key,
+      id: key,
+      source: "bundled",
+      custom: false,
       name: definition.name.trim(),
+      layerCount: layerData.layers.length,
+      layerNames: [...layerData.names],
+    });
+  }
+  for (const record of customRecords) {
+    const key = `${CUSTOM_LAYOUT_KEY_PREFIX}${record.id}`;
+    const validation = validateLayoutDefinition(record.definition);
+    if (!record.id || Object.hasOwn(validDefinitions, key) || !validation.valid) {
+      diagnostics.push(boundedDiagnostic(`${record.name ?? "Custom layout"}: ${validation.error ?? "invalid identity"}`));
+      continue;
+    }
+    const layerData = normalizeLayerData(record.definition.keyLayers);
+    validDefinitions[key] = record.definition;
+    layouts.push({
+      key,
+      id: record.id,
+      source: "custom",
+      custom: true,
+      name: `${record.definition.name.trim()} (Custom)`,
       layerCount: layerData.layers.length,
       layerNames: [...layerData.names],
     });
@@ -82,6 +107,21 @@ export function createMobileLayoutCatalog({
     diagnostics: diagnostics.slice(0, 8),
     definitions: validDefinitions,
   });
+}
+
+export function layoutKeyFromReference(reference) {
+  if (!reference || typeof reference.id !== "string") return null;
+  if (reference.source === "bundled") return reference.id;
+  if (reference.source === "custom") return `${CUSTOM_LAYOUT_KEY_PREFIX}${reference.id}`;
+  return null;
+}
+
+export function layoutReferenceFromKey(layoutKey) {
+  if (typeof layoutKey !== "string" || !layoutKey) return null;
+  if (layoutKey.startsWith(CUSTOM_LAYOUT_KEY_PREFIX)) {
+    return Object.freeze({ schemaVersion: 1, source: "custom", id: layoutKey.slice(CUSTOM_LAYOUT_KEY_PREFIX.length) });
+  }
+  return Object.freeze({ schemaVersion: 1, source: "bundled", id: layoutKey });
 }
 
 export function createLayoutPresentation(definition, layerIndex = 0) {
@@ -159,6 +199,10 @@ export class MobileLayoutViewerModel {
 
   snapshot() { return this.state; }
 
+  definition(layoutKey = this.state.selectedLayoutKey) {
+    return layoutKey ? this.catalog.definitions[layoutKey] ?? null : null;
+  }
+
   subscribe(listener) {
     this.listeners.add(listener);
     listener(this.state);
@@ -186,5 +230,17 @@ export class MobileLayoutViewerModel {
     }
     if (layerIndex === this.state.selectedLayerIndex) return this.state;
     return this.publish(this.buildSnapshot(this.state.selectedLayoutKey, layerIndex));
+  }
+
+  replaceCatalog(catalog, selectedLayoutKey = null) {
+    if (!catalog || !Array.isArray(catalog.layouts) || !catalog.definitions) {
+      throw new TypeError("A valid mobile layout catalog is required.");
+    }
+    this.catalog = catalog;
+    const fallback = catalog.selectedLayoutKey;
+    const resolved = selectedLayoutKey && Object.hasOwn(catalog.definitions, selectedLayoutKey)
+      ? selectedLayoutKey
+      : fallback;
+    return this.publish(this.buildSnapshot(resolved, 0));
   }
 }

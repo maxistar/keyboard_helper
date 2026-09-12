@@ -41,7 +41,9 @@ test("mobile surface composes the product connection overview and independent vi
   assert.doesNotMatch(html, /main\.js|greet|overlay|typing-invaders|self-test|remote layer|write layer/i);
   assert.match(app, /ConnectionEvidenceController/);
   assert.match(app, /createMobileConnectionOverviewView/);
-  assert.match(app, /createMobileLayoutViewerView\(document, viewerModel, presentation\)/);
+  assert.match(app, /createMobileLayoutViewerView\(document, viewerModel, presentation, \{/);
+  assert.match(app, /CustomLayoutController/);
+  assert.match(app, /NativeLayoutAdapter/);
   assert.match(app, /querySelectorAll\("\.connection-card button"\)/);
   assert.doesNotMatch(app, /querySelectorAll\("button"\)/);
 });
@@ -70,7 +72,7 @@ test("mobile runtime imports remain inside the packaged frontend", async () => {
   }
 });
 
-test("mobile capability grants only the foreground transport plugin", async () => {
+test("mobile capability grants only foreground transport and bounded layout storage", async () => {
   const capability = JSON.parse(await read("src-tauri/capabilities/mobile-shell.json"));
   const desktopCapabilities = await Promise.all(
     ["default", "self-test", "settings", "typing-invaders"].map(async (name) =>
@@ -80,14 +82,18 @@ test("mobile capability grants only the foreground transport plugin", async () =
 
   assert.deepEqual(capability.windows, ["mobile"]);
   assert.deepEqual(capability.platforms, ["android"]);
-  assert.deepEqual(capability.permissions, ["core:default", "keyboard-helper-ble:default"]);
+  assert.deepEqual(capability.permissions, [
+    "core:default",
+    "keyboard-helper-ble:default",
+    "keyboard-helper-layouts:default",
+  ]);
   assert.doesNotMatch(JSON.stringify(capability), /notification|background|write/i);
   for (const desktopCapability of desktopCapabilities) {
     assert.deepEqual(desktopCapability.platforms, ["macOS", "windows", "linux"]);
   }
 });
 
-test("mobile native entry registers only the target-gated BLE adapter", async () => {
+test("mobile native entry registers only target-gated companion adapters", async () => {
   const mobileRust = await read("src-tauri/src/lib.rs");
   const cargoToml = await read("src-tauri/Cargo.toml");
 
@@ -95,9 +101,11 @@ test("mobile native entry registers only the target-gated BLE adapter", async ()
   assert.match(mobileRust, /Keyboard Helper Companion/);
   assert.match(mobileRust, /cfg\(target_os = "android"\)/);
   assert.match(mobileRust, /tauri_plugin_keyboard_helper_ble::init/);
+  assert.match(mobileRust, /tauri_plugin_keyboard_helper_layouts::init/);
   assert.doesNotMatch(mobileRust, /greet|invoke_handler|rdev|tray|ble_layer|input_source/i);
   assert.match(cargoToml, /cfg\(not\(any\(target_os = "android", target_os = "ios"\)\)\)/);
   assert.match(cargoToml, /cfg\(target_os = "android"\)[\s\S]*tauri-plugin-keyboard-helper-ble/);
+  assert.match(cargoToml, /cfg\(target_os = "android"\)[\s\S]*tauri-plugin-keyboard-helper-layouts/);
   assert.match(
     cargoToml,
     /\[dependencies\]\s*tauri = \{ version = "2", features = \[\s*"tray-icon"\s*\] \}/,

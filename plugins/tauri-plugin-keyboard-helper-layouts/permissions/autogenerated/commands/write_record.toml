@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-write-record"
+description = "Enables the write_record command without any pre-configured scope."
+commands.allow = ["write_record"]
+
+[[permission]]
+identifier = "deny-write-record"
+description = "Denies the write_record command without any pre-configured scope."
+commands.deny = ["write_record"]

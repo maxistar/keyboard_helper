@@ -114,12 +114,13 @@ export class MobileLayoutPresentationController {
     }
     this.browseModel = browseModel;
     this.telemetryController = telemetryController;
-    this.definitions = options.definitions ?? MOBILE_BUNDLED_LAYOUT_DEFINITIONS;
+    this.definitions = options.definitions ?? null;
     this.listeners = new Set();
     this.requestedMode = LayoutPresentationMode.BROWSE;
     this.wasLiveAvailable = false;
     this.state = resolveMobileLayoutPresentation(
-      browseModel.snapshot(), telemetryController.snapshot(), this.requestedMode, this.definitions,
+      browseModel.snapshot(), telemetryController.snapshot(), this.requestedMode,
+      this.definitions ?? browseModel.catalog.definitions,
     );
     this.unsubscribeBrowse = browseModel.subscribe(() => this.refresh());
     this.unsubscribeTelemetry = telemetryController.subscribe((telemetry) => {
@@ -143,7 +144,7 @@ export class MobileLayoutPresentationController {
       this.browseModel.snapshot(),
       this.telemetryController.snapshot(),
       this.requestedMode,
-      this.definitions,
+      this.definitions ?? this.browseModel.catalog.definitions,
     );
     for (const listener of this.listeners) listener(this.state);
     return this.state;

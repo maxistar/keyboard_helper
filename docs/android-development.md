@@ -2,12 +2,13 @@
 
 ## Scope
 
-The current Android target is the foreground Keyboard Helper Companion through the BLE lifecycle
-stabilization stage. It supports an explicit permission, bounded scan, selected-device connection,
-read-only discovery/read/subscription flow, and bounded foreground reconnect. It does not render
-keyboard layouts, control firmware layers, persist devices or payloads, or run BLE work in the
-background. See `android-ble-transport-proof.md` for the selected native adapter and
-`android-ble-lifecycle.md` for lifecycle policy and acceptance.
+The current Android target is the foreground Keyboard Helper Companion. It supports an explicit BLE
+permission, bounded scan, selected-device connection, read-only discovery/read/subscription flow,
+bounded foreground reconnect, bundled layout viewing, and purpose-bounded custom JSON layout import.
+It persists validated private layout snapshots and the selected layout identity, but not devices,
+active layers, telemetry, or connection intent. It never controls firmware layers or runs BLE work
+in the background. See `android-ble-transport-proof.md` for the BLE adapter,
+`android-ble-lifecycle.md` for lifecycle policy, and `mobile-layout-viewer.md` for layout behavior.
 
 ## Agreed Platform Values
 

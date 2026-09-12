@@ -70,7 +70,16 @@
         <div class="viewer-controls">
           <label for="viewer-layout">Keyboard layout</label>
           <select id="viewer-layout" aria-describedby="viewer-summary"></select>
+          <div class="viewer-layout-actions" aria-label="Custom layout actions">
+            <button id="viewer-import-layout" type="button">Import layout</button>
+            <div id="viewer-remove-controls" class="viewer-remove-controls" hidden>
+              <label for="viewer-remove-target">Custom layout to remove</label>
+              <select id="viewer-remove-target"></select>
+              <button id="viewer-remove-layout" class="secondary" type="button">Remove custom layout</button>
+            </div>
+          </div>
         </div>
+        <p id="viewer-layout-status" class="viewer-layout-status" role="status" aria-live="polite" hidden></p>
         <div id="viewer-layers" class="viewer-layers" role="group" aria-label="Keyboard layers"></div>
         <p id="viewer-current-layer" class="viewer-current-layer">Browsing: Layer 1</p>
         <p id="viewer-summary" class="viewer-summary" role="status" aria-live="polite"></p>

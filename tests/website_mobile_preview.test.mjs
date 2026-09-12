@@ -48,4 +48,7 @@ test("Android setup and bounded troubleshooting cover the release contract", asy
   for (const phrase of ["incorrect PIN", "capacity is exhausted", "Waiting for Live", "sequence-gap", "matching layout", "remote layer"]) {
     assert.match(faq, new RegExp(phrase, "i"));
   }
+  for (const phrase of ["Import layout", "private app storage", "text legends", "bundled default", "not synchronized"]) {
+    assert.match(`${setup}\n${faq}`, new RegExp(phrase, "i"));
+  }
 });

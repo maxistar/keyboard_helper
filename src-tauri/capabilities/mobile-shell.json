@@ -6,6 +6,7 @@
   "platforms": ["android"],
   "permissions": [
     "core:default",
-    "keyboard-helper-ble:default"
+    "keyboard-helper-ble:default",
+    "keyboard-helper-layouts:default"
   ]
 }

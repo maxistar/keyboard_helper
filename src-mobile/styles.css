@@ -282,6 +282,41 @@ button:focus-visible,
   max-width: 420px;
 }
 
+.viewer-layout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.viewer-layout-actions button,
+.viewer-layout-actions select {
+  min-height: 44px;
+}
+
+.viewer-remove-controls {
+  display: grid;
+  flex: 1 1 100%;
+  gap: 8px;
+}
+
+.viewer-remove-controls[hidden] {
+  display: none;
+}
+
+.viewer-layout-status {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #ccfbf1;
+  background: rgb(15 118 110 / 24%);
+}
+
+.viewer-layout-status[data-level="error"] {
+  color: #fecaca;
+  background: rgb(127 29 29 / 28%);
+}
+
 .viewer-mode-controls {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

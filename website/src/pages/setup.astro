@@ -72,9 +72,11 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   </ol>
   <div class="note">A development/debug APK uses a different signer. Uninstall it once before installing the first preview; app permission state may reset. Android normally retains system-owned keyboard pairing separately.</div>
   <h3>Browse and Live</h3>
-  <p><strong>Browse</strong> displays bundled layouts for stock and enhanced keyboards. Stock firmware also exposes connection status and any optional standard Battery or Device Information evidence it provides. Missing BAS/DIS values do not mean the keyboard is broken.</p>
+  <p><strong>Browse</strong> displays bundled layouts for stock and enhanced keyboards. Choose <strong>Import layout</strong> to add one Keyboard Helper JSON document with text legends. Validated custom layouts are copied to private app storage; the source URI is not retained. The selected layout is restored at its first layer after relaunch.</p>
+  <p>Exact duplicate content reuses the existing custom entry. Different content with the same custom name asks before replacement. The removal selector contains only custom entries and can remove one without selecting it for display; removing the displayed entry returns to the bundled default. Image references, directories, editing, desktop/cloud synchronization, and device-to-layout association are not supported.</p>
+  <p>Stock firmware also exposes connection status and any optional standard Battery or Device Information evidence it provides. Missing BAS/DIS values do not mean the keyboard is broken.</p>
   <p><strong>Live</strong> requires compatible Keyboard Helper enhanced firmware. It follows read-only layer, key, combo, and diagnostic telemetry. The mobile app does not switch keyboard layers; it follows the physical keyboard.</p>
-  <div class="note">The preview is foreground-only and keeps selection and live state process-local. It supports an API 31+ physical baseline and arm64-v8a devices. There is no background BLE promise, Google Play listing, automatic updater, iOS build, or mobile layout editing.</div>
+  <div class="note">The preview is foreground-only. Keyboard selection, active layer, highlights, connection, and Live state remain process-local; only validated custom definitions and the chosen visual layout persist. It supports an API 31+ physical baseline and arm64-v8a devices. There is no background BLE promise, Google Play listing, automatic updater, iOS build, or mobile layout editing.</div>
 
   <h2 id="first-launch">2. First launch</h2>
   <ol>

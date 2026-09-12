@@ -63,6 +63,8 @@ function harness() {
     "viewer-scroller", "viewer-keyboard", "viewer-empty", "viewer-mode-browse",
     "viewer-mode-live", "viewer-stream-status", "viewer-current-layer", "viewer-combo-status",
     "viewer-telemetry-guidance",
+    "viewer-import-layout", "viewer-remove-controls", "viewer-remove-target",
+    "viewer-remove-layout", "viewer-layout-status",
   ];
   const elements = new Map(ids.map((id) => [id, new ElementStub(id.includes("mode-") ? "button" : "div")]));
   const document = {

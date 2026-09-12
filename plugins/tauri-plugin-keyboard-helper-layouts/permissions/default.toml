@@ -1,0 +1,6 @@
+[default]
+description = "Purpose-bounded custom layout import and private storage"
+permissions = [
+  "allow-pick-layout", "allow-list-records", "allow-write-record",
+  "allow-remove-record", "allow-read-selection", "allow-write-selection",
+]

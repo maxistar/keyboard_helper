@@ -111,7 +111,12 @@ function browsePresentation(snapshot) {
   };
 }
 
-export function createMobileLayoutViewerView(document, model = new MobileLayoutViewerModel(), presentationController = null) {
+export function createMobileLayoutViewerView(
+  document,
+  model = new MobileLayoutViewerModel(),
+  presentationController = null,
+  options = {},
+) {
   const elements = {
     layout: required(document, "viewer-layout"),
     layers: required(document, "viewer-layers"),
@@ -126,7 +131,13 @@ export function createMobileLayoutViewerView(document, model = new MobileLayoutV
     currentLayer: required(document, "viewer-current-layer"),
     comboStatus: required(document, "viewer-combo-status"),
     guidance: required(document, "viewer-telemetry-guidance"),
+    importLayout: required(document, "viewer-import-layout"),
+    removeControls: required(document, "viewer-remove-controls"),
+    removeTarget: required(document, "viewer-remove-target"),
+    removeLayout: required(document, "viewer-remove-layout"),
+    layoutStatus: required(document, "viewer-layout-status"),
   };
+  const layoutController = options.layoutController ?? null;
   let renderedCatalog = null;
   let renderedLayout = null;
   let renderedKeyboard = null;
@@ -138,18 +149,32 @@ export function createMobileLayoutViewerView(document, model = new MobileLayoutV
     const signature = snapshot.layouts.map(({ key, name }) => `${key}:${name}`).join("|");
     if (signature === renderedCatalog) return;
     renderedCatalog = signature;
+    const previousRemoveTarget = elements.removeTarget.value;
     elements.layout.replaceChildren();
+    elements.removeTarget.replaceChildren();
     for (const layout of snapshot.layouts) {
       const option = document.createElement("option");
       option.value = layout.key;
       option.textContent = layout.name;
       elements.layout.append(option);
+      if (layout.custom) {
+        const removeOption = document.createElement("option");
+        removeOption.value = layout.key;
+        removeOption.textContent = layout.name;
+        elements.removeTarget.append(removeOption);
+      }
     }
+    const customKeys = snapshot.layouts.filter(({ custom }) => custom).map(({ key }) => key);
+    elements.removeControls.hidden = customKeys.length === 0;
+    elements.removeTarget.value = customKeys.includes(previousRemoveTarget)
+      ? previousRemoveTarget
+      : customKeys.includes(snapshot.selectedLayoutKey) ? snapshot.selectedLayoutKey : customKeys[0] ?? "";
   }
 
   function renderLayers(browse) {
-    if (renderedLayout === browse.selectedLayoutKey) return;
-    renderedLayout = browse.selectedLayoutKey;
+    const signature = `${browse.selectedLayoutKey}:${browse.presentation?.layers.map(({ name }) => name).join("|") ?? ""}`;
+    if (renderedLayout === signature) return;
+    renderedLayout = signature;
     layerButtons = [];
     elements.layers.replaceChildren();
     for (const layer of browse.presentation?.layers ?? []) {
@@ -183,6 +208,8 @@ export function createMobileLayoutViewerView(document, model = new MobileLayoutV
     renderCatalog(browse);
     elements.layout.disabled = !ready;
     elements.layout.value = browse.selectedLayoutKey ?? "";
+    elements.removeLayout.disabled = elements.removeControls.hidden;
+    elements.importLayout.disabled = !layoutController?.available;
     elements.empty.hidden = Boolean(ready);
     elements.scroller.hidden = !ready;
     elements.layers.hidden = !ready;
@@ -229,10 +256,60 @@ export function createMobileLayoutViewerView(document, model = new MobileLayoutV
     renderKeyboard(resolved);
   }
 
-  const onLayoutChange = () => model.selectLayout(elements.layout.value);
+  function reportLayoutStatus(message, level = "info") {
+    elements.layoutStatus.textContent = message;
+    elements.layoutStatus.dataset.level = level;
+    elements.layoutStatus.hidden = !message;
+  }
+
+  const onLayoutChange = async () => {
+    try {
+      if (layoutController) await layoutController.selectLayout(elements.layout.value);
+      else model.selectLayout(elements.layout.value);
+      const selected = model.snapshot().layouts.find(({ key }) => key === model.snapshot().selectedLayoutKey);
+      if (selected?.custom) elements.removeTarget.value = selected.key;
+      reportLayoutStatus("");
+    } catch (error) {
+      elements.layout.value = model.snapshot().selectedLayoutKey ?? "";
+      reportLayoutStatus(error?.message ?? "The selected layout could not be saved.", "error");
+    }
+  };
+  const onImportLayout = async () => {
+    elements.importLayout.disabled = true;
+    try {
+      const result = await layoutController.importLayout(async (existing, definition) =>
+        globalThis.window?.confirm?.(`Replace custom layout “${existing.name}” with “${definition.name}”?`) === true);
+      const messages = {
+        imported: `Imported ${result.record?.name}.`,
+        replaced: `Replaced ${result.record?.name}.`,
+        duplicate: `${result.record?.name} is already imported.`,
+        cancelled: "",
+        "cancelled-replacement": "The existing custom layout was kept.",
+      };
+      reportLayoutStatus(messages[result.status] ?? "Layout import finished.");
+    } catch (error) {
+      reportLayoutStatus(error?.message ?? "The layout could not be imported.", "error");
+    } finally {
+      elements.importLayout.disabled = !layoutController?.available;
+    }
+  };
+  const onRemoveLayout = async () => {
+    const entry = model.snapshot().layouts.find(({ key }) => key === elements.removeTarget.value);
+    if (!entry?.custom || globalThis.window?.confirm?.(`Remove ${entry.name}?`) !== true) return;
+    elements.removeLayout.disabled = true;
+    try {
+      await layoutController.removeLayout(entry.key);
+      reportLayoutStatus(`Removed ${entry.name}.`);
+    } catch (error) {
+      reportLayoutStatus(error?.message ?? "The custom layout could not be removed.", "error");
+      render();
+    }
+  };
   const onBrowseMode = () => presentationController?.selectMode(LayoutPresentationMode.BROWSE);
   const onLiveMode = () => presentationController?.selectMode(LayoutPresentationMode.LIVE);
   elements.layout.addEventListener("change", onLayoutChange);
+  elements.importLayout.addEventListener("click", onImportLayout);
+  elements.removeLayout.addEventListener("click", onRemoveLayout);
   elements.browseMode.addEventListener("click", onBrowseMode);
   elements.liveMode.addEventListener("click", onLiveMode);
   const unsubscribe = presentationController
@@ -244,9 +321,12 @@ export function createMobileLayoutViewerView(document, model = new MobileLayoutV
     dispose() {
       unsubscribe();
       elements.layout.removeEventListener?.("change", onLayoutChange);
+      elements.importLayout.removeEventListener?.("click", onImportLayout);
+      elements.removeLayout.removeEventListener?.("click", onRemoveLayout);
       elements.browseMode.removeEventListener?.("click", onBrowseMode);
       elements.liveMode.removeEventListener?.("click", onLiveMode);
     },
+    reportLayoutStatus,
   };
 }
 

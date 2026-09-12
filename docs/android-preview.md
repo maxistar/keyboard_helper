@@ -3,6 +3,7 @@
 Keyboard Helper Companion is an `arm64-v8a` preview for Android 12 / API 31 and newer. It is
 distributed as a signed APK through the Keyboard Helper GitHub release page, not Google Play. The
 application works in the foreground; selected keyboard, connection, and Live state are process-local.
+The selected visual layout and validated custom layout definitions are private durable preferences.
 
 ## Download, verify, and install
 
@@ -27,7 +28,9 @@ Pair the keyboard first in Android **Settings > Connected devices > Pair new dev
 companion, choose **Connect**, select the bonded keyboard, and wait for **Connection: connected**.
 If Android asks to pair during connection, accept the system prompt.
 
-**Browse** always lets you inspect the bundled keyboard layouts. A stock ZMK keyboard adds
+**Browse** always lets you inspect bundled and locally imported keyboard layouts. Use **Import
+layout** to select a text-based Keyboard Helper JSON document; accepted content is copied to private
+application storage and the source location is not retained. A stock ZMK keyboard adds
 connection status and whatever standard Battery Service or Device Information Service evidence it
 actually exposes; these standard values are optional. **Live** is available only with compatible
 Keyboard Helper enhanced firmware and presents read-only layer, key, combo, and bounded diagnostic
@@ -39,8 +42,11 @@ telemetry. The Android companion follows keyboard state and never writes a remot
   devices are not part of the supported physical acceptance baseline.
 - Foreground use only. Background BLE monitoring is not promised.
 - Keyboard selection and Live state are not restored after the process is killed.
+- The selected visual layout is restored at its first layer; active layer and highlights are not.
 - Battery and device-information values may be absent on otherwise compatible stock firmware.
 - Live telemetry requires the optional Keyboard Helper ZMK extension and a matching local layout.
+- Custom imports support one JSON document with textual legends. Image files/references, directory
+  import, editing, desktop/cloud synchronization, and automatic device association are not supported.
 - No Google Play listing, automatic updater, mobile layout editing, or remote layer control.
 
 ## Troubleshooting
@@ -62,5 +68,9 @@ telemetry. The Android companion follows keyboard state and never writes a remot
 - **Sequence gap:** the companion detected missed telemetry and resubscribes; reconnect if the state
   does not recover.
 - **Layout mismatch / layer unavailable:** choose the JSON layout that matches the keyboard
-  firmware. The companion will not invent a missing layer.
-
+  firmware, or import a matching text-only custom definition. The companion will not invent a
+  missing layer.
+- **Custom layout rejected:** confirm the file is valid Keyboard Helper JSON under 512 KiB and uses
+  text legends only. Existing bundled and valid custom layouts remain available after a failure.
+- **Saved custom layout unavailable:** re-import a corrected source file. The app skips invalid
+  private records and safely returns to the bundled default.
