@@ -12,6 +12,8 @@ import {
   normalizeCustomLayoutName,
   sha256Hex,
   validateImportedLayout,
+  validateLayoutPackage,
+  normalizePackageAssetPath,
 } from "../src-mobile/custom_layouts.js";
 import { MobileLayoutPresentationController } from "../src-mobile/layout_live_presentation.js";
 import { MobileLayoutViewerModel } from "../src-mobile/layout_viewer_model.js";
@@ -21,6 +23,8 @@ import { createTelemetrySnapshot, TelemetryStatus } from "../src-mobile/telemetr
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const FIRST_ID = "11111111-1111-4111-8111-111111111111";
 const SECOND_ID = "22222222-2222-4222-8222-222222222222";
+const PACKAGE_DIGEST = "a".repeat(64);
+const ASSET_DIGEST = "b".repeat(64);
 
 function definition(name = "My Corne", label = "A") {
   return {
@@ -32,6 +36,16 @@ function definition(name = "My Corne", label = "A") {
   };
 }
 
+function packageDefinition(name = "Image Corne", image = "assets/images/bt1.png") {
+  const value = definition(name, "BT1");
+  value.keyLayers.default[0] = ["BT1", "", image];
+  return value;
+}
+
+function asset(pathname = "assets/images/bt1.png") {
+  return { path: pathname, mimeType: "image/png", sizeBytes: 4, width: 24, height: 24, digest: ASSET_DIGEST };
+}
+
 async function record(id = FIRST_ID, value = definition()) {
   const content = JSON.stringify(value);
   return {
@@ -41,6 +55,8 @@ async function record(id = FIRST_ID, value = definition()) {
     normalizedName: normalizeCustomLayoutName(value.name),
     digest: await sha256Hex(content, webcrypto),
     content,
+    format: "json",
+    assets: [],
   };
 }
 
@@ -53,6 +69,7 @@ class MemoryAdapter {
     this.picker = picker;
     this.calls = [];
     this.fail = null;
+    this.assetBytes = new Map([["assets/images/bt1.png", [1, 2, 3, 4]]]);
   }
   async pickLayout() { this.calls.push(["pick"]); return this.picker; }
   async listRecords() { this.calls.push(["list"]); return { records: this.records, diagnostics: this.diagnostics }; }
@@ -61,6 +78,18 @@ class MemoryAdapter {
     this.calls.push(["write-record", value.id]);
     if (this.fail === "write-record") throw new Error("write failed");
     this.records = [...this.records.filter(({ id }) => id !== value.id), { ...value }];
+  }
+  async commitPackage(token, value) {
+    this.calls.push(["commit-package", token, value.id]);
+    if (this.fail === "commit-package") throw new Error("commit failed");
+    this.records = [...this.records.filter(({ id }) => id !== value.id), { ...value }];
+  }
+  async discardPackage(token) { this.calls.push(["discard-package", token]); }
+  async readAsset(id, pathname) {
+    this.calls.push(["read-asset", id, pathname]);
+    const bytes = this.assetBytes.get(pathname);
+    if (!bytes) throw new Error("asset unavailable");
+    return { mimeType: "image/png", bytes };
   }
   async removeRecord(id) {
     this.calls.push(["remove-record", id]);
@@ -92,6 +121,88 @@ test("import validation shares semantic bounds and rejects every image reference
   }
   assert.equal(validateImportedLayout(JSON.stringify(definition())).valid, true);
   assert.equal(validateImportedLayout(" ".repeat(524_289)).code, "document-too-large");
+});
+
+test("package validation accepts complete local bitmap inventory and rejects unsafe or incomplete references", () => {
+  const content = JSON.stringify(packageDefinition());
+  assert.equal(validateLayoutPackage(content, [asset()]).valid, true);
+  assert.equal(normalizePackageAssetPath("assets/icons/key.webp"), "assets/icons/key.webp");
+  for (const unsafe of ["../key.png", "/assets/key.png", "assets\\key.png", "https://example.test/key.png", "data:image/png,AA"])
+    assert.equal(normalizePackageAssetPath(unsafe), null, unsafe);
+  assert.equal(validateLayoutPackage(JSON.stringify(packageDefinition("Missing", "assets/missing.png")), [asset()]).code, "package-asset-unavailable");
+  assert.equal(validateLayoutPackage(content, [asset(), asset("assets/unused.png")]).code, "package-assets-unused");
+  assert.equal(validateLayoutPackage(content, [{ ...asset(), mimeType: "image/svg+xml" }]).code, "invalid-package-assets");
+  assert.equal(validateImportedLayout(content).code, "image-assets-unsupported");
+});
+
+test("package import commits opaque content, renders owned object URLs, and revokes them", async () => {
+  const content = JSON.stringify(packageDefinition());
+  const adapter = new MemoryAdapter({ picker: {
+    cancelled: false, kind: "package", token: "33333333-3333-4333-8333-333333333333",
+    content, digest: PACKAGE_DIGEST, assets: [asset()],
+  } });
+  const created = [];
+  const revoked = [];
+  const urlApi = { createObjectURL: () => `blob:layout-${created.push(true)}`, revokeObjectURL: (url) => revoked.push(url) };
+  const model = new MobileLayoutViewerModel();
+  const controller = new CustomLayoutController(model, adapter, { crypto: webcrypto, randomUUID: () => FIRST_ID, urlApi, Blob });
+  await controller.initialize();
+  const imported = await controller.importLayout();
+  assert.equal(imported.status, "imported");
+  assert.equal(model.snapshot().presentation.keys[0].image, "blob:layout-1");
+  assert.equal(model.snapshot().presentation.keys[0].accessibleLabel, "BT1");
+  assert.ok(adapter.calls.some(([name]) => name === "commit-package"));
+  await controller.removeLayout(`custom:${FIRST_ID}`);
+  assert.deepEqual(revoked, ["blob:layout-1"]);
+});
+
+test("stored packages recover selected presentation and isolate unavailable owned assets", async () => {
+  const content = JSON.stringify(packageDefinition());
+  const packaged = {
+    schemaVersion: 2, id: FIRST_ID, name: "Image Corne", normalizedName: "image corne",
+    digest: PACKAGE_DIGEST, content, format: "package", assets: [asset()],
+  };
+  const selected = { schemaVersion: 1, source: "custom", id: FIRST_ID };
+  const adapter = new MemoryAdapter({ records: [packaged], selection: selected });
+  const revoked = [];
+  const model = new MobileLayoutViewerModel();
+  const controller = new CustomLayoutController(model, adapter, {
+    crypto: webcrypto,
+    urlApi: { createObjectURL: () => "blob:recovered", revokeObjectURL: (url) => revoked.push(url) },
+    Blob,
+  });
+  await controller.initialize();
+  assert.equal(model.snapshot().selectedLayoutKey, `custom:${FIRST_ID}`);
+  assert.equal(model.snapshot().presentation.keys[0].image, "blob:recovered");
+  controller.dispose();
+  assert.deepEqual(revoked, ["blob:recovered"]);
+
+  adapter.assetBytes.clear();
+  const isolatedModel = new MobileLayoutViewerModel();
+  const isolated = new CustomLayoutController(isolatedModel, adapter, { crypto: webcrypto, Blob });
+  const outcome = await isolated.initialize();
+  assert.equal(isolatedModel.snapshot().selectedLayoutKey, "qwerty");
+  assert.ok(outcome.diagnostics.some((message) => message.includes("package image was unavailable")));
+});
+
+test("repacked package duplicates discard staging and reuse the stable custom identity", async () => {
+  const content = JSON.stringify(packageDefinition());
+  const packaged = {
+    schemaVersion: 2, id: FIRST_ID, name: "Image Corne", normalizedName: "image corne",
+    digest: PACKAGE_DIGEST, content, format: "package", assets: [asset()],
+  };
+  const token = "33333333-3333-4333-8333-333333333333";
+  const adapter = new MemoryAdapter({ records: [packaged], picker: {
+    cancelled: false, kind: "package", token, content, digest: PACKAGE_DIGEST, assets: [asset()],
+  } });
+  const model = new MobileLayoutViewerModel();
+  const controller = new CustomLayoutController(model, adapter, { crypto: webcrypto, urlApi: { createObjectURL: () => "blob:x", revokeObjectURL: () => {} }, Blob });
+  await controller.initialize();
+  const outcome = await controller.importLayout();
+  assert.equal(outcome.status, "duplicate");
+  assert.equal(model.snapshot().selectedLayoutKey, `custom:${FIRST_ID}`);
+  assert.ok(adapter.calls.some(([name, value]) => name === "discard-package" && value === token));
+  assert.equal(adapter.records.length, 1);
 });
 
 test("picker cancellation is a no-op and a failed preference commit rolls back a new record", async () => {
@@ -222,6 +333,9 @@ test("native adapter exposes only the bounded plugin contract and degrades when 
   await adapter.pickLayout();
   await adapter.listRecords();
   await adapter.writeRecord({ id: FIRST_ID });
+  await adapter.commitPackage("token", { id: FIRST_ID });
+  await adapter.discardPackage("token");
+  await adapter.readAsset(FIRST_ID, "assets/key.png");
   await adapter.removeRecord(FIRST_ID);
   await adapter.readSelection();
   await adapter.writeSelection({ source: "bundled", id: "qwerty" });
@@ -229,6 +343,9 @@ test("native adapter exposes only the bounded plugin contract and degrades when 
     "plugin:keyboard-helper-layouts|pick_layout",
     "plugin:keyboard-helper-layouts|list_records",
     "plugin:keyboard-helper-layouts|write_record",
+    "plugin:keyboard-helper-layouts|commit_package",
+    "plugin:keyboard-helper-layouts|discard_package",
+    "plugin:keyboard-helper-layouts|read_asset",
     "plugin:keyboard-helper-layouts|remove_record",
     "plugin:keyboard-helper-layouts|read_selection",
     "plugin:keyboard-helper-layouts|write_selection",
@@ -243,6 +360,8 @@ test("custom layout boundary contains no BLE, network, general filesystem, or br
     "src-mobile/custom_layouts.js",
     "src-mobile/native_layout_adapter.js",
     "plugins/tauri-plugin-keyboard-helper-layouts/android/src/main/java/KeyboardHelperLayoutsPlugin.kt",
+    "plugins/tauri-plugin-keyboard-helper-layouts/android/src/main/java/LayoutPackageSupport.kt",
+    "plugins/tauri-plugin-keyboard-helper-layouts/android/src/main/java/LayoutRecordStore.kt",
   ].map((file) => readFile(path.join(projectRoot, file), "utf8")));
   const source = sources.join("\n");
   assert.doesNotMatch(source, /Bluetooth|startScan|connectSelected|subscribeNotifications|writeCharacteristic/iu);
@@ -251,6 +370,7 @@ test("custom layout boundary contains no BLE, network, general filesystem, or br
   assert.match(source, /Intent\.ACTION_OPEN_DOCUMENT/);
   assert.match(source, /activity\.filesDir/);
   assert.match(source, /CodingErrorAction\.REPORT/);
-  assert.match(source, /MAX_IMPORT_BYTES = 524_288/);
+  assert.match(source, /MAX_JSON_IMPORT_BYTES = 524_288/);
+  assert.match(source, /MAX_PACKAGE_BYTES = 2_097_152/);
   assert.match(source, /AtomicFile/);
 });

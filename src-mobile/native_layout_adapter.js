@@ -26,6 +26,21 @@ export class NativeLayoutAdapter {
     return this.invoke(`${COMMAND_PREFIX}write_record`, { record });
   }
 
+  async commitPackage(token, record) {
+    this.requireAvailable();
+    return this.invoke(`${COMMAND_PREFIX}commit_package`, { token, record });
+  }
+
+  async discardPackage(token) {
+    this.requireAvailable();
+    return this.invoke(`${COMMAND_PREFIX}discard_package`, { token });
+  }
+
+  async readAsset(id, path) {
+    this.requireAvailable();
+    return this.invoke(`${COMMAND_PREFIX}read_asset`, { id, path });
+  }
+
   async removeRecord(id) {
     this.requireAvailable();
     return this.invoke(`${COMMAND_PREFIX}remove_record`, { id });

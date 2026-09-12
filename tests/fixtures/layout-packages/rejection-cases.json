@@ -1,0 +1,12 @@
+{
+  "unsupportedVersion": { "format": "keyboard-helper-layout-package", "version": 2, "layout": "layout.json" },
+  "unsafePaths": ["../layout.json", "/layout.json", "assets\\key.png", "assets/../key.png"],
+  "collidingPaths": ["assets/Key.png", "assets/key.png"],
+  "missingAsset": "assets/missing.png",
+  "unusedAsset": "assets/unused.png",
+  "archiveLimits": ["compressed-bytes", "entry-count", "uncompressed-bytes", "per-file-bytes", "compression-ratio", "path-depth"],
+  "archiveMetadata": ["encrypted", "symlink", "unsupported-compression", "inconsistent-directory"],
+  "unsupportedImages": ["assets/key.svg", "assets/key.gif"],
+  "imageFailures": ["malformed", "animated", "signature-extension-mismatch", "zero-dimension", "over-2048-dimension"],
+  "corruptRecord": { "schemaVersion": 2, "format": "package", "digest": "invalid" }
+}

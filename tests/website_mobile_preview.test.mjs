@@ -48,7 +48,19 @@ test("Android setup and bounded troubleshooting cover the release contract", asy
   for (const phrase of ["incorrect PIN", "capacity is exhausted", "Waiting for Live", "sequence-gap", "matching layout", "remote layer"]) {
     assert.match(faq, new RegExp(phrase, "i"));
   }
-  for (const phrase of ["Import layout", "private app storage", "text legends", "bundled default", "not synchronized"]) {
+  for (const phrase of ["Import layout", "private app storage", "text-only", "bundled default", "synchronized"]) {
     assert.match(`${setup}\n${faq}`, new RegExp(phrase, "i"));
   }
+});
+
+test("Android guidance publishes the bounded mobile layout package contract", async () => {
+  const [setup, faq] = await Promise.all([
+    source("website/src/pages/setup.astro"),
+    source("website/src/pages/faq.astro"),
+  ]);
+  const content = `${setup}\n${faq}`;
+  for (const phrase of [".khlayout", "manifest.json", "assets/", "PNG", "JPEG", "WebP", "2 MiB", "64 entries", "8 MiB", "1 MiB", "2048 × 2048", "private app storage"])
+    assert.ok(content.toLocaleLowerCase().includes(phrase.toLocaleLowerCase()), phrase);
+  assert.match(content, /never uploaded|never resolved/i);
+  assert.match(content, /same custom name/i);
 });

@@ -320,6 +320,7 @@ export function createMobileLayoutViewerView(
     render,
     dispose() {
       unsubscribe();
+      layoutController?.dispose?.();
       elements.layout.removeEventListener?.("change", onLayoutChange);
       elements.importLayout.removeEventListener?.("click", onImportLayout);
       elements.removeLayout.removeEventListener?.("click", onRemoveLayout);
