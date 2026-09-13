@@ -35,7 +35,7 @@ function evidenceSummary(status) {
   return values[status] ?? values[EvidenceStatus.IDLE];
 }
 
-export function createMobileConnectionOverviewView(document, coordinator, evidenceController) {
+export function createMobileConnectionOverviewView(document, coordinator, evidenceController, options = {}) {
   const elements = {
     card: required(document, "connection-overview"),
     status: required(document, "connection-status"),
@@ -146,6 +146,7 @@ export function createMobileConnectionOverviewView(document, coordinator, eviden
       button.disabled = !state.enabled;
     }
     renderDevices(presentation);
+    options.onLifecycle?.(presentation, snapshot);
   }
 
   function renderEvidence(snapshot) {
@@ -158,6 +159,7 @@ export function createMobileConnectionOverviewView(document, coordinator, eviden
       elements.fields[field.key].textContent = valueText(value);
       elements.fields[field.key].dataset.status = value.status;
     }
+    options.onEvidence?.(snapshot);
   }
 
   const unsubscribeLifecycle = coordinator.subscribe(renderLifecycle);

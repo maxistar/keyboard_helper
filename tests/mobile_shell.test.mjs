@@ -26,13 +26,22 @@ test("Android configuration keeps a distinct companion identity and frontend", a
   assert.equal(android.app.macOSPrivateApi, false);
 });
 
-test("mobile surface composes the product connection overview and independent viewer", async () => {
+test("mobile surface composes a viewport-first keyboard workspace", async () => {
   const html = await read("src-mobile/index.html");
   const app = await read("src-mobile/app.js");
 
+  assert.match(html, /data-workspace="mobile-keyboard-workspace"/);
+  assert.match(html, /class="workspace-app-bar"/);
+  const appBar = html.match(/<header class="workspace-app-bar">([\s\S]*?)<\/header>/)?.[1] ?? "";
+  assert.doesNotMatch(appBar, /keyboard-mark|<h1>|>Companion</);
+  assert.match(appBar, /workspace-connection-state/);
+  assert.match(html, /class="viewer-control-bar"/);
+  assert.match(html, /class="keyboard-stage"/);
+  assert.match(html, /id="workspace-settings"/);
+  assert.equal((html.match(/id="workspace-settings"/g) ?? []).length, 1);
+  assert.match(html, /aria-controls="workspace-settings"/);
   assert.match(html, /data-surface="mobile-connection-overview"/);
   assert.match(html, /data-viewer="mobile-layout-viewer"/);
-  assert.match(html, /No keyboard connection is required/);
   assert.match(html, /Keyboard Helper Companion/);
   assert.match(html, /Find keyboard/);
   assert.match(html, /Keyboard details/);
@@ -40,11 +49,12 @@ test("mobile surface composes the product connection overview and independent vi
   assert.match(html, /src="app\.js"/);
   assert.doesNotMatch(html, /main\.js|greet|overlay|typing-invaders|self-test|remote layer|write layer/i);
   assert.match(app, /ConnectionEvidenceController/);
+  assert.match(app, /createMobileKeyboardWorkspace/);
   assert.match(app, /createMobileConnectionOverviewView/);
   assert.match(app, /createMobileLayoutViewerView\(document, viewerModel, presentation, \{/);
   assert.match(app, /CustomLayoutController/);
   assert.match(app, /NativeLayoutAdapter/);
-  assert.match(app, /querySelectorAll\("\.connection-card button"\)/);
+  assert.match(app, /querySelectorAll\("\.connection-settings button"\)/);
   assert.doesNotMatch(app, /querySelectorAll\("button"\)/);
 });
 
@@ -108,7 +118,7 @@ test("mobile native entry registers only target-gated companion adapters", async
   assert.match(cargoToml, /cfg\(target_os = "android"\)[\s\S]*tauri-plugin-keyboard-helper-layouts/);
   assert.match(
     cargoToml,
-    /\[dependencies\]\s*tauri = \{ version = "2", features = \[\s*"tray-icon"\s*\] \}/,
+    /\[dependencies\]\s*tauri = \{ version = "2", features = \["macos-private-api", "tray-icon"\] \}/,
   );
   assert.match(cargoToml, /cfg\(target_os = "macos"\)[\s\S]*macos-private-api/);
 });

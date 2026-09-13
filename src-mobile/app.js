@@ -9,6 +9,7 @@ import { MobileLayoutViewerModel } from "./layout_viewer_model.js";
 import { NativeBleAdapter } from "./native_ble_adapter.js";
 import { NativeLayoutAdapter } from "./native_layout_adapter.js";
 import { MobileTelemetryController } from "./telemetry_session.js";
+import { createMobileKeyboardWorkspace } from "./workspace.js";
 
 const EXTENSION_SERVICE_UUID = "b34a0001-e782-4706-8f9c-6c056c416507";
 const CAPABILITIES_CHARACTERISTIC_UUID = "b34a0003-e782-4706-8f9c-6c056c416507";
@@ -18,7 +19,11 @@ const customLayouts = new CustomLayoutController(viewerModel, new NativeLayoutAd
   createImageBitmap: globalThis.createImageBitmap?.bind(globalThis),
   requireCompleteDecoding: true,
 });
-window.addEventListener("pagehide", () => customLayouts.dispose(), { once: true });
+const workspace = createMobileKeyboardWorkspace(document);
+window.addEventListener("pagehide", () => {
+  customLayouts.dispose();
+  workspace.dispose();
+}, { once: true });
 
 try {
   const coordinator = new BleLifecycleCoordinator(
@@ -34,7 +39,10 @@ try {
   const viewer = createMobileLayoutViewerView(document, viewerModel, presentation, {
     layoutController: customLayouts,
   });
-  const overview = createMobileConnectionOverviewView(document, coordinator, evidence);
+  const overview = createMobileConnectionOverviewView(document, coordinator, evidence, {
+    onLifecycle: workspace.updateConnection,
+    onEvidence: workspace.updateEvidence,
+  });
   document.addEventListener("visibilitychange", () => {
     const visibility = document.visibilityState === "hidden"
       ? AppVisibility.BACKGROUND
@@ -57,5 +65,5 @@ try {
     live.textContent = "Connection support could not be initialized.";
     live.dataset.level = "error";
   }
-  document.querySelectorAll(".connection-card button").forEach((button) => { button.disabled = true; });
+  document.querySelectorAll(".connection-settings button").forEach((button) => { button.disabled = true; });
 }

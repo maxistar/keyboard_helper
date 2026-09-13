@@ -213,5 +213,22 @@ test("mobile overview source stays within the read-only foreground product bound
   assert.match(css, /overflow-x:\s*hidden/);
   const source = `${app}\n${view}\n${model}\n${evidence}`;
   assert.doesNotMatch(source, /localStorage|sessionStorage|indexedDB|WebSocket|EventSource|fetch\(|XMLHttpRequest|subscribeNotifications|write\(|setInterval|foreground service/i);
-  assert.doesNotMatch(app, /main\.js|menu|overlay|global.listener|input.source|settings/i);
+  assert.match(app, /createMobileKeyboardWorkspace/);
+  assert.doesNotMatch(app, /main\.js|menu|overlay|global.listener|input.source/i);
+});
+
+test("overview forwards authoritative lifecycle and evidence snapshots to composition", () => {
+  const lifecycleCalls = [];
+  const evidenceCalls = [];
+  const subject = harness();
+  subject.view.dispose();
+  const view = createMobileConnectionOverviewView(subject.document, subject.coordinator, subject.evidence, {
+    onLifecycle: (presentation, snapshot) => lifecycleCalls.push([presentation, snapshot]),
+    onEvidence: (snapshot) => evidenceCalls.push(snapshot),
+  });
+  assert.equal(lifecycleCalls.length, 1);
+  assert.equal(lifecycleCalls[0][1], subject.coordinator.snapshot());
+  assert.equal(evidenceCalls.length, 1);
+  assert.equal(evidenceCalls[0], subject.evidence.snapshot());
+  view.dispose();
 });
