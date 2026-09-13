@@ -609,7 +609,7 @@ fn restore_full_geometry(
 }
 
 #[tauri::command]
-fn open_typing_invaders(app_handle: tauri::AppHandle) -> Result<(), String> {
+async fn open_typing_invaders(app_handle: tauri::AppHandle) -> Result<(), String> {
     open_typing_invaders_window(&app_handle)
 }
 
@@ -646,7 +646,7 @@ fn open_typing_invaders_window(app_handle: &tauri::AppHandle) -> Result<(), Stri
 }
 
 #[tauri::command]
-fn open_settings(app_handle: tauri::AppHandle) -> Result<(), String> {
+async fn open_settings(app_handle: tauri::AppHandle) -> Result<(), String> {
     open_settings_window(&app_handle)
 }
 
@@ -683,7 +683,7 @@ fn open_settings_window(app_handle: &tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn open_keyboard_self_test(
+async fn open_keyboard_self_test(
     app_handle: tauri::AppHandle,
     current_layout: String,
 ) -> Result<(), String> {
@@ -806,9 +806,11 @@ async fn smoke_secondary_window(
         error: None,
     };
     let opened = match label {
-        SETTINGS_WINDOW_LABEL => open_settings_window(app_handle),
-        TYPING_INVADERS_WINDOW_LABEL => open_typing_invaders_window(app_handle),
-        KEYBOARD_SELF_TEST_WINDOW_LABEL => open_keyboard_self_test_window(app_handle, "qwerty"),
+        SETTINGS_WINDOW_LABEL => open_settings(app_handle.clone()).await,
+        TYPING_INVADERS_WINDOW_LABEL => open_typing_invaders(app_handle.clone()).await,
+        KEYBOARD_SELF_TEST_WINDOW_LABEL => {
+            open_keyboard_self_test(app_handle.clone(), "qwerty".to_string()).await
+        }
         _ => Err(format!("unknown secondary window label: {label}")),
     };
     if let Err(error) = opened {
@@ -844,9 +846,11 @@ async fn smoke_secondary_window(
 
     result.stage = "reuse".to_string();
     let reused = match label {
-        SETTINGS_WINDOW_LABEL => open_settings_window(app_handle),
-        TYPING_INVADERS_WINDOW_LABEL => open_typing_invaders_window(app_handle),
-        KEYBOARD_SELF_TEST_WINDOW_LABEL => open_keyboard_self_test_window(app_handle, "qwerty"),
+        SETTINGS_WINDOW_LABEL => open_settings(app_handle.clone()).await,
+        TYPING_INVADERS_WINDOW_LABEL => open_typing_invaders(app_handle.clone()).await,
+        KEYBOARD_SELF_TEST_WINDOW_LABEL => {
+            open_keyboard_self_test(app_handle.clone(), "qwerty".to_string()).await
+        }
         _ => unreachable!(),
     };
     result.reused = reused.is_ok() && app_handle.get_webview_window(label).is_some();
@@ -867,9 +871,11 @@ async fn smoke_secondary_window(
         return result;
     }
     let restored = match label {
-        SETTINGS_WINDOW_LABEL => open_settings_window(app_handle),
-        TYPING_INVADERS_WINDOW_LABEL => open_typing_invaders_window(app_handle),
-        KEYBOARD_SELF_TEST_WINDOW_LABEL => open_keyboard_self_test_window(app_handle, "qwerty"),
+        SETTINGS_WINDOW_LABEL => open_settings(app_handle.clone()).await,
+        TYPING_INVADERS_WINDOW_LABEL => open_typing_invaders(app_handle.clone()).await,
+        KEYBOARD_SELF_TEST_WINDOW_LABEL => {
+            open_keyboard_self_test(app_handle.clone(), "qwerty".to_string()).await
+        }
         _ => unreachable!(),
     };
     for _ in 0..20 {
