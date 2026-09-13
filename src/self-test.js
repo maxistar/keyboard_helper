@@ -239,6 +239,8 @@ async function initialize() {
     const rawConfig = await readConfig();
     catalog = await loadLayoutCatalog(rawConfig, {
       readExternal: tauri?.core?.invoke ? (path) => tauri.core.invoke("read_layout_file", { path }) : null,
+      createImageBitmapApi: globalThis.createImageBitmap?.bind(globalThis),
+      requireCompleteDecoding: true,
     });
     const seeded = new URLSearchParams(window.location.search).get("layout");
     selectedLayoutKey = catalog.definitions[seeded] ? seeded : catalog.config.defaultLayout;
@@ -297,6 +299,7 @@ async function initialize() {
 window.addEventListener("beforeunload", () => {
   void layerSession.release();
   controller.dispose();
+  catalog?.dispose?.();
 });
 initializeSecondaryWindow({
   invoke: tauri?.core?.invoke,

@@ -27,10 +27,33 @@ bundled default (QWERTY when available).
 2. The app validates the same layout structure and bounds used by the desktop and bundled catalog.
 3. A valid definition is copied into app-private storage and selected. The source URI is not kept.
 
-The first import format supports textual legends only. External image paths, remote URLs, data URIs,
-and other image references are rejected; use text labels instead. An exact duplicate selects the
-existing record without another write. Different content with the same normalized custom name asks
-before replacing the existing record while preserving its identity.
+Text-only JSON remains compatible. Image-bearing JSON must declare `format:
+"keyboard-helper-layout"`, `version: 1`, define top-level `embeddedAssets`, and reference images from
+key legends as `asset:<id>`. Each asset declares `mimeType`, `encoding: "base64"`, and `data`; keep a
+text or `alt` value beside every image for accessibility. PNG, JPEG, and WebP bitmaps must be
+non-animated, at most 128 KiB each, 512 KiB total decoded bytes, 16 assets, 256 × 256 pixels, and the
+whole JSON document must stay under 1 MiB. External image paths, remote URLs, arbitrary data URIs,
+file/content URIs, missing assets, unused assets, malformed base64, and SVG are rejected. An exact
+canonical duplicate selects the existing record without another write. Different content with the
+same normalized custom name asks before replacing the existing record while preserving its identity.
+The old `.khlayout` ZIP package format was an unsupported preview format and has no migration or
+conversion path.
+
+Minimal accessible inline image example:
+
+```json
+{
+  "format": "keyboard-helper-layout",
+  "version": 1,
+  "name": "Example",
+  "keySize": { "w": 50, "h": 50 },
+  "keyPositions": [{ "row": 0, "col": 0 }],
+  "embeddedAssets": {
+    "logo": { "mimeType": "image/png", "encoding": "base64", "data": "..." }
+  },
+  "keyLayers": { "default": [{ "text": "Logo", "image": "asset:logo", "alt": "Logo key" }] }
+}
+```
 
 The removal selector lists only custom entries, so you can remove either the selected layout or an
 inactive custom layout without first changing the viewer. Removing the selected entry falls
@@ -62,8 +85,9 @@ parity for every layout and layer.
 - If one layout is invalid, the viewer reports a bounded diagnostic while keeping other valid
   layouts available. For bundled data, fix the canonical JSON and regenerate the bundle. For a
   custom layout, correct the source JSON and import it again.
-- If import reports an image limitation, replace image legends with text; importing a directory or
-  companion image files is not supported.
+- If import reports an image limitation, use the inline JSON asset table, resize/re-encode the image,
+  remove unused assets, or replace the image legend with text. Importing a directory or companion
+  image files is not supported.
 - If no layouts can be loaded, the viewer shows an actionable empty state instead of failing the
   whole mobile shell.
 - If a wide keyboard appears clipped, scroll inside the keyboard region; page-level horizontal

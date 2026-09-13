@@ -12,13 +12,15 @@ import { createBleHighlightController } from "./ble_highlight.js";
 import { createGlobalOverlayHotkey } from "./global_overlay_hotkey.js";
 import { routeSystemKeyEvent } from "./system_key_event_router.js";
 import { formatBleKeyboardStatus } from "./ble_status.js";
-import { BUILTIN_LAYOUT_FILES, normalizeConfig, pickAvailableLayout } from "./app_config.js";
+import { BUILTIN_LAYOUT_FILES, normalizeConfig, parseExternalLayout, pickAvailableLayout } from "./app_config.js";
 import { reloadOverlayAfterSettingsSave } from "./settings_runtime.js";
 import {
   createOverlayModeController,
   createOverlayModeView,
 } from "./overlay_mode.js";
 import { buildLayout, normalizeKeyEntry, normalizeLayerData } from "./layout_catalog.js";
+import { InlineAssetPresentationOwner } from "./inline_asset_presentation.js";
+import { parseLayoutJson } from "./layout_semantics.js";
 import { normalizeInputSourceSync } from "./input_source_sync_config.js";
 import { createMacosInputSourceController } from "./macos_input_source.js";
 import { createInputSourceLayerReconciler } from "./input_source_layer_reconciler.js";
@@ -48,6 +50,7 @@ let selfTestSourceStateSubscribed = false;
 let selfTestLayerLease = null;
 let observedBleLayer = null;
 let bleLayerControlStatus = { state: "idle", writable: false };
+const layoutAssetOwner = new InlineAssetPresentationOwner();
 
 function publishSelfTestSourceState(status) {
   if (!selfTestSourceStateSubscribed || !window.__TAURI__?.event?.emitTo) return;
@@ -79,7 +82,10 @@ async function loadLayoutDefinition(key, source) {
         console.warn(error);
         return { def: null, error };
       }
-      return { def: await resp.json(), error: null };
+      const definition = parseLayoutJson(await resp.text());
+      const resolved = await layoutAssetOwner.resolve(key, definition);
+      if (!resolved.validation.valid) throw new Error(resolved.validation.error);
+      return { def: resolved.definition, error: null };
     } catch (err) {
       const error = `Failed to parse ${fileName}`;
       console.warn(error, err);
@@ -101,7 +107,11 @@ async function loadLayoutDefinition(key, source) {
         console.warn(error);
         return { def: null, error };
       }
-      return { def: JSON.parse(raw), error: null };
+      const parsed = parseExternalLayout(raw);
+      if (!parsed.valid) throw new Error(parsed.error);
+      const resolved = await layoutAssetOwner.resolve(key, parsed.definition);
+      if (!resolved.validation.valid) throw new Error(resolved.validation.error);
+      return { def: resolved.definition, error: null };
     } catch (err) {
       const message = err?.message ?? String(err);
       const error = `Failed to load external layout for ${key} from ${source}: ${message}`;
@@ -145,8 +155,11 @@ async function loadLayoutDefinitions(config) {
   }
 
   layoutDefinitions = Object.fromEntries(entries);
+  layoutAssetOwner.retain(entries.map(([key]) => key));
   rebuildLayoutData();
 }
+
+window.addEventListener("pagehide", () => layoutAssetOwner.dispose(), { once: true });
 
 function rebuildLayoutData() {
   normalizedLayoutLayers = {};

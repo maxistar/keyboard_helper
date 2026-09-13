@@ -1,4 +1,4 @@
-import { validateLayoutDefinition } from "./layout_semantics.js";
+import { collectLayoutImageReferences, parseLayoutJson, validateLayoutDefinition } from "./layout_semantics.js";
 
 export { validateLayoutDefinition } from "./layout_semantics.js";
 
@@ -138,8 +138,13 @@ export function validateConfigDraft(draft) {
 
 export function parseExternalLayout(raw) {
   try {
-    const value = typeof raw === "string" ? JSON.parse(raw) : raw;
-    return validateLayoutDefinition(value);
+    const value = typeof raw === "string" ? parseLayoutJson(raw) : raw;
+    const validation = validateLayoutDefinition(value);
+    if (!validation.valid) return validation;
+    if (!validation.inlineAssets && collectLayoutImageReferences(value).length) {
+      return { valid: false, error: "External JSON layouts may only use image legends through embedded asset references." };
+    }
+    return validation;
   } catch {
     return { valid: false, error: "The selected file is not valid JSON." };
   }

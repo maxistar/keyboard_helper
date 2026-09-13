@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "sync:mobile-layouts": "node scripts/sync-mobile-layouts.mjs",
-    "build:mobile-layout-package": "node scripts/build-mobile-layout-package.mjs",
+    "embed:inline-layout-assets": "node scripts/embed-inline-layout-assets.mjs",
     "lint": "eslint src src-mobile tests scripts",
     "test": "node scripts/run-js-tests.mjs",
     "check:js": "npm run lint && npm test",

@@ -1,7 +1,8 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::path::PathBuf;
+use std::io::Read;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -292,8 +293,27 @@ fn save_config(
 #[tauri::command]
 fn read_layout_file(path: String) -> Result<String, String> {
     let path_buf = PathBuf::from(&path);
-    std::fs::read_to_string(&path_buf)
-        .map_err(|e| format!("failed to read {}: {e}", path_buf.display()))
+    read_bounded_layout_file(&path_buf)
+}
+
+const MAX_LAYOUT_DOCUMENT_BYTES: u64 = 1_048_576;
+
+fn read_bounded_layout_file(path: &Path) -> Result<String, String> {
+    let file =
+        std::fs::File::open(path).map_err(|e| format!("failed to read {}: {e}", path.display()))?;
+    read_bounded_layout(file)
+}
+
+fn read_bounded_layout(mut reader: impl Read) -> Result<String, String> {
+    let mut bytes = Vec::new();
+    reader
+        .take(MAX_LAYOUT_DOCUMENT_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|e| format!("failed to read layout document: {e}"))?;
+    if bytes.len() as u64 > MAX_LAYOUT_DOCUMENT_BYTES {
+        return Err("layout document is larger than 1 MiB".into());
+    }
+    String::from_utf8(bytes).map_err(|_| "layout document is not valid UTF-8".into())
 }
 
 #[tauri::command]
@@ -1288,13 +1308,20 @@ fn main() {
 mod tests {
     use super::{
         centered_rect, clamp_rect_to_work_area, dispatch_app_menu_action, fit_mini_scale,
-        overlay_visibility_action, secondary_window_action, self_test_url,
+        overlay_visibility_action, read_bounded_layout, secondary_window_action, self_test_url,
         settings_window_creation_error, AppMenuAction, AppMenuActionHandler, GeometryRect,
         OverlayGeometryState, OverlayVisibilityAction, OverlayWindowSnapshot,
         SecondaryWindowAction, ENTER_MINI_MODE_MENU_ID, HELP_MENU_ID, SETTINGS_MENU_ID,
         TOGGLE_OVERLAY_MENU_ID, TYPING_INVADERS_MENU_ID,
     };
+    use std::io::Cursor;
     use tauri::{PhysicalPosition, PhysicalSize};
+
+    #[test]
+    fn layout_reader_rejects_documents_larger_than_one_mibibyte() {
+        assert!(read_bounded_layout(Cursor::new(vec![b'a'; 1_048_576])).is_ok());
+        assert!(read_bounded_layout(Cursor::new(vec![b'a'; 1_048_577])).is_err());
+    }
 
     #[derive(Default)]
     struct FakeMenuActionHandler {

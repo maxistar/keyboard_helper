@@ -295,30 +295,6 @@
       "type": "string",
       "oneOf": [
         {
-          "description": "Enables the commit_package command without any pre-configured scope.",
-          "type": "string",
-          "const": "allow-commit-package",
-          "markdownDescription": "Enables the commit_package command without any pre-configured scope."
-        },
-        {
-          "description": "Denies the commit_package command without any pre-configured scope.",
-          "type": "string",
-          "const": "deny-commit-package",
-          "markdownDescription": "Denies the commit_package command without any pre-configured scope."
-        },
-        {
-          "description": "Enables the discard_package command without any pre-configured scope.",
-          "type": "string",
-          "const": "allow-discard-package",
-          "markdownDescription": "Enables the discard_package command without any pre-configured scope."
-        },
-        {
-          "description": "Denies the discard_package command without any pre-configured scope.",
-          "type": "string",
-          "const": "deny-discard-package",
-          "markdownDescription": "Denies the discard_package command without any pre-configured scope."
-        },
-        {
           "description": "Enables the list_records command without any pre-configured scope.",
           "type": "string",
           "const": "allow-list-records",
@@ -341,18 +317,6 @@
           "type": "string",
           "const": "deny-pick-layout",
           "markdownDescription": "Denies the pick_layout command without any pre-configured scope."
-        },
-        {
-          "description": "Enables the read_asset command without any pre-configured scope.",
-          "type": "string",
-          "const": "allow-read-asset",
-          "markdownDescription": "Enables the read_asset command without any pre-configured scope."
-        },
-        {
-          "description": "Denies the read_asset command without any pre-configured scope.",
-          "type": "string",
-          "const": "deny-read-asset",
-          "markdownDescription": "Denies the read_asset command without any pre-configured scope."
         },
         {
           "description": "Enables the read_selection command without any pre-configured scope.",
@@ -403,10 +367,10 @@
           "markdownDescription": "Denies the write_selection command without any pre-configured scope."
         },
         {
-          "description": "Purpose-bounded custom layout import and private storage\n#### This default permission set includes:\n\n- `allow-pick-layout`\n- `allow-list-records`\n- `allow-write-record`\n- `allow-commit-package`\n- `allow-discard-package`\n- `allow-read-asset`\n- `allow-remove-record`\n- `allow-read-selection`\n- `allow-write-selection`",
+          "description": "Purpose-bounded custom layout import and private storage\n#### This default permission set includes:\n\n- `allow-pick-layout`\n- `allow-list-records`\n- `allow-write-record`\n- `allow-remove-record`\n- `allow-read-selection`\n- `allow-write-selection`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Purpose-bounded custom layout import and private storage\n#### This default permission set includes:\n\n- `allow-pick-layout`\n- `allow-list-records`\n- `allow-write-record`\n- `allow-commit-package`\n- `allow-discard-package`\n- `allow-read-asset`\n- `allow-remove-record`\n- `allow-read-selection`\n- `allow-write-selection`"
+          "markdownDescription": "Purpose-bounded custom layout import and private storage\n#### This default permission set includes:\n\n- `allow-pick-layout`\n- `allow-list-records`\n- `allow-write-record`\n- `allow-remove-record`\n- `allow-read-selection`\n- `allow-write-selection`"
         }
       ]
     }

@@ -10,9 +10,8 @@ should reuse them before inventing a private schema variant.
   configurations.
 - `ble/` contains transport-state examples and reviewed Keyboard Helper BLE v1 capability/event
   frames; no physical BLE device is required.
-- `layout-packages/` records the `.khlayout` v1 manifest and reviewed rejection classes. Run
-  `npm run build:mobile-layout-package` to create the inspectable Corney package from the canonical
-  layout and its three existing image legends.
+- `inline_layout_assets.mjs` provides reviewed text and image-bearing JSON fixtures for the shared
+  inline asset format.
 - `future/` reserves versioned locations for approved analytics, lesson, mobile,
   and BLE-event contracts. Files there are documentation until the owning
   OpenSpec change defines their runtime schema.

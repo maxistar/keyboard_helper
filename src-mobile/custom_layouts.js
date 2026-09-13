@@ -2,7 +2,14 @@ import {
   MOBILE_BUNDLED_LAYOUT_DEFINITIONS,
   MOBILE_BUNDLED_LAYOUT_ORDER,
 } from "./bundled_layout_definitions.js";
-import { validateLayoutDefinition } from "./layout_semantics.generated.js";
+import {
+  canonicalJson,
+  canonicalLayoutDigestInput,
+  INLINE_ASSET_REFERENCE_PREFIX,
+  parseLayoutJson,
+  validateLayoutDefinition,
+} from "./layout_semantics.generated.js";
+import { verifyInlineAssetDecoding } from "./inline_asset_presentation.generated.js";
 import {
   createMobileLayoutCatalog,
   layoutKeyFromReference,
@@ -12,23 +19,28 @@ import {
 export const CUSTOM_LAYOUT_RECORD_VERSION = 2;
 export const LEGACY_CUSTOM_LAYOUT_RECORD_VERSION = 1;
 export const SELECTED_LAYOUT_VERSION = 1;
-export const CUSTOM_LAYOUT_MAX_BYTES = 524_288;
+export const CUSTOM_LAYOUT_MAX_BYTES = 1_048_576;
 export const CUSTOM_LAYOUT_MAX_RECORDS = 128;
 export const CUSTOM_LAYOUT_DIAGNOSTIC_LIMIT = 180;
-export const LAYOUT_PACKAGE_FORMAT = "keyboard-helper-layout-package";
-export const LAYOUT_PACKAGE_VERSION = 1;
-export const LAYOUT_PACKAGE_MAX_COMPRESSED_BYTES = 2_097_152;
-export const LAYOUT_PACKAGE_MAX_ENTRIES = 64;
-export const LAYOUT_PACKAGE_MAX_UNCOMPRESSED_BYTES = 8_388_608;
-export const LAYOUT_PACKAGE_MAX_IMAGE_BYTES = 1_048_576;
-export const LAYOUT_PACKAGE_MAX_IMAGE_DIMENSION = 2048;
-export const LAYOUT_PACKAGE_IMAGE_MIME_TYPES = Object.freeze([
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-]);
 const CUSTOM_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
 const DIGEST = /^[0-9a-f]{64}$/u;
+
+function validInlineStoredAsset(asset) {
+  return typeof asset?.id === "string"
+    && asset.id.length > 0
+    && asset.id.length <= 64
+    && typeof asset.mimeType === "string"
+    && Number.isInteger(asset.sizeBytes)
+    && asset.sizeBytes > 0
+    && asset.sizeBytes <= 131_072
+    && Number.isInteger(asset.width)
+    && asset.width > 0
+    && asset.width <= 256
+    && Number.isInteger(asset.height)
+    && asset.height > 0
+    && asset.height <= 256
+    && DIGEST.test(asset.digest);
+}
 
 export class CustomLayoutError extends Error {
   constructor(code, message) {
@@ -71,14 +83,6 @@ function importedImageReference(value) {
   return null;
 }
 
-export function normalizePackageAssetPath(value) {
-  if (typeof value !== "string" || !value || value.includes("\\") || value.startsWith("/") || value.includes(":")) return null;
-  const segments = value.split("/");
-  if (segments.length < 2 || segments.length > 4 || segments[0] !== "assets" ||
-    segments.some((segment) => !segment || segment === "." || segment === "..")) return null;
-  return segments.join("/");
-}
-
 export function collectLayoutImageReferences(value, references = []) {
   if (Array.isArray(value)) {
     if (value.length >= 3 && typeof value[2] === "string" && value[2].trim()) references.push(value[2]);
@@ -92,92 +96,87 @@ export function collectLayoutImageReferences(value, references = []) {
   return references;
 }
 
-function validAssetDescriptor(asset) {
-  return normalizePackageAssetPath(asset?.path) === asset.path
-    && LAYOUT_PACKAGE_IMAGE_MIME_TYPES.includes(asset.mimeType)
-    && Number.isInteger(asset.sizeBytes) && asset.sizeBytes > 0 && asset.sizeBytes <= LAYOUT_PACKAGE_MAX_IMAGE_BYTES
-    && Number.isInteger(asset.width) && asset.width > 0 && asset.width <= LAYOUT_PACKAGE_MAX_IMAGE_DIMENSION
-    && Number.isInteger(asset.height) && asset.height > 0 && asset.height <= LAYOUT_PACKAGE_MAX_IMAGE_DIMENSION
-    && DIGEST.test(asset.digest);
-}
-
-export function validateLayoutPackage(raw, assets) {
-  if (!Array.isArray(assets) || assets.length === 0 || assets.length > LAYOUT_PACKAGE_MAX_ENTRIES - 2) {
-    return { valid: false, code: "invalid-package-assets", error: "The layout package has an invalid asset inventory." };
-  }
-  const validation = validateImportedLayout(raw, { allowImages: true });
-  if (!validation.valid) return validation;
-  const inventory = new Map();
-  const foldedPaths = new Set();
-  for (const asset of assets) {
-    const folded = asset?.path?.toLocaleLowerCase?.("en-US");
-    if (!validAssetDescriptor(asset) || foldedPaths.has(folded)) {
-      return { valid: false, code: "invalid-package-assets", error: "The layout package contains invalid or colliding assets." };
-    }
-    foldedPaths.add(folded);
-    inventory.set(asset.path, Object.freeze({ ...asset }));
-  }
-  const references = [...new Set(collectLayoutImageReferences(validation.definition))];
-  if (!references.length) {
-    return { valid: false, code: "package-assets-unused", error: "The layout package does not reference its image assets." };
-  }
-  const normalizedReferences = [];
-  for (const reference of references) {
-    const path = normalizePackageAssetPath(reference);
-    if (!path || !inventory.has(path)) {
-      return { valid: false, code: "package-asset-unavailable", error: "A layout image is missing or outside the package assets directory." };
-    }
-    normalizedReferences.push(path);
-  }
-  if (new Set(normalizedReferences).size !== inventory.size) {
-    return { valid: false, code: "package-assets-unused", error: "The layout package contains an unreferenced asset." };
-  }
-  return { ...validation, assets: [...inventory.values()] };
-}
-
 export function validateImportedLayout(raw, options = {}) {
   if (typeof raw !== "string") {
     return { valid: false, code: "invalid-content", error: "The selected layout is not text." };
   }
   if (encodedSize(raw) > CUSTOM_LAYOUT_MAX_BYTES) {
-    return { valid: false, code: "document-too-large", error: "The selected layout is larger than 512 KiB." };
+    return { valid: false, code: "document-too-large", error: "The selected layout is larger than 1 MiB." };
   }
   let definition;
   try {
-    definition = JSON.parse(raw);
+    definition = parseLayoutJson(raw, { maxBytes: CUSTOM_LAYOUT_MAX_BYTES });
   } catch {
     return { valid: false, code: "invalid-json", error: "The selected file is not valid JSON." };
   }
   const validation = validateLayoutDefinition(definition);
   if (!validation.valid) return { valid: false, code: "invalid-layout", error: validation.error };
-  if (!options.allowImages && importedImageReference(definition)) {
+  if (!validation.inlineAssets && !options.allowImages && importedImageReference(definition)) {
     return {
       valid: false,
       code: "image-assets-unsupported",
-      error: "Standalone JSON supports textual legends only; use a .khlayout package for images.",
+      error: "JSON layouts may only use image legends through embedded asset references.",
     };
   }
-  return { valid: true, code: null, error: null, definition };
+  return { valid: true, code: null, error: null, definition, inlineAssets: validation.inlineAssets ?? null };
+}
+
+export async function sha256BytesHex(bytes, cryptoApi = globalThis.crypto) {
+  if (!cryptoApi?.subtle?.digest) throw new CustomLayoutError("digest-unavailable", "Layout verification is unavailable.");
+  const digest = new Uint8Array(await cryptoApi.subtle.digest("SHA-256", bytes));
+  return [...digest].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 export async function sha256Hex(value, cryptoApi = globalThis.crypto) {
-  if (!cryptoApi?.subtle?.digest) throw new CustomLayoutError("digest-unavailable", "Layout verification is unavailable.");
-  const bytes = new Uint8Array(await cryptoApi.subtle.digest("SHA-256", new TextEncoder().encode(value)));
-  return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return sha256BytesHex(new TextEncoder().encode(value), cryptoApi);
+}
+
+export async function inlineAssetInventory(validation, cryptoApi = globalThis.crypto) {
+  const inventory = [];
+  for (const asset of validation.inlineAssets?.assets?.values?.() ?? []) {
+    inventory.push({
+      id: asset.id,
+      mimeType: asset.mimeType,
+      sizeBytes: asset.bytes.length,
+      width: asset.width,
+      height: asset.height,
+      digest: await sha256BytesHex(asset.bytes, cryptoApi),
+    });
+  }
+  return inventory.sort((left, right) => left.id.localeCompare(right.id, "en-US"));
+}
+
+export async function canonicalLayoutDigest(validation, cryptoApi = globalThis.crypto) {
+  if (!validation?.valid) throw new CustomLayoutError("invalid-layout", "The layout must be valid before digesting.");
+  const assetHashes = new Map();
+  for (const asset of await inlineAssetInventory(validation, cryptoApi)) assetHashes.set(asset.id, asset.digest);
+  return sha256Hex(canonicalJson(canonicalLayoutDigestInput(validation.definition, validation.inlineAssets, assetHashes)), cryptoApi);
 }
 
 function validRecordShape(record) {
   const legacy = record?.schemaVersion === LEGACY_CUSTOM_LAYOUT_RECORD_VERSION && !record.format && !record.assets;
-  const packaged = record?.schemaVersion === CUSTOM_LAYOUT_RECORD_VERSION && record.format === "package"
-    && Array.isArray(record.assets) && record.assets.length > 0 && record.assets.every(validAssetDescriptor);
   const standalone = record?.schemaVersion === CUSTOM_LAYOUT_RECORD_VERSION && record.format === "json"
-    && (!record.assets || record.assets.length === 0);
-  return (legacy || standalone || packaged)
+    && (!record.assets || record.assets.length === 0)
+    && (!record.inlineAssets || record.inlineAssets.every(validInlineStoredAsset));
+  return (legacy || standalone)
     && CUSTOM_ID.test(record.id)
     && typeof record.name === "string" && record.name.trim().length > 0 && record.name.trim().length <= 80
     && record.normalizedName === normalizeCustomLayoutName(record.name)
     && DIGEST.test(record.digest)
     && typeof record.content === "string" && encodedSize(record.content) <= CUSTOM_LAYOUT_MAX_BYTES;
+}
+
+function sameInlineAssetInventory(stored = [], computed = []) {
+  return canonicalJson(stored) === canonicalJson(computed);
+}
+
+function stripInlineTransport(value) {
+  if (!value || typeof value !== "object") return value;
+  const rest = { ...value };
+  delete rest.embeddedAssets;
+  delete rest.format;
+  delete rest.version;
+  return rest;
 }
 
 function mapDefinitionImages(value, resolved) {
@@ -206,11 +205,14 @@ export class CustomLayoutController {
     this.adapter = adapter;
     this.crypto = options.crypto ?? globalThis.crypto;
     this.randomUUID = options.randomUUID ?? (() => globalThis.crypto.randomUUID());
-    this.bundledDefinitions = options.bundledDefinitions ?? MOBILE_BUNDLED_LAYOUT_DEFINITIONS;
+    this.sourceBundledDefinitions = options.bundledDefinitions ?? MOBILE_BUNDLED_LAYOUT_DEFINITIONS;
+    this.bundledDefinitions = this.sourceBundledDefinitions;
     this.bundledOrder = options.bundledOrder ?? MOBILE_BUNDLED_LAYOUT_ORDER;
     this.defaultLayoutKey = options.defaultLayoutKey ?? "qwerty";
     this.urlApi = options.urlApi ?? globalThis.URL;
     this.Blob = options.Blob ?? globalThis.Blob;
+    this.createImageBitmap = options.createImageBitmap ?? null;
+    this.requireCompleteDecoding = options.requireCompleteDecoding ?? false;
     this.records = [];
     this.diagnostics = [];
     this.assetUrls = new Map();
@@ -238,50 +240,69 @@ export class CustomLayoutController {
     this.assetUrls.delete(id);
   }
 
-  async resolveRecord(record, validation) {
-    if (record.format !== "package") return Object.freeze({ ...record, definition: validation.definition });
+  createPresentationUrl(bytes, mimeType) {
+    return this.urlApi.createObjectURL(new this.Blob([bytes], { type: mimeType }));
+  }
+
+  async resolveInlineRecord(record, validation) {
+    if (!validation.inlineAssets) return Object.freeze({ ...record, definition: validation.definition });
+    if (this.requireCompleteDecoding || this.createImageBitmap) {
+      await verifyInlineAssetDecoding(validation, {
+        createImageBitmapApi: this.createImageBitmap,
+        BlobConstructor: this.Blob,
+      });
+    }
     const urls = new Map();
     try {
-      for (const asset of validation.assets) {
-        const response = await this.adapter.readAsset(record.id, asset.path);
-        if (response?.mimeType !== asset.mimeType || !Array.isArray(response?.bytes) || response.bytes.length !== asset.sizeBytes) {
-          throw new CustomLayoutError("package-asset-unavailable", "A stored package image could not be verified.");
-        }
-        const url = this.urlApi.createObjectURL(new this.Blob([new Uint8Array(response.bytes)], { type: asset.mimeType }));
-        urls.set(asset.path, url);
+      for (const asset of validation.inlineAssets.assets.values()) {
+        urls.set(`${INLINE_ASSET_REFERENCE_PREFIX}${asset.id}`, this.createPresentationUrl(asset.bytes, asset.mimeType));
       }
       this.assetUrls.set(record.id, urls);
-      return Object.freeze({ ...record, definition: mapDefinitionImages(validation.definition, urls) });
+      return Object.freeze({ ...record, definition: mapDefinitionImages(stripInlineTransport(validation.definition), urls) });
     } catch (error) {
       for (const url of urls.values()) this.urlApi?.revokeObjectURL?.(url);
       throw error;
     }
   }
 
+  async resolveRecord(record, validation) {
+    return this.resolveInlineRecord(record, validation);
+  }
+
   async initialize() {
     if (!this.available) return { status: "unavailable", diagnostics: [] };
     this.dispose();
+    const bundledDefinitions = {};
+    for (const [key, definition] of Object.entries(this.sourceBundledDefinitions)) {
+      const validation = validateLayoutDefinition(definition);
+      if (!validation.valid) throw new CustomLayoutError("invalid-layout", validation.error);
+      const resolved = validation.inlineAssets && (this.requireCompleteDecoding || this.createImageBitmap)
+        ? await this.resolveInlineRecord({ id: `bundled:${key}` }, validation)
+        : { definition: validation.definition };
+      bundledDefinitions[key] = resolved.definition;
+    }
+    this.bundledDefinitions = Object.freeze(bundledDefinitions);
     const [loaded, saved] = await Promise.all([this.adapter.listRecords(), this.adapter.readSelection()]);
     const diagnostics = [...(loaded?.diagnostics ?? []), ...(saved?.diagnostic ? [saved.diagnostic] : [])];
     const records = [];
     for (const record of (loaded?.records ?? []).slice(0, CUSTOM_LAYOUT_MAX_RECORDS)) {
+      if (record?.schemaVersion === CUSTOM_LAYOUT_RECORD_VERSION && record?.format === "package" && CUSTOM_ID.test(record?.id ?? "")) {
+        await this.adapter.removeRecord(record.id).catch(() => {});
+        diagnostics.push("A stored package layout was removed because the preview format is unsupported.");
+        continue;
+      }
       if (!validRecordShape(record)) {
         diagnostics.push("A stored custom layout was skipped because its record is invalid.");
         continue;
       }
-      const validation = record.format === "package"
-        ? validateLayoutPackage(record.content, record.assets)
-        : validateImportedLayout(record.content);
-      const digest = validation.valid && record.format !== "package" ? await sha256Hex(record.content, this.crypto) : record.digest;
-      if (!validation.valid || digest !== record.digest) {
+      const validation = validateImportedLayout(record.content);
+      const digest = validation.valid ? await canonicalLayoutDigest(validation, this.crypto) : record.digest;
+      const inventory = validation.valid ? await inlineAssetInventory(validation, this.crypto) : [];
+      if (!validation.valid || digest !== record.digest || !sameInlineAssetInventory(record.inlineAssets, inventory)) {
         diagnostics.push(`${record.name}: stored content failed validation and was skipped.`);
         continue;
       }
-      try {
-        records.push(await this.resolveRecord(record, validation));
-      } catch {
-        diagnostics.push(`${record.name}: a stored package image was unavailable and the layout was skipped.`);
-      }
+      records.push(await this.resolveRecord(record, validation));
     }
     this.records = records;
     this.diagnostics = diagnostics.map(diagnostic).slice(0, 8);
@@ -306,29 +327,21 @@ export class CustomLayoutController {
   async importLayout(confirmReplace = async () => false) {
     const picked = await this.adapter.pickLayout();
     if (picked?.cancelled) return { status: "cancelled" };
-    const packaged = picked?.kind === "package";
-    const validation = packaged
-      ? validateLayoutPackage(picked?.content, picked?.assets)
-      : validateImportedLayout(picked?.content);
-    if (!validation.valid) {
-      if (packaged && picked?.token) await this.adapter.discardPackage(picked.token).catch(() => {});
-      throw new CustomLayoutError(validation.code, validation.error);
+    if (picked?.kind === "package") {
+      throw new CustomLayoutError("document-format-unsupported", "The .khlayout preview package format is no longer supported.");
     }
-    const digest = packaged ? picked?.digest : await sha256Hex(picked.content, this.crypto);
-    if (!DIGEST.test(digest ?? "")) {
-      if (packaged && picked?.token) await this.adapter.discardPackage(picked.token).catch(() => {});
-      throw new CustomLayoutError("invalid-package-digest", "The layout package could not be verified.");
-    }
+    const validation = validateImportedLayout(picked?.content);
+    if (!validation.valid) throw new CustomLayoutError(validation.code, validation.error);
+    const digest = await canonicalLayoutDigest(validation, this.crypto);
+    if (!DIGEST.test(digest ?? "")) throw new CustomLayoutError("invalid-layout-digest", "The layout could not be verified.");
     const duplicate = this.records.find((record) => record.digest === digest);
     if (duplicate) {
-      if (packaged) await this.adapter.discardPackage(picked.token).catch(() => {});
       await this.selectLayout(`custom:${duplicate.id}`);
       return { status: "duplicate", record: duplicate };
     }
     const normalizedName = normalizeCustomLayoutName(validation.definition.name);
     const existing = this.records.find((record) => record.normalizedName === normalizedName);
     if (existing && !await confirmReplace(existing, validation.definition)) {
-      if (packaged) await this.adapter.discardPackage(picked.token).catch(() => {});
       return { status: "cancelled-replacement", record: existing };
     }
     const stored = {
@@ -338,20 +351,14 @@ export class CustomLayoutController {
       normalizedName,
       digest,
       content: picked.content,
-      format: packaged ? "package" : "json",
-      assets: packaged ? validation.assets : [],
+      format: "json",
+      inlineAssets: await inlineAssetInventory(validation, this.crypto),
     };
     const previousSelection = layoutReferenceFromKey(this.viewerModel.snapshot().selectedLayoutKey);
     const nextSelection = layoutReferenceFromKey(`custom:${stored.id}`);
+    await this.adapter.writeSelection(nextSelection);
     try {
-      await this.adapter.writeSelection(nextSelection);
-    } catch (error) {
-      if (packaged) await this.adapter.discardPackage(picked.token).catch(() => {});
-      throw error;
-    }
-    try {
-      if (packaged) await this.adapter.commitPackage(picked.token, stored);
-      else await this.adapter.writeRecord(stored);
+      await this.adapter.writeRecord(stored);
     } catch (error) {
       if (previousSelection) await this.adapter.writeSelection(previousSelection).catch(() => {});
       throw error;

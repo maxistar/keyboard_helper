@@ -53,14 +53,15 @@ test("Android setup and bounded troubleshooting cover the release contract", asy
   }
 });
 
-test("Android guidance publishes the bounded mobile layout package contract", async () => {
+test("Android guidance publishes the bounded inline JSON asset contract", async () => {
   const [setup, faq] = await Promise.all([
     source("website/src/pages/setup.astro"),
     source("website/src/pages/faq.astro"),
   ]);
   const content = `${setup}\n${faq}`;
-  for (const phrase of [".khlayout", "manifest.json", "assets/", "PNG", "JPEG", "WebP", "2 MiB", "64 entries", "8 MiB", "1 MiB", "2048 × 2048", "private app storage"])
+  for (const phrase of ["keyboard-helper-layout", "embeddedAssets", "asset:&lt;id&gt;", "PNG", "JPEG", "WebP", "1 MiB", "128 KiB", "512 KiB", "16 assets", "256 × 256", "private app storage"])
     assert.ok(content.toLocaleLowerCase().includes(phrase.toLocaleLowerCase()), phrase);
-  assert.match(content, /never uploaded|never resolved/i);
+  assert.match(content, /never resolved/i);
   assert.match(content, /same custom name/i);
+  assert.match(content, /\.khlayout.*unsupported preview format/i);
 });

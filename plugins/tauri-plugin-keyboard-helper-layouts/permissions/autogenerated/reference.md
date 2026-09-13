@@ -7,9 +7,6 @@ Purpose-bounded custom layout import and private storage
 - `allow-pick-layout`
 - `allow-list-records`
 - `allow-write-record`
-- `allow-commit-package`
-- `allow-discard-package`
-- `allow-read-asset`
 - `allow-remove-record`
 - `allow-read-selection`
 - `allow-write-selection`
@@ -22,58 +19,6 @@ Purpose-bounded custom layout import and private storage
 <th>Description</th>
 </tr>
 
-
-<tr>
-<td>
-
-`keyboard-helper-layouts:allow-commit-package`
-
-</td>
-<td>
-
-Enables the commit_package command without any pre-configured scope.
-
-</td>
-</tr>
-
-<tr>
-<td>
-
-`keyboard-helper-layouts:deny-commit-package`
-
-</td>
-<td>
-
-Denies the commit_package command without any pre-configured scope.
-
-</td>
-</tr>
-
-<tr>
-<td>
-
-`keyboard-helper-layouts:allow-discard-package`
-
-</td>
-<td>
-
-Enables the discard_package command without any pre-configured scope.
-
-</td>
-</tr>
-
-<tr>
-<td>
-
-`keyboard-helper-layouts:deny-discard-package`
-
-</td>
-<td>
-
-Denies the discard_package command without any pre-configured scope.
-
-</td>
-</tr>
 
 <tr>
 <td>
@@ -123,32 +68,6 @@ Enables the pick_layout command without any pre-configured scope.
 <td>
 
 Denies the pick_layout command without any pre-configured scope.
-
-</td>
-</tr>
-
-<tr>
-<td>
-
-`keyboard-helper-layouts:allow-read-asset`
-
-</td>
-<td>
-
-Enables the read_asset command without any pre-configured scope.
-
-</td>
-</tr>
-
-<tr>
-<td>
-
-`keyboard-helper-layouts:deny-read-asset`
-
-</td>
-<td>
-
-Denies the read_asset command without any pre-configured scope.
 
 </td>
 </tr>

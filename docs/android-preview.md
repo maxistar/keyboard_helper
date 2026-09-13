@@ -68,9 +68,10 @@ telemetry. The Android companion follows keyboard state and never writes a remot
 - **Sequence gap:** the companion detected missed telemetry and resubscribes; reconnect if the state
   does not recover.
 - **Layout mismatch / layer unavailable:** choose the JSON layout that matches the keyboard
-  firmware, or import a matching text-only custom definition. The companion will not invent a
-  missing layer.
-- **Custom layout rejected:** confirm the file is valid Keyboard Helper JSON under 512 KiB and uses
-  text legends only. Existing bundled and valid custom layouts remain available after a failure.
+  firmware, or import a matching custom definition. The companion will not invent a missing layer.
+- **Custom layout rejected:** confirm the file is valid Keyboard Helper JSON under 1 MiB. Image
+  legends must use `keyboard-helper-layout` version `1`, `embeddedAssets`, and `asset:<id>` references
+  with non-animated PNG, JPEG, or WebP images within the documented inline limits. Existing bundled
+  and valid custom layouts remain available after a failure.
 - **Saved custom layout unavailable:** re-import a corrected source file. The app skips invalid
   private records and safely returns to the bundled default.

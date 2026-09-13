@@ -14,7 +14,11 @@ const EXTENSION_SERVICE_UUID = "b34a0001-e782-4706-8f9c-6c056c416507";
 const CAPABILITIES_CHARACTERISTIC_UUID = "b34a0003-e782-4706-8f9c-6c056c416507";
 
 const viewerModel = new MobileLayoutViewerModel();
-const customLayouts = new CustomLayoutController(viewerModel, new NativeLayoutAdapter());
+const customLayouts = new CustomLayoutController(viewerModel, new NativeLayoutAdapter(), {
+  createImageBitmap: globalThis.createImageBitmap?.bind(globalThis),
+  requireCompleteDecoding: true,
+});
+window.addEventListener("pagehide", () => customLayouts.dispose(), { once: true });
 
 try {
   const coordinator = new BleLifecycleCoordinator(

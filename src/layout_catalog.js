@@ -1,5 +1,11 @@
 import { BUILTIN_LAYOUT_FILES, normalizeConfig } from "./app_config.js";
-import { normalizeKeyEntry } from "./layout_semantics.js";
+import { resolveInlineLayoutAssets, verifyInlineAssetDecoding } from "./inline_asset_presentation.js";
+import {
+  collectLayoutImageReferences,
+  normalizeKeyEntry,
+  parseLayoutJson,
+  validateLayoutDefinition,
+} from "./layout_semantics.js";
 
 export {
   effectiveLayerEntry,
@@ -31,12 +37,23 @@ export async function loadLayoutDefinition(key, source, {
   },
   readExternal = null,
   builtinFiles = BUILTIN_LAYOUT_FILES,
+  urlApi = globalThis.URL,
+  BlobConstructor = globalThis.Blob,
+  createImageBitmapApi = globalThis.createImageBitmap,
+  requireCompleteDecoding = false,
 } = {}) {
   if (source === true) {
     const fileName = builtinFiles[key];
     if (!fileName) return { definition: null, error: `No builtin layout file mapped for key ${key}` };
     try {
-      return { definition: await fetchJson(fileName), error: null };
+      const definition = await fetchJson(fileName);
+      const validation = validateLayoutDefinition(definition);
+      if (!validation.valid) throw new Error(validation.error);
+      if (validation.inlineAssets && (requireCompleteDecoding || createImageBitmapApi)) {
+        await verifyInlineAssetDecoding(validation, { createImageBitmapApi, BlobConstructor });
+      }
+      const resolved = resolveInlineLayoutAssets(definition, { urlApi, BlobConstructor });
+      return { definition: resolved.definition, revoke: resolved.revoke, error: null };
     } catch (error) {
       return { definition: null, error: `Failed to load ${fileName}: ${error?.message ?? error}` };
     }
@@ -45,7 +62,17 @@ export async function loadLayoutDefinition(key, source, {
     if (!readExternal) return { definition: null, error: "Tauri API unavailable; cannot load external layout" };
     try {
       const raw = await readExternal(source);
-      return { definition: typeof raw === "string" ? JSON.parse(raw) : raw, error: null };
+      const definition = typeof raw === "string" ? parseLayoutJson(raw) : raw;
+      const validation = validateLayoutDefinition(definition);
+      if (!validation.valid) throw new Error(validation.error);
+      if (validation.inlineAssets && (requireCompleteDecoding || createImageBitmapApi)) {
+        await verifyInlineAssetDecoding(validation, { createImageBitmapApi, BlobConstructor });
+      }
+      const resolved = resolveInlineLayoutAssets(definition, { urlApi, BlobConstructor });
+      if (!resolved.validation.inlineAssets && collectLayoutImageReferences(definition).length) {
+        throw new Error("External JSON layouts may only use image legends through embedded asset references.");
+      }
+      return { definition: resolved.definition, revoke: resolved.revoke, error: null };
     } catch (error) {
       return { definition: null, error: `Failed to load external layout for ${key} from ${source}: ${error?.message ?? error}` };
     }
@@ -59,11 +86,15 @@ export async function loadLayoutCatalog(rawConfig, options = {}) {
   const sources = configured.length ? Object.fromEntries(configured) : { ...BUILTIN_LAYOUT_FILES };
   const definitions = {};
   const errors = [];
+  const revocations = [];
 
   for (const [key, source] of Object.entries(sources)) {
     const normalizedSource = configured.length ? source : true;
     const result = await loadLayoutDefinition(key, normalizedSource, options);
-    if (result.definition) definitions[key] = result.definition;
+    if (result.definition) {
+      definitions[key] = result.definition;
+      if (result.revoke) revocations.push(result.revoke);
+    }
     else if (result.error) errors.push(result.error);
   }
 
@@ -71,10 +102,19 @@ export async function loadLayoutCatalog(rawConfig, options = {}) {
     for (const key of Object.keys(BUILTIN_LAYOUT_FILES)) {
       const result = await loadLayoutDefinition(key, true, options);
       sources[key] = true;
-      if (result.definition) definitions[key] = result.definition;
+      if (result.definition) {
+        definitions[key] = result.definition;
+        if (result.revoke) revocations.push(result.revoke);
+      }
       else if (result.error) errors.push(result.error);
     }
   }
 
-  return { config, definitions, sources, errors };
+  return {
+    config,
+    definitions,
+    sources,
+    errors,
+    dispose: () => revocations.splice(0).forEach((revoke) => revoke()),
+  };
 }

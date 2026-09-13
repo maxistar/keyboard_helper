@@ -3,10 +3,7 @@ package me.maxistar.keyboardhelper.layouts
 import android.util.AtomicFile
 import java.io.File
 
-internal class LayoutRecordStore(
-    filesDirectory: File,
-    private val moveDirectory: (File, File) -> Boolean = { source, target -> source.renameTo(target) },
-) {
+internal class LayoutRecordStore(filesDirectory: File) {
     val legacyRecordsDirectory = File(filesDirectory, "custom-layouts-v1")
     val packageRecordsDirectory = File(filesDirectory, "custom-layout-packages-v1")
     val stagingDirectory = File(filesDirectory, "layout-package-staging-v1")
@@ -22,28 +19,6 @@ internal class LayoutRecordStore(
         packageRecordsDirectory.listFiles { file ->
             file.name.startsWith(".commit-") || file.name.startsWith(".backup-")
         }?.forEach { it.deleteRecursively() }
-    }
-
-    fun commitPackage(token: String, id: String, source: File, record: ByteArray) {
-        packageRecordsDirectory.mkdirs()
-        val commit = File(packageRecordsDirectory, ".commit-$token")
-        val target = packageRecordDirectory(id)
-        val backup = File(packageRecordsDirectory, ".backup-$id-$token")
-        commit.deleteRecursively()
-        backup.deleteRecursively()
-        if (!source.copyRecursively(commit, overwrite = false)) throw Exception("staging copy failed")
-        writeAtomic(File(commit, "record.json"), record)
-        if (target.exists() && !moveDirectory(target, backup)) {
-            commit.deleteRecursively()
-            throw Exception("backup failed")
-        }
-        if (!moveDirectory(commit, target)) {
-            if (backup.exists() && !moveDirectory(backup, target)) throw Exception("rollback failed")
-            commit.deleteRecursively()
-            throw Exception("promotion failed")
-        }
-        backup.deleteRecursively()
-        source.deleteRecursively()
     }
 
     fun removeRecord(id: String) {

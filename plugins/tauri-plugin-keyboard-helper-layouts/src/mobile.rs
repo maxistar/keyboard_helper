@@ -29,15 +29,6 @@ impl<R: Runtime> KeyboardHelperLayouts<R> {
     pub(crate) fn write_record(&self, record: StoredRecord) -> Result<()> {
         Ok(self.0.run_mobile_plugin("writeRecord", record)?)
     }
-    pub(crate) fn commit_package(&self, token: String, record: StoredRecord) -> Result<()> {
-        Ok(self.0.run_mobile_plugin("commitPackage", CommitPackageRequest { token, record })?)
-    }
-    pub(crate) fn discard_package(&self, token: String) -> Result<()> {
-        Ok(self.0.run_mobile_plugin("discardPackage", TokenRequest { token })?)
-    }
-    pub(crate) fn read_asset(&self, id: String, path: String) -> Result<AssetResponse> {
-        Ok(self.0.run_mobile_plugin("readAsset", AssetRequest { id, path })?)
-    }
     pub(crate) fn remove_record(&self, id: String) -> Result<()> {
         Ok(self.0.run_mobile_plugin("removeRecord", IdRequest { id })?)
     }
@@ -53,9 +44,3 @@ impl<R: Runtime> KeyboardHelperLayouts<R> {
 struct IdRequest {
     id: String,
 }
-
-#[derive(serde::Serialize)]
-struct TokenRequest { token: String }
-
-#[derive(serde::Serialize)]
-struct AssetRequest { id: String, path: String }

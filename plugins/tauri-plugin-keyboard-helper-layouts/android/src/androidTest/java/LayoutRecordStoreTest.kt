@@ -13,7 +13,6 @@ import java.util.UUID
 @RunWith(AndroidJUnit4::class)
 class LayoutRecordStoreTest {
     private val id = "11111111-1111-4111-8111-111111111111"
-    private val token = "22222222-2222-4222-8222-222222222222"
 
     private fun root(): File {
         val root = File(InstrumentationRegistry.getInstrumentation().targetContext.cacheDir, "record-store-${UUID.randomUUID()}")
@@ -21,82 +20,72 @@ class LayoutRecordStoreTest {
         return root
     }
 
-    private fun staged(root: File, marker: String): File = File(root, "source-$marker").also { directory ->
-        directory.mkdirs()
-        File(directory, "layout.json").writeText(marker)
-    }
-
-    @Test
-    fun legacyRecordsSurviveInitializationAndPackageCommitIsAtomic() {
-        val root = root()
-        val legacy = File(root, "custom-layouts-v1/$id.json")
-        legacy.parentFile!!.mkdirs()
-        legacy.writeText("legacy")
-
-        val store = LayoutRecordStore(root)
-        assertEquals("legacy", store.legacyRecordFile(id).readText())
-        store.commitPackage(token, id, staged(root, "new"), "record-new".toByteArray())
-
-        assertEquals("new", File(store.packageRecordDirectory(id), "layout.json").readText())
-        assertEquals("record-new", File(store.packageRecordDirectory(id), "record.json").readText())
-        assertTrue(legacy.exists())
-        root.deleteRecursively()
-    }
-
-    @Test
-    fun replacementFailureRollsBackAndSuccessfulReplacementRemovesBackup() {
-        val root = root()
-        val initial = LayoutRecordStore(root)
-        initial.commitPackage(token, id, staged(root, "old"), "record-old".toByteArray())
-
-        val failing = LayoutRecordStore(root) { source, target ->
-            if (source.name.startsWith(".commit-")) false else source.renameTo(target)
+    private fun inlineRecord(name: String = "Inline"): String = """
+        {
+          "schemaVersion":2,
+          "id":"$id",
+          "name":"$name",
+          "normalizedName":"${name.lowercase()}",
+          "digest":"${"a".repeat(64)}",
+          "content":"{\"name\":\"$name\"}",
+          "format":"json",
+          "assets":[],
+          "inlineAssets":[{
+            "id":"logo",
+            "mimeType":"image/png",
+            "sizeBytes":4,
+            "width":1,
+            "height":1,
+            "digest":"${"b".repeat(64)}"
+          }]
         }
-        var failed = false
-        try { failing.commitPackage(token, id, staged(root, "failed"), "record-failed".toByteArray()) }
-        catch (_: Exception) { failed = true }
-        assertTrue(failed)
-        assertEquals("old", File(failing.packageRecordDirectory(id), "layout.json").readText())
-        assertEquals("record-old", File(failing.packageRecordDirectory(id), "record.json").readText())
+    """.trimIndent()
 
-        val recovered = LayoutRecordStore(root)
-        recovered.commitPackage(token, id, staged(root, "replacement"), "record-replacement".toByteArray())
-        assertEquals("replacement", File(recovered.packageRecordDirectory(id), "layout.json").readText())
-        assertFalse(recovered.packageRecordsDirectory.listFiles().orEmpty().any { it.name.startsWith(".") })
+    @Test
+    fun inlineJsonRecordsAreWrittenAtomicallyAndReplacedInPlace() {
+        val root = root()
+        val store = LayoutRecordStore(root)
+        val target = store.legacyRecordFile(id)
+
+        store.writeAtomic(target, inlineRecord("Inline").toByteArray())
+        assertTrue(target.isFile)
+        assertTrue(target.readText().contains("\"inlineAssets\""))
+
+        store.writeAtomic(target, inlineRecord("Replacement").toByteArray())
+        assertTrue(target.readText().contains("Replacement"))
+        assertFalse(target.parentFile!!.listFiles().orEmpty().any { it.name.endsWith(".bak") })
         root.deleteRecursively()
     }
 
     @Test
-    fun removalDeletesOnlyTheTargetRecordAndOwnedAssets() {
+    fun removalDeletesInlineRecordAndObsoletePackageAssetsForSameIdentity() {
         val root = root()
         val store = LayoutRecordStore(root)
-        store.commitPackage(token, id, staged(root, "owned"), "record".toByteArray())
-        val otherId = "33333333-3333-4333-8333-333333333333"
-        store.commitPackage("44444444-4444-4444-8444-444444444444", otherId, staged(root, "other"), "other-record".toByteArray())
-        store.legacyRecordFile(id).also { it.parentFile!!.mkdirs(); it.writeText("legacy") }
+        store.writeAtomic(store.legacyRecordFile(id), inlineRecord().toByteArray())
+        File(store.packageRecordDirectory(id), "assets/key.png").also { it.parentFile!!.mkdirs(); it.writeText("obsolete") }
 
         store.removeRecord(id)
 
-        assertFalse(store.packageRecordDirectory(id).exists())
         assertFalse(store.legacyRecordFile(id).exists())
-        assertTrue(store.packageRecordDirectory(otherId).exists())
+        assertFalse(store.packageRecordDirectory(id).exists())
         root.deleteRecursively()
     }
 
     @Test
     fun startupCleanupRemovesOnlyAbandonedTransactionDirectories() {
         val root = root()
+        val token = "22222222-2222-4222-8222-222222222222"
         File(root, "layout-package-staging-v1/abandoned/file").also { it.parentFile!!.mkdirs(); it.writeText("temporary") }
         File(root, "custom-layout-packages-v1/.commit-$token/file").also { it.parentFile!!.mkdirs(); it.writeText("temporary") }
         File(root, "custom-layout-packages-v1/.backup-$id-$token/file").also { it.parentFile!!.mkdirs(); it.writeText("temporary") }
-        File(root, "custom-layout-packages-v1/$id/record.json").also { it.parentFile!!.mkdirs(); it.writeText("committed") }
+        File(root, "custom-layout-packages-v1/$id/record.json").also { it.parentFile!!.mkdirs(); it.writeText("obsolete committed package") }
 
         val store = LayoutRecordStore(root)
 
         assertFalse(store.stagingDirectory.exists())
         assertFalse(File(store.packageRecordsDirectory, ".commit-$token").exists())
         assertFalse(File(store.packageRecordsDirectory, ".backup-$id-$token").exists())
-        assertEquals("committed", File(store.packageRecordDirectory(id), "record.json").readText())
+        assertEquals("obsolete committed package", File(store.packageRecordDirectory(id), "record.json").readText())
         root.deleteRecursively()
     }
 }
