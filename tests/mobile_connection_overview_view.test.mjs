@@ -209,7 +209,7 @@ test("mobile overview source stays within the read-only foreground product bound
   assert.match(css, /min-height:\s*44px/);
   assert.match(css, /@media \(max-width: 480px\)/);
   assert.match(css, /@media \(orientation: landscape\) and \(max-height: 520px\)/);
-  assert.match(css, /safe-area-inset/);
+  assert.doesNotMatch(css, /safe-area-inset/);
   assert.match(css, /overflow-x:\s*hidden/);
   const source = `${app}\n${view}\n${model}\n${evidence}`;
   assert.doesNotMatch(source, /localStorage|sessionStorage|indexedDB|WebSocket|EventSource|fetch\(|XMLHttpRequest|subscribeNotifications|write\(|setInterval|foreground service/i);

@@ -173,6 +173,25 @@ test("inline image JSON import resolves process-local object URLs without native
   assert.ok(!adapter.calls.some(([name]) => name === "read-asset"));
 });
 
+test("custom import creates a baseline-compatible identity without crypto.randomUUID", async () => {
+  const adapter = new MemoryAdapter({ picker: { cancelled: false, content: JSON.stringify(definition()) } });
+  const baselineCrypto = {
+    subtle: webcrypto.subtle,
+    getRandomValues(bytes) {
+      bytes.set(Array.from({ length: 16 }, (_, index) => index));
+      return bytes;
+    },
+  };
+  const model = new MobileLayoutViewerModel();
+  const controller = new CustomLayoutController(model, adapter, { crypto: baselineCrypto, Blob });
+
+  await controller.initialize();
+  const imported = await controller.importLayout();
+
+  assert.equal(imported.record.id, "00010203-0405-4607-8809-0a0b0c0d0e0f");
+  assert.equal(model.snapshot().selectedLayoutKey, "custom:00010203-0405-4607-8809-0a0b0c0d0e0f");
+});
+
 test("inline image URLs stay alive across selection switches and revoke on removal", async () => {
   const stored = await inlineRecord();
   const adapter = new MemoryAdapter({ records: [stored], selection: { schemaVersion: 1, source: "custom", id: FIRST_ID } });

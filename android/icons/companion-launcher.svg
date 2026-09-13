@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" role="img" aria-labelledby="title description">
+  <title id="title">Keyboard Helper Companion launcher icon</title>
+  <desc id="description">Six rounded keyboard keys in two subtly offset rows.</desc>
+  <rect data-role="background" x="0" y="0" width="108" height="108" fill="#0F172A" />
+  <rect data-key="1" x="25" y="35" width="16" height="16" rx="4" fill="#2DD4BF" />
+  <rect data-key="2" x="46" y="35" width="16" height="16" rx="4" fill="#2DD4BF" />
+  <rect data-key="3" x="67" y="35" width="16" height="16" rx="4" fill="#2DD4BF" />
+  <rect data-key="4" x="29" y="57" width="16" height="16" rx="4" fill="#2DD4BF" />
+  <rect data-key="5" x="50" y="57" width="16" height="16" rx="4" fill="#FBBF24" />
+  <rect data-key="6" x="71" y="57" width="16" height="16" rx="4" fill="#2DD4BF" />
+</svg>

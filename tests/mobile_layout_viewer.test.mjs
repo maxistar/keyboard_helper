@@ -234,7 +234,7 @@ test("viewer markup, styles, and modules enforce responsive accessible isolation
   assert.match(css, /min-height:\s*44px/);
   assert.match(css, /max-width:\s*100%/);
   assert.match(css, /overflow-x:\s*auto/);
-  assert.match(css, /safe-area-inset/);
+  assert.doesNotMatch(css, /safe-area-inset/);
   assert.match(css, /@media \(max-width: 480px\)/);
   assert.match(css, /@media \(orientation: landscape\) and \(max-height: 520px\)/);
   assert.doesNotMatch(`${modelSource}\n${viewSource}`, /localStorage|sessionStorage|indexedDB|WebSocket|EventSource|fetch\(|XMLHttpRequest|invoke\(|startScan|requestPermission|connectSelected|subscribeNotifications|write\(/);

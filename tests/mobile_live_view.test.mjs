@@ -174,7 +174,7 @@ test("Live UI source preserves accessibility, responsive containment, privacy, a
   assert.match(html, /aria-label="Layout presentation mode"/);
   assert.match(html, /viewer-stream-status[\s\S]*aria-live="polite"/);
   assert.match(css, /min-height:\s*44px/);
-  assert.match(css, /safe-area-inset/);
+  assert.doesNotMatch(css, /safe-area-inset/);
   assert.match(css, /@media \(max-width: 480px\)/);
   assert.match(css, /@media \(orientation: landscape\) and \(max-height: 520px\)/);
   assert.match(css, /overflow-x:\s*auto/);

@@ -8,6 +8,7 @@ import {
   normalizeLayerData,
   validateLayoutDefinition,
 } from "./layout_semantics.generated.js";
+import { hasOwn } from "./webview_compat.js";
 
 export const ViewerCatalogStatus = Object.freeze({ READY: "ready", EMPTY: "empty" });
 export const VIEWER_DIAGNOSTIC_LIMIT = 180;
@@ -81,7 +82,7 @@ export function createMobileLayoutCatalog({
   for (const record of customRecords) {
     const key = `${CUSTOM_LAYOUT_KEY_PREFIX}${record.id}`;
     const validation = validateLayoutDefinition(record.definition);
-    if (!record.id || Object.hasOwn(validDefinitions, key) || !validation.valid) {
+    if (!record.id || hasOwn(validDefinitions, key) || !validation.valid) {
       diagnostics.push(boundedDiagnostic(`${record.name ?? "Custom layout"}: ${validation.error ?? "invalid identity"}`));
       continue;
     }
@@ -97,7 +98,7 @@ export function createMobileLayoutCatalog({
       layerNames: [...layerData.names],
     });
   }
-  const selectedLayoutKey = Object.hasOwn(validDefinitions, defaultLayoutKey)
+  const selectedLayoutKey = hasOwn(validDefinitions, defaultLayoutKey)
     ? defaultLayoutKey
     : layouts[0]?.key ?? null;
   return deepFreeze({
@@ -216,7 +217,7 @@ export class MobileLayoutViewerModel {
   }
 
   selectLayout(layoutKey) {
-    if (!Object.hasOwn(this.catalog.definitions, layoutKey)) {
+    if (!hasOwn(this.catalog.definitions, layoutKey)) {
       throw new LayoutViewerError("invalid-layout", "Choose an available bundled layout.");
     }
     if (layoutKey === this.state.selectedLayoutKey && this.state.selectedLayerIndex === 0) return this.state;
@@ -238,7 +239,7 @@ export class MobileLayoutViewerModel {
     }
     this.catalog = catalog;
     const fallback = catalog.selectedLayoutKey;
-    const resolved = selectedLayoutKey && Object.hasOwn(catalog.definitions, selectedLayoutKey)
+    const resolved = selectedLayoutKey && hasOwn(catalog.definitions, selectedLayoutKey)
       ? selectedLayoutKey
       : fallback;
     return this.publish(this.buildSnapshot(resolved, 0));

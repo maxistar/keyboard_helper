@@ -118,7 +118,7 @@ test("mobile native entry registers only target-gated companion adapters", async
   assert.match(cargoToml, /cfg\(target_os = "android"\)[\s\S]*tauri-plugin-keyboard-helper-layouts/);
   assert.match(
     cargoToml,
-    /\[dependencies\]\s*tauri = \{ version = "2", features = \["macos-private-api", "tray-icon"\] \}/,
+    /\[dependencies\]\s*tauri = \{ version = "2", features = \[\s*"tray-icon"\] \}/,
   );
   assert.match(cargoToml, /cfg\(target_os = "macos"\)[\s\S]*macos-private-api/);
 });
@@ -154,11 +154,15 @@ test("generated mobile projects remain reproducible ignored state", async () => 
   assert.match(gitignore, /^src-tauri\/gen$/m);
   assert.equal(
     packageJson.scripts["android:init"],
-    "tauri android init --ci --skip-targets-install",
+    "tauri android init --ci --skip-targets-install && npm run android:sync-project",
   );
-  assert.equal(packageJson.scripts["android:dev"], "tauri android dev");
+  assert.equal(packageJson.scripts["android:sync-project"], "node scripts/android-project.mjs");
+  assert.equal(packageJson.scripts["android:sync-icons"], "node scripts/android-launcher-icons.mjs");
+  assert.equal(packageJson.scripts["android:sync-runtime"], "node scripts/android-runtime.mjs");
+  assert.equal(packageJson.scripts["android:dev"], "npm run android:sync-project && tauri android dev");
   assert.equal(
     packageJson.scripts["android:build"],
-    "tauri android build --debug --target aarch64 --apk true --aab false --ci",
+    "npm run android:sync-project && tauri android build --debug --target aarch64 --apk true --aab false --ci",
   );
+  assert.match(packageJson.scripts["android:build:release"], /^npm run android:sync-project &&/);
 });

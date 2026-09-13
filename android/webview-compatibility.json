@@ -1,0 +1,6 @@
+{
+  "androidApiLevel": 30,
+  "webViewMajor": 91,
+  "observedWebViewVersion": "91.0.4472.114",
+  "compatibilityBoundary": "src-mobile/webview_compat.js"
+}

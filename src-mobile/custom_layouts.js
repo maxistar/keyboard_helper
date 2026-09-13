@@ -2,6 +2,7 @@ import {
   MOBILE_BUNDLED_LAYOUT_DEFINITIONS,
   MOBILE_BUNDLED_LAYOUT_ORDER,
 } from "./bundled_layout_definitions.js";
+import { createRandomUuid, hasOwn } from "./webview_compat.js";
 import {
   canonicalJson,
   canonicalLayoutDigestInput,
@@ -204,7 +205,7 @@ export class CustomLayoutController {
     this.viewerModel = viewerModel;
     this.adapter = adapter;
     this.crypto = options.crypto ?? globalThis.crypto;
-    this.randomUUID = options.randomUUID ?? (() => globalThis.crypto.randomUUID());
+    this.randomUUID = options.randomUUID ?? (() => createRandomUuid(this.crypto));
     this.sourceBundledDefinitions = options.bundledDefinitions ?? MOBILE_BUNDLED_LAYOUT_DEFINITIONS;
     this.bundledDefinitions = this.sourceBundledDefinitions;
     this.bundledOrder = options.bundledOrder ?? MOBILE_BUNDLED_LAYOUT_ORDER;
@@ -308,7 +309,7 @@ export class CustomLayoutController {
     this.diagnostics = diagnostics.map(diagnostic).slice(0, 8);
     const catalog = this.buildCatalog();
     const requested = validSelectionShape(saved?.selection) ? layoutKeyFromReference(saved.selection) : null;
-    const selected = requested && Object.hasOwn(catalog.definitions, requested)
+    const selected = requested && hasOwn(catalog.definitions, requested)
       ? requested
       : catalog.selectedLayoutKey;
     this.viewerModel.replaceCatalog(catalog, selected);
@@ -317,7 +318,7 @@ export class CustomLayoutController {
   }
 
   async selectLayout(layoutKey) {
-    if (!Object.hasOwn(this.viewerModel.catalog.definitions, layoutKey)) {
+    if (!hasOwn(this.viewerModel.catalog.definitions, layoutKey)) {
       throw new CustomLayoutError("invalid-layout", "Choose an available layout.");
     }
     await this.adapter.writeSelection(layoutReferenceFromKey(layoutKey));
