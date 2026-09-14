@@ -732,6 +732,12 @@ async function openTypingInvaders() {
   return true;
 }
 
+async function openKeyboardSnake() {
+  if (!tauriHandle?.core?.invoke) throw new Error("Keyboard Snake requires the desktop application.");
+  await tauriHandle.core.invoke("open_keyboard_snake");
+  return true;
+}
+
 async function openSettingsWindow() {
   if (!tauriHandle?.core?.invoke) {
     throw new Error("Settings require the desktop application.");
@@ -934,6 +940,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     reloadLayout: reloadCurrentLayout,
     reconnectBle: reconnectCurrentBle,
     openTypingInvaders,
+    openKeyboardSnake,
     openKeyboardSelfTest,
     enterMiniMode,
     openSettings: openSettingsWindow,
@@ -948,6 +955,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     onReconnectBle: () => menuStateController.reconnect(),
     onMiniMode: () => menuStateController.mini(),
     onStartGame: () => menuStateController.launchGame(),
+    onStartSnake: () => menuStateController.launchSnake(),
     onSettings: () => menuStateController.settings(),
     onHelp: () => menuStateController.help(),
     onLanguageSelect: selectLanguage,

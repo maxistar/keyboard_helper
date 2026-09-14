@@ -1,6 +1,7 @@
 export const SECONDARY_WINDOWS = Object.freeze({
   settings: Object.freeze({ label: "settings", page: "settings.html", capability: "settings" }),
   typingInvaders: Object.freeze({ label: "typing-invaders", page: "game.html", capability: "typing-invaders" }),
+  keyboardSnake: Object.freeze({ label: "keyboard-snake", page: "keyboard-snake.html", capability: "keyboard-snake" }),
   selfTest: Object.freeze({ label: "keyboard-self-test", page: "self-test.html", capability: "self-test" }),
 });
 

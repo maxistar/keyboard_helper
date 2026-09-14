@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Keyboard Snake</title>
+  <link rel="stylesheet" href="keyboard_snake/game.css" />
+</head>
+<body class="snake-page" data-game-phase="ready">
+  <main class="snake-shell" aria-labelledby="snakeTitle">
+    <header class="snake-header">
+      <div>
+        <span class="snake-kicker">Keyboard Helper Arcade</span>
+        <h1 id="snakeTitle">Keyboard Snake</h1>
+      </div>
+      <dl class="snake-hud" aria-label="Current run">
+        <div><dt>Score</dt><dd id="snakeScore">0</dd></div>
+        <div><dt>Food</dt><dd id="snakeFoodCount">0</dd></div>
+        <div><dt>Mistakes</dt><dd id="snakeMistakes">0</dd></div>
+        <div><dt>Accuracy</dt><dd id="snakeAccuracy">100%</dd></div>
+        <div><dt>Time</dt><dd id="snakeDuration">0:00</dd></div>
+      </dl>
+    </header>
+
+    <section class="snake-target-panel" aria-labelledby="snakeTargetLabel">
+      <span id="snakeStatus" class="snake-state" role="status" aria-live="polite">Ready</span>
+      <span id="snakeTargetLabel">Type to arm food</span>
+      <strong class="snake-target" aria-live="polite">
+        <span id="snakeTargetCompleted" class="snake-target-completed"></span><span id="snakeTargetRemaining"></span>
+      </strong>
+      <span id="snakeFeedback" role="status" aria-live="polite">Type the target to arm the food.</span>
+    </section>
+
+    <section class="snake-stage">
+      <div id="snakeBoard" class="snake-board" role="img" aria-label="Snake board"></div>
+      <section id="snakeOverlay" class="snake-overlay visible" aria-live="polite">
+        <div class="snake-card">
+          <h2 id="snakeOverlayTitle">Keyboard Snake</h2>
+          <p id="snakeOverlayDescription">Steer with arrows and type the target to arm food.</p>
+          <div id="snakeRules" class="snake-rules">
+            <h3>How to play</h3>
+            <ol>
+              <li>Press the arrow keys to steer the snake.</li>
+              <li>Type the single character shown above the board to arm the food.</li>
+              <li>Reach the armed, glowing food to grow and score.</li>
+              <li>Cross an edge to appear on the opposite side of the board.</li>
+              <li>Press <kbd>Esc</kbd> whenever you want to pause.</li>
+            </ol>
+            <p>The beginner pace gives you almost a full second between moves.</p>
+          </div>
+          <dl id="snakeFinalResults" class="snake-results" hidden>
+            <div><dt>Score</dt><dd id="snakeFinalScore">0</dd></div>
+            <div><dt>Food</dt><dd id="snakeFinalFood">0</dd></div>
+            <div><dt>Correct</dt><dd id="snakeFinalCorrect">0</dd></div>
+            <div><dt>Mistakes</dt><dd id="snakeFinalMistakes">0</dd></div>
+            <div><dt>Accuracy</dt><dd id="snakeFinalAccuracy">100%</dd></div>
+            <div><dt>Active time</dt><dd id="snakeFinalDuration">0:00</dd></div>
+          </dl>
+          <button id="snakePrimaryAction" type="button">Start game</button>
+        </div>
+      </section>
+    </section>
+
+    <footer class="snake-controls">
+      <span><kbd>Arrow keys</kbd> steer</span>
+      <span><kbd>Esc</kbd> pause/resume</span>
+      <button id="snakePause" type="button" disabled>Pause</button>
+    </footer>
+  </main>
+  <script type="module" src="keyboard_snake/game.js"></script>
+</body>
+</html>

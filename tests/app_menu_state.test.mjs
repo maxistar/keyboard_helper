@@ -18,6 +18,7 @@ function createHarness(overrides = {}) {
     reconnectCalls: [],
     helpCalls: [],
     gameCalls: 0,
+    snakeCalls: 0,
     selfTestCalls: [],
     miniCalls: 0,
     settingsCalls: 0,
@@ -41,6 +42,10 @@ function createHarness(overrides = {}) {
     },
     openTypingInvaders: async () => {
       data.gameCalls += 1;
+      return true;
+    },
+    openKeyboardSnake: async () => {
+      data.snakeCalls += 1;
       return true;
     },
     openKeyboardSelfTest: async (key) => {
@@ -311,6 +316,50 @@ test("game launch requires native availability, prevents duplicates, and reports
   });
   assert.equal(await failing.launchGame(), false);
   assert.equal(failing.getSnapshot().feedback.message, "Window unavailable");
+});
+
+test("Snake launch is desktop-only, serialized, and exposes launch failures", async () => {
+  let finishLaunch;
+  const pending = new Promise((resolve) => { finishLaunch = resolve; });
+  const base = createHarness();
+  const controller = createAppMenuStateController({
+    getCurrentLayoutKey: () => base.data.currentKey,
+    getCurrentLayoutLabel: (key) => key,
+    getCurrentLayoutSource: () => true,
+    getCurrentBleSource: () => null,
+    hasNativeBridge: () => true,
+    reloadLayout: async () => true,
+    reconnectBle: async () => true,
+    openTypingInvaders: async () => true,
+    openKeyboardSnake: async () => pending,
+    openHelp: async () => true,
+  });
+  const first = controller.launchSnake();
+  assert.equal(controller.getSnapshot().snakePending, true);
+  assert.equal(await controller.launchSnake(), false);
+  finishLaunch(true);
+  assert.equal(await first, true);
+  assert.equal(controller.getSnapshot().snakePending, false);
+
+  const unavailable = createHarness({ native: false });
+  assert.equal(unavailable.controller.getSnapshot().snakeAvailable, false);
+  assert.equal(await unavailable.controller.launchSnake(), false);
+  assert.equal(unavailable.data.snakeCalls, 0);
+
+  const failing = createAppMenuStateController({
+    getCurrentLayoutKey: () => "builtin",
+    getCurrentLayoutLabel: () => "Built in",
+    getCurrentLayoutSource: () => true,
+    getCurrentBleSource: () => null,
+    hasNativeBridge: () => true,
+    reloadLayout: async () => true,
+    reconnectBle: async () => true,
+    openTypingInvaders: async () => true,
+    openKeyboardSnake: async () => { throw new Error("Snake window unavailable"); },
+    openHelp: async () => true,
+  });
+  assert.equal(await failing.launchSnake(), false);
+  assert.equal(failing.getSnapshot().feedback.message, "Snake window unavailable");
 });
 
 test("Settings requires native availability, prevents duplicates, and reports failure", async () => {

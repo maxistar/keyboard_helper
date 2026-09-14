@@ -20,6 +20,7 @@ export function createMenu({
   onReconnectBle,
   onMiniMode,
   onStartGame,
+  onStartSnake = async () => false,
   onSettings,
   onHelp,
   onLanguageSelect = async () => false,
@@ -44,6 +45,8 @@ export function createMenu({
     reconnectPending: false,
     gameAvailable: false,
     gamePending: false,
+    snakeAvailable: false,
+    snakePending: false,
     miniAvailable: false,
     miniPending: false,
     settingsAvailable: false,
@@ -83,16 +86,20 @@ export function createMenu({
   let selfTestButton;
   let reconnectButton;
   let gameButton;
+  let snakeButton;
+  let gamesButton;
+  let gamesFlyout;
   let miniButton;
   let settingsButton;
   let rootFeedback;
   let keyboardFeedback;
   let connectionFeedback;
+  let gamesFeedback;
 
   const layoutButtons = new Map();
   const languageButtons = new Map();
   const rootItems = [];
-  const flyoutItems = { keyboard: [], language: [], connection: [] };
+  const flyoutItems = { keyboard: [], language: [], connection: [], games: [] };
   const submenuButtons = {};
   const submenus = {};
 
@@ -426,6 +433,9 @@ export function createMenu({
     ));
     connectionButton.id = "connectionMenuParent";
 
+    ({ button: gamesButton } = createSubmenuParent("games", "Games", "gamesMenuFlyout"));
+    gamesButton.id = "gamesMenuParent";
+
     miniButton = createRootItem("Mini Mode", "menu-action-mini");
     miniButton.addEventListener("click", async () => {
       feedbackContext = "root";
@@ -434,13 +444,16 @@ export function createMenu({
     });
     attachItemKeyboard(miniButton, rootItems);
 
-    gameButton = createRootItem("Shift-Space Invaders", "menu-action-game");
-    gameButton.addEventListener("click", async () => {
-      feedbackContext = "root";
+    gameButton = createFlyoutAction("Shift-Space Invaders", "menu-action-game", "games", async () => {
+      feedbackContext = activeSubmenu === "games" ? "games" : "root";
       const opened = await onStartGame();
       if (opened !== false) closeMenu();
     });
-    attachItemKeyboard(gameButton, rootItems);
+    snakeButton = createFlyoutAction("Keyboard Snake", "menu-action-snake", "games", async () => {
+      feedbackContext = activeSubmenu === "games" ? "games" : "root";
+      const opened = await onStartSnake();
+      if (opened !== false) closeMenu();
+    });
 
     settingsButton = createRootItem("Settings", "menu-action-settings");
     settingsButton.addEventListener("click", async () => {
@@ -464,12 +477,15 @@ export function createMenu({
       languageButton,
       connectionButton,
       miniButton,
-      gameButton,
+      gamesButton,
       settingsButton,
       helpButton,
       rootFeedback,
     );
 
+    gamesFlyout = createFlyout("games", "gamesMenuFlyout", "gamesMenuParent");
+    gamesFeedback = createFeedback("menu-feedback-games");
+    gamesFlyout.append(gameButton, snakeButton, gamesFeedback);
     keyboardFlyout = createFlyout("keyboard", "keyboardMenuFlyout", "keyboardMenuParent");
     const keyboardHeader = document.createElement("header");
     keyboardHeader.className = "menu-flyout-header";
@@ -579,7 +595,7 @@ export function createMenu({
     connectionFeedback = createFeedback("menu-feedback-connection");
     connectionFlyout.append(connectionHeader, reconnectButton, connectionFeedback);
 
-    appMenu.append(menuToggle, rootMenu, keyboardFlyout, languageFlyout, connectionFlyout);
+    appMenu.append(menuToggle, rootMenu, keyboardFlyout, languageFlyout, connectionFlyout, gamesFlyout);
     mount.appendChild(appMenu);
   }
 
@@ -627,12 +643,14 @@ export function createMenu({
   function renderFeedback() {
     if (state.reloadPending || state.selfTestPending) feedbackContext = "keyboard";
     else if (state.reconnectPending) feedbackContext = "connection";
-    else if (state.miniPending || state.gamePending || state.settingsPending) feedbackContext = "root";
+    else if (state.gamePending || state.snakePending) feedbackContext = activeSubmenu === "games" ? "games" : "root";
+    else if (state.miniPending || state.settingsPending) feedbackContext = "root";
 
     const targets = {
       root: rootFeedback,
       keyboard: keyboardFeedback,
       connection: connectionFeedback,
+      games: gamesFeedback,
     };
     Object.values(targets).forEach((element) => {
       element.textContent = "";
@@ -714,7 +732,12 @@ export function createMenu({
     gameButton.disabled = !state.gameAvailable || state.gamePending;
     gameButton.textContent = state.gamePending ? "Launching…" : "Shift-Space Invaders";
     gameButton.title = state.gameAvailable
-      ? "Open the typing arcade in a separate window"
+      ? "Open Shift-Space Invaders in a separate window"
+      : "Available in the desktop application";
+    snakeButton.disabled = !state.snakeAvailable || state.snakePending;
+    snakeButton.textContent = state.snakePending ? "Launching…" : "Keyboard Snake";
+    snakeButton.title = state.snakeAvailable
+      ? "Open Keyboard Snake in a separate window"
       : "Available in the desktop application";
 
     settingsButton.disabled = !state.settingsAvailable || state.settingsPending;
@@ -726,6 +749,7 @@ export function createMenu({
     const selected = layoutButtons.get(state.currentLayoutKey);
     setRovingItem(flyoutItems.keyboard, selected ?? enabledItems(flyoutItems.keyboard)[0]);
     setRovingItem(flyoutItems.connection, enabledItems(flyoutItems.connection)[0]);
+    setRovingItem(flyoutItems.games, enabledItems(flyoutItems.games)[0]);
     setRovingItem(
       flyoutItems.language,
       languageButtons.get(state.currentInputSourceId) ?? enabledItems(flyoutItems.language)[0],

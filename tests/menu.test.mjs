@@ -231,7 +231,7 @@ function createEnvironment(callbacks = {}) {
   globalThis.document = document;
   globalThis.window = window;
   let controls;
-  const calls = { layout: [], language: [], reload: 0, selfTest: 0, reconnect: 0, mini: 0, game: 0, settings: 0, help: 0 };
+  const calls = { layout: [], language: [], reload: 0, selfTest: 0, reconnect: 0, mini: 0, game: 0, snake: 0, settings: 0, help: 0 };
   const layoutOptions = [
     { key: "alpha", label: "Alpha" },
     { key: "beta", label: "Beta" },
@@ -262,6 +262,10 @@ function createEnvironment(callbacks = {}) {
     }),
     onStartGame: callbacks.onStartGame ?? (async () => {
       calls.game += 1;
+      return true;
+    }),
+    onStartSnake: callbacks.onStartSnake ?? (async () => {
+      calls.snake += 1;
       return true;
     }),
     onSettings: callbacks.onSettings ?? (async () => {
@@ -506,6 +510,27 @@ test("contextual flyouts switch exclusively and actions preserve their close beh
     await env.document.querySelector(".menu-action-help").click();
     assert.equal(env.calls.help, 1);
     assert.equal(root.classList.contains("open"), false);
+  } finally {
+    env.restore();
+  }
+});
+
+test("Games flyout exposes both desktop games and keeps launch errors in context", async () => {
+  const env = createEnvironment({ onStartSnake: async () => false });
+  try {
+    env.controls.update({ gameAvailable: true, snakeAvailable: true });
+    const toggle = env.document.querySelector(".menu-toggle");
+    const gamesParent = env.document.querySelector(".menu-parent-games");
+    const gamesFlyout = env.document.querySelector(".menu-flyout-games");
+    await toggle.click();
+    await gamesParent.click();
+    assert.equal(gamesFlyout.classList.contains("open"), true);
+    assert.equal(env.document.querySelector(".menu-action-game").disabled, false);
+    assert.equal(env.document.querySelector(".menu-action-snake").disabled, false);
+    await env.document.querySelector(".menu-action-snake").click();
+    env.controls.update({ feedback: { kind: "error", message: "Snake window unavailable" } });
+    assert.equal(gamesFlyout.classList.contains("open"), true);
+    assert.equal(env.document.querySelector(".menu-feedback-games").textContent, "Snake window unavailable");
   } finally {
     env.restore();
   }

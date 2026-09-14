@@ -19,6 +19,7 @@ export function createAppMenuStateController({
   reloadLayout,
   reconnectBle,
   openTypingInvaders,
+  openKeyboardSnake = async () => false,
   openKeyboardSelfTest = async () => false,
   enterMiniMode = async () => false,
   openSettings,
@@ -30,6 +31,7 @@ export function createAppMenuStateController({
   let reloadPending = false;
   let reconnectPending = false;
   let gamePending = false;
+  let snakePending = false;
   let selfTestPending = false;
   let miniPending = false;
   let settingsPending = false;
@@ -59,6 +61,8 @@ export function createAppMenuStateController({
       reconnectPending,
       gameAvailable: hasNativeBridge(),
       gamePending,
+      snakeAvailable: hasNativeBridge(),
+      snakePending,
       selfTestAvailable: hasNativeBridge(),
       selfTestPending,
       miniAvailable: hasNativeBridge(),
@@ -207,6 +211,19 @@ export function createAppMenuStateController({
     }
   }
 
+  async function launchSnake() {
+    if (snakePending || !hasNativeBridge()) return false;
+    snakePending = true; feedback = null; notify();
+    try {
+      const result = await openKeyboardSnake();
+      if (result === false) throw new Error("Keyboard Snake could not be opened.");
+      return true;
+    } catch (error) {
+      feedback = { kind: "error", message: errorMessage(error, "Failed to open Keyboard Snake.") };
+      return false;
+    } finally { snakePending = false; notify(); }
+  }
+
   async function selfTest() {
     if (selfTestPending || !hasNativeBridge()) return false;
     selfTestPending = true;
@@ -281,6 +298,7 @@ export function createAppMenuStateController({
     reload,
     reconnect,
     launchGame,
+    launchSnake,
     selfTest,
     mini,
     settings,
