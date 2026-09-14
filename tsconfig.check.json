@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": true,
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true
+  },
+  "files": [
+    "src/input_events.js",
+    "src/ble_keyboard_decoder.js",
+    "src/input_source_sync_config.js",
+    "src/input_source_layer_reconciler.js",
+    "src/input_source_controller.js",
+    "type-fixtures/contracts.js"
+  ]
+}

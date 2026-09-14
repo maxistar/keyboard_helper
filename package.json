@@ -7,8 +7,9 @@
     "sync:mobile-layouts": "node scripts/sync-mobile-layouts.mjs",
     "embed:inline-layout-assets": "node scripts/embed-inline-layout-assets.mjs",
     "lint": "eslint src src-mobile tests scripts",
+    "typecheck": "node scripts/verify-typescript-scope.mjs && tsc --project tsconfig.check.json",
     "test": "node scripts/run-js-tests.mjs",
-    "check:js": "npm run lint && npm test",
+    "check:js": "npm run lint && npm run typecheck && npm test",
     "test:privacy": "node scripts/run-js-tests.mjs tests/privacy",
     "test:compatibility": "node scripts/run-js-tests.mjs tests/compatibility",
     "android:init": "tauri android init --ci --skip-targets-install && npm run android:sync-project",
@@ -26,7 +27,8 @@
     "@eslint/js": "^10.0.1",
     "@tauri-apps/cli": "^2.0.0",
     "eslint": "^10.9.1",
-    "globals": "^17.11.0"
+    "globals": "^17.11.0",
+    "typescript": "^7.0.2"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.9.0"

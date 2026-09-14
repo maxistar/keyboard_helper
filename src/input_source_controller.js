@@ -1,5 +1,19 @@
 import { HIGHLIGHTING_SOURCES } from "./input_events.js";
 
+/** @typedef {import("./input_events.js").HighlightingSource} HighlightingSource */
+/** @typedef {import("./input_events.js").NormalizedInputEvent} NormalizedInputEvent */
+/** @typedef {{ effectiveSource: HighlightingSource, reason: string | null, bleReady: boolean, capabilitiesValidated: boolean, subscribed: boolean, streamStarted: boolean }} InputSourceControllerSnapshot */
+/** @typedef {{ source: HighlightingSource, reason: string }} SourceClearDetail */
+/** @typedef {{ previous: HighlightingSource, current: HighlightingSource, reason: string }} EffectiveSourceChange */
+
+/**
+ * @param {{
+ *   onEvent?: (event: NormalizedInputEvent) => void,
+ *   onClearSourceState?: (detail: SourceClearDetail) => void,
+ *   onEffectiveSourceChange?: (detail: EffectiveSourceChange) => void,
+ *   onStatusChange?: (snapshot: InputSourceControllerSnapshot) => void,
+ * }} [options]
+ */
 export function createInputSourceController({
   onEvent = () => {},
   onClearSourceState = () => {},
@@ -9,24 +23,29 @@ export function createInputSourceController({
   let capabilitiesValidated = false;
   let subscribed = false;
   let streamStarted = false;
+  /** @type {string | null} */
   let bleReason = "ble-not-connected";
+  /** @type {HighlightingSource} */
   let effectiveSource = selectEffectiveSource();
 
   function bleReady() {
     return capabilitiesValidated && subscribed && streamStarted;
   }
 
+  /** @returns {HighlightingSource} */
   function selectEffectiveSource() {
     return capabilitiesValidated && subscribed && streamStarted
       ? HIGHLIGHTING_SOURCES.BLE
       : HIGHLIGHTING_SOURCES.SYSTEM;
   }
 
+  /** @returns {string | null} */
   function statusReason() {
     if (bleReady()) return null;
     return bleReason;
   }
 
+  /** @returns {Readonly<InputSourceControllerSnapshot>} */
   function snapshot() {
     return Object.freeze({
       effectiveSource,
@@ -44,6 +63,7 @@ export function createInputSourceController({
     return current;
   }
 
+  /** @param {string} reason */
   function reconcile(reason) {
     const previous = effectiveSource;
     const next = selectEffectiveSource();
@@ -55,6 +75,7 @@ export function createInputSourceController({
     return publishStatus();
   }
 
+  /** @param {{ capabilitiesValidated?: boolean, subscribed?: boolean, reason?: string | null }} [connection] */
   function setBleConnection({
     capabilitiesValidated: nextCapabilities = capabilitiesValidated,
     subscribed: nextSubscribed = subscribed,
@@ -71,6 +92,7 @@ export function createInputSourceController({
     return reconcile("ble-readiness-changed");
   }
 
+  /** @param {string} [reason] */
   function disconnectBle(reason = "ble-disconnected") {
     capabilitiesValidated = false;
     subscribed = false;
@@ -79,6 +101,7 @@ export function createInputSourceController({
     return reconcile("ble-disconnected");
   }
 
+  /** @param {NormalizedInputEvent} event */
   function handleEvent(event) {
     if (!event || !Object.values(HIGHLIGHTING_SOURCES).includes(event.source)) return false;
     if (

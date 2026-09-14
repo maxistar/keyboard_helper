@@ -1,5 +1,38 @@
 import { normalizeBleKeyboardFrame } from "./input_events.js";
 
+/** @typedef {Uint8Array | readonly number[]} BleByteInput */
+/** @typedef {{ eventType: number, flags: number, sequence: number }} DecoderEnvelope */
+/** @typedef {{ code: string, [detail: string]: unknown }} DecoderIssue */
+/** @typedef {{ status: "rejected", issue: DecoderIssue }} RejectedDecoderOutcome */
+/** @typedef {{ status: "skipped", reason: string, envelope: DecoderEnvelope }} SkippedDecoderOutcome */
+/** @template T @typedef {{ status: "decoded", value: T, envelope?: DecoderEnvelope }} DecodedDecoderOutcome */
+/** @template T @typedef {DecodedDecoderOutcome<T> | RejectedDecoderOutcome} RequiredDecoderOutcome */
+/** @template T @typedef {DecodedDecoderOutcome<T> | SkippedDecoderOutcome | RejectedDecoderOutcome} DecoderOutcome */
+
+/**
+ * @typedef {{
+ *   protocolMajor: number,
+ *   protocolMinor: number,
+ *   maxFrameLength: number,
+ *   positionSchema: number,
+ *   features: {
+ *     keyEvents: boolean,
+ *     comboEvents: boolean,
+ *     layerEvents: boolean,
+ *     diagnostics: boolean,
+ *     legacyLayerRegister: boolean,
+ *     legacyLayerWrite: boolean,
+ *   },
+ * }} BleKeyboardCapabilities
+ */
+
+/** @typedef {import("./input_events.js").BleInputEvent} BleInputEvent */
+/** @typedef {{ kind: "key", action: import("./input_events.js").KeyAction, position: number, layer: number }} DecodedKeyEvent */
+/** @typedef {{ kind: "combo", action: import("./input_events.js").KeyAction, comboId: number, positions: number[], layer: number }} DecodedComboEvent */
+/** @typedef {{ kind: "layer", layer: number, previousLayer: number, cause: number, originPosition: number }} DecodedLayerEvent */
+/** @typedef {{ kind: "diagnostic", code: number, severity: number, source: number, count: number, detail: number }} DecodedDiagnosticEvent */
+/** @typedef {DecodedKeyEvent | DecodedComboEvent | DecodedLayerEvent | DecodedDiagnosticEvent} DecodedWireEvent */
+
 export const BLE_KEYBOARD_UUIDS = Object.freeze({
   service: "b34a0001-e782-4706-8f9c-6c056c416507",
   layer: "b34a0002-e782-4706-8f9c-6c056c416507",
@@ -48,39 +81,46 @@ export const DECODER_OUTCOME = Object.freeze({
 const KNOWN_FRAME_FLAGS = Object.values(BLE_KEYBOARD_FRAME_FLAGS)
   .reduce((mask, flag) => mask | flag, 0);
 
+/** @template T @param {T} value @returns {T} */
 function immutable(value) {
   if (Array.isArray(value)) {
     value.forEach(immutable);
   } else if (value && typeof value === "object") {
-    Object.values(value).forEach(immutable);
+    Object.values(/** @type {Record<string, unknown>} */ (value)).forEach(immutable);
   }
   return Object.freeze(value);
 }
 
+/** @param {unknown} value @returns {Uint8Array | null} */
 function bytes(value) {
   if (value instanceof Uint8Array) return value;
-  if (Array.isArray(value) && value.every((byte) => Number.isInteger(byte) && byte >= 0 && byte <= 0xff)) {
+  if (Array.isArray(value) && value.every((byte) => typeof byte === "number" && Number.isInteger(byte) && byte >= 0 && byte <= 0xff)) {
     return Uint8Array.from(value);
   }
   return null;
 }
 
+/** @template T @param {T} value @param {DecoderEnvelope=} envelope @returns {DecodedDecoderOutcome<T>} */
 function decoded(value, envelope = undefined) {
   return immutable({ status: DECODER_OUTCOME.decoded, value, ...(envelope ? { envelope } : {}) });
 }
 
+/** @param {string} reason @param {DecoderEnvelope} envelope @returns {SkippedDecoderOutcome} */
 function skipped(reason, envelope) {
   return immutable({ status: DECODER_OUTCOME.skipped, reason, envelope });
 }
 
+/** @param {string} code @param {Record<string, unknown>=} detail @returns {RejectedDecoderOutcome} */
 function rejected(code, detail = {}) {
   return immutable({ status: DECODER_OUTCOME.rejected, issue: { code, ...detail } });
 }
 
+/** @param {Uint8Array} data @param {number} offset */
 function readUint16(data, offset) {
   return data[offset] | (data[offset + 1] << 8);
 }
 
+/** @param {Uint8Array} data @param {number} offset */
 function readUint32(data, offset) {
   return (data[offset]
     | (data[offset + 1] << 8)
@@ -88,12 +128,14 @@ function readUint32(data, offset) {
     | (data[offset + 3] << 24)) >>> 0;
 }
 
+/** @param {number} value @returns {import("./input_events.js").KeyAction | null} */
 function action(value) {
   if (value === 0) return "up";
   if (value === 1) return "down";
   return null;
 }
 
+/** @param {unknown} value @returns {RequiredDecoderOutcome<BleKeyboardCapabilities>} */
 export function decodeBleKeyboardCapabilities(value) {
   const data = bytes(value);
   if (!data) return rejected("invalid-byte-input");
@@ -130,6 +172,7 @@ export function decodeBleKeyboardCapabilities(value) {
   });
 }
 
+/** @param {number} eventType @param {Uint8Array} payload @returns {DecodedWireEvent | RejectedDecoderOutcome | null} */
 function decodeKnownEvent(eventType, payload) {
   if (eventType === BLE_KEYBOARD_EVENT_TYPES.key) {
     if (payload.length !== 3) return rejected("invalid-key-payload-length", { actualLength: payload.length });
@@ -186,6 +229,11 @@ function decodeKnownEvent(eventType, payload) {
   return null;
 }
 
+/**
+ * @param {unknown} value
+ * @param {BleKeyboardCapabilities | null | undefined} capabilities
+ * @returns {DecoderOutcome<BleInputEvent>}
+ */
 export function decodeBleKeyboardFrame(value, capabilities) {
   const data = bytes(value);
   if (!data) return rejected("invalid-byte-input");
@@ -220,7 +268,7 @@ export function decodeBleKeyboardFrame(value, capabilities) {
 
   const event = decodeKnownEvent(eventType, data.slice(BLE_KEYBOARD_PROTOCOL.frameHeaderLength));
   if (event === null) return skipped("unknown-event-type", envelope);
-  if (event.status === DECODER_OUTCOME.rejected) return event;
+  if ("status" in event && event.status === DECODER_OUTCOME.rejected) return event;
 
   const frame = { sequence, flags, event };
   const normalized = normalizeBleKeyboardFrame(frame);
