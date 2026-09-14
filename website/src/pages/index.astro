@@ -2,223 +2,134 @@
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import Layout from '../layouts/Layout.astro';
-import { androidPreview } from '../data/releases.js';
-const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+import { androidPreview, getAndroidPreviewView, releasesUrl } from '../data/releases.js';
 
-const screenshotDefinitions = [
-  {
-    file: 'overlay-main.png',
-    title: 'Main overlay',
-    text: 'Full Keyboard Helper overlay with an active layout and live pressed-key highlighting.',
-  },
-  {
-    file: 'menu-keyboard.png',
-    title: 'Application menu',
-    text: 'Keyboard, Language, and Connection flyouts with layout reload, BLE reconnect, and direct actions.',
-  },
-  {
-    file: 'settings-window.png',
-    title: 'Settings window',
-    text: 'Native settings for enabled layouts, startup layout, external layout files, and the show/hide shortcut.',
-  },
-  {
-    file: 'mini-mode.png',
-    title: 'Mini Mode',
-    text: 'Compact overlay that keeps live visualization visible while hiding persistent controls.',
-  },
-  {
-    file: 'self-test.png',
-    title: 'Keyboard Self-test',
-    text: 'Guided HID-output verification with outlines on the existing overlay.',
-  },
-  {
-    file: 'menu-language.png',
-    title: 'macOS language sync',
-    text: 'Language flyout showing macOS input-source synchronization status for compatible ZMK keyboards.',
-  },
-  {
-    file: 'typing-invaders.png',
-    title: 'Shift-Space Invaders',
-    text: 'Separate typing arcade window for practicing focused keyboard input.',
-  },
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const androidRelease = getAndroidPreviewView(androidPreview);
+
+const desktopScreenshots = [
+  { file: 'overlay-main.png', title: 'Main overlay', text: 'Full desktop overlay with an active layout and live pressed-key highlighting.' },
+  { file: 'menu-keyboard.png', title: 'Application menu', text: 'Keyboard, Language, and Connection flyouts keep daily controls and recovery actions close.' },
+  { file: 'settings-window.png', title: 'Desktop settings', text: 'Settings for enabled layouts, startup layout, external files, and the global show/hide shortcut.' },
+  { file: 'mini-mode.png', title: 'Mini Mode', text: 'Compact desktop overlay for passive visualization with a direct restore control.' },
+  { file: 'self-test.png', title: 'Keyboard Self-test', text: 'Guided HID-output verification using outlines on the existing desktop overlay.' },
+  { file: 'menu-language.png', title: 'macOS language sync', text: 'Language flyout showing input-source synchronization status for compatible ZMK keyboards.' },
+  { file: 'typing-invaders.png', title: 'Shift-Space Invaders', text: 'A separate desktop typing-practice window with focused input ownership.' },
 ];
 
-const screenshotSlots = screenshotDefinitions.map((shot) => ({
-  ...shot,
-  src: `${base}/images/${shot.file}`,
-  available: existsSync(fileURLToPath(new URL(`../../public/images/${shot.file}`, import.meta.url))),
-}));
+const androidScreenshots = [
+  { file: 'android-browse.png', title: 'Browse workspace', text: 'Android Companion Browse workspace showing a selected keyboard layout.' },
+  { file: 'android-settings.png', title: 'Adaptive Settings', text: 'Android Companion adaptive Settings with connection, layout, and status sections.' },
+  { file: 'android-live.png', title: 'Read-only Live', text: 'Android Companion Live view following read-only keyboard layer and key telemetry.' },
+];
+
+function screenshotSlots(definitions) {
+  return definitions.map((shot) => ({
+    ...shot,
+    src: `${base}/images/${shot.file}`,
+    available: existsSync(fileURLToPath(new URL(`../../public/images/${shot.file}`, import.meta.url))),
+  }));
+}
+
+const desktopSlots = screenshotSlots(desktopScreenshots);
+const androidSlots = screenshotSlots(androidScreenshots);
 ---
-<Layout title="Keyboard Helper" description="A desktop overlay for visualizing keyboard layouts, live key presses, ZMK layers, and setup diagnostics.">
+<Layout title="Keyboard Helper" description="Keyboard visualization for desktop and an Android companion preview for Browse, connection evidence, and compatible read-only Live telemetry.">
   <style>
-    .hero { margin-bottom: 56px; }
-    .hero h1 { font-size: clamp(2rem, 6vw, 3.4rem); font-weight: 700; line-height: 1.05; margin-bottom: 18px; }
-    .hero p { color: var(--text-muted); font-size: 1.08rem; line-height: 1.65; max-width: 680px; }
-    .eyebrow { color: var(--accent); font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-    .cta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 28px; }
-    .btn { border-radius: 8px; display: inline-block; font-size: 0.95rem; font-weight: 700; padding: 11px 20px; }
+    .hero { margin-bottom: 52px; }
+    .hero h1 { font-size: clamp(2.15rem, 7vw, 3.7rem); font-weight: 700; line-height: 1.04; margin: 10px 0 18px; max-width: 760px; }
+    .hero p { color: var(--text-muted); font-size: 1.08rem; line-height: 1.65; max-width: 720px; }
+    .eyebrow, .scope, .release-label { color: var(--accent); font-size: 0.76rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    .cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+    .btn { border-radius: 8px; display: inline-block; font-size: 0.93rem; font-weight: 700; padding: 11px 18px; }
     .btn:hover { opacity: 0.86; text-decoration: none; }
     .btn-primary { background: var(--accent); color: #081018; }
     .btn-outline { background: var(--bg2); border: 1px solid var(--border); color: var(--text); }
-    .section { margin: 56px 0; }
-    .section h2 { font-size: 1.35rem; margin-bottom: 10px; }
-    .section-intro { color: var(--text-muted); line-height: 1.65; margin-bottom: 22px; max-width: 720px; }
-    .feature-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
-    .feature-card, .shot-card, .download {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 20px;
-    }
-    .feature-card h3, .shot-card h3 { color: var(--accent); font-size: 0.98rem; margin-bottom: 8px; }
-    .feature-card p, .shot-card p, .download p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.58; }
-    .feature-card .scope { color: var(--text); display: block; font-size: 0.76rem; font-weight: 700; margin-top: 12px; text-transform: uppercase; }
-    .shot-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-    .shot-image,
-    .shot-placeholder {
-      align-items: center;
-      aspect-ratio: 16 / 10;
-      background:
-        linear-gradient(135deg, rgba(60, 201, 199, 0.16), transparent 42%),
-        var(--key-bg);
-      border: 1px dashed rgba(228, 231, 239, 0.26);
-      border-radius: 8px;
-      color: var(--text);
-      display: flex;
-      justify-content: center;
-      margin-bottom: 14px;
-      min-height: 150px;
-      padding: 18px;
-      text-align: center;
-    }
-    .shot-image {
-      background: #f4f4f4;
-      display: block;
-      object-fit: contain;
-      padding: 0;
-      width: 100%;
-    }
+    .section { margin: 54px 0; }
+    .section h2 { font-size: 1.45rem; margin-bottom: 10px; }
+    .section-intro { color: var(--text-muted); line-height: 1.65; margin-bottom: 22px; max-width: 760px; }
+    .product-grid, .feature-grid, .status-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); }
+    .product-card, .feature-card, .status-card, .shot-card, .download, .release-note { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 22px; }
+    .product-card { display: flex; flex-direction: column; min-height: 250px; }
+    .product-card h2 { color: var(--accent); font-size: 1.35rem; margin: 9px 0 10px; }
+    .product-card p, .feature-card p, .status-card p, .shot-card p, .download p, .release-note p { color: var(--text-muted); font-size: 0.92rem; line-height: 1.62; }
+    .product-card .cta { margin-top: auto; padding-top: 18px; }
+    .feature-card h3, .status-card h3, .shot-card h3 { color: var(--accent); font-size: 1rem; margin-bottom: 8px; }
+    .scope { color: var(--text); display: block; margin-top: 13px; }
+    .shot-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+    .shot-image, .shot-placeholder { align-items: center; aspect-ratio: 16 / 10; background: linear-gradient(135deg, rgba(60, 201, 199, 0.16), transparent 42%), var(--key-bg); border: 1px dashed rgba(228, 231, 239, 0.26); border-radius: 8px; color: var(--text); display: flex; justify-content: center; margin-bottom: 14px; min-height: 150px; padding: 18px; text-align: center; }
+    .shot-image { background: #f4f4f4; display: block; object-fit: contain; padding: 0; width: 100%; }
     .shot-placeholder strong { display: block; margin-bottom: 6px; }
-    .shot-placeholder span { color: var(--text-muted); display: block; font-family: "Cascadia Code", "Fira Code", "Courier New", monospace; font-size: 0.8rem; overflow-wrap: anywhere; }
-    .workflow { border-left: 3px solid var(--accent); display: grid; gap: 10px; padding-left: 18px; }
-    .workflow p { color: var(--text-muted); line-height: 1.6; }
-    .download { margin-top: 56px; }
+    .shot-placeholder span { color: var(--text-muted); display: block; font-family: "Cascadia Code", "Fira Code", "Courier New", monospace; font-size: 0.78rem; overflow-wrap: anywhere; }
+    .release-note { border-color: rgba(60, 201, 199, 0.35); }
+    .release-label { display: block; margin-bottom: 8px; }
     .download h2 { font-size: 1.2rem; margin-bottom: 8px; }
-    .status-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
-    .status-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 18px; }
-    .status-card h3 { color: var(--accent); font-size: 1rem; margin-bottom: 8px; }
-    .status-card p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.55; }
-    .matrix-wrap { overflow-x: auto; }
-    table { border-collapse: collapse; min-width: 640px; width: 100%; }
-    th, td { border: 1px solid var(--border); padding: 12px; text-align: left; }
-    th { background: var(--bg2); }
-    td { color: var(--text-muted); }
+    @media (max-width: 420px) { .cta { align-items: stretch; flex-direction: column; } .btn { text-align: center; width: 100%; } }
   </style>
 
   <section class="hero">
-    <span class="eyebrow">Keyboard visualization and diagnostics</span>
-    <h1>Keyboard Helper shows what your keyboard is doing.</h1>
-    <p>
-      A desktop overlay for split, ergonomic, and standard keyboards. It highlights live key presses,
-      follows ZMK layers over BLE, helps verify custom layouts, and keeps setup controls close without
-      hiding the keyboard view.
-    </p>
-    <div class="cta">
-      <a class="btn btn-primary" href={`${base}/setup/`}>Start setup</a>
-      <a class="btn btn-outline" href="https://github.com/maxistar/keyboard_helper/releases" target="_blank" rel="noopener">Download release</a>
-      <a class="btn btn-outline" href={`${base}/faq/`}>Troubleshooting</a>
-    </div>
+    <span class="eyebrow">Desktop overlay + Android Companion</span>
+    <h1>See what your keyboard is doing, wherever you are working.</h1>
+    <p>Keyboard Helper pairs a mature desktop overlay with a foreground Android companion. Visualize layouts, inspect connection evidence, and follow compatible ZMK activity without pretending every platform has the same powers.</p>
+    <div class="cta"><a class="btn btn-primary" href={`${base}/setup/`}>Set up desktop</a><a class="btn btn-outline" href={`${base}/android/`}>Explore Android</a><a class="btn btn-outline" href={`${base}/faq/`}>Troubleshooting</a></div>
+  </section>
+
+  <section class="product-grid" aria-label="Keyboard Helper products">
+    <article class="product-card">
+      <span class="eyebrow">macOS · Windows · Linux</span><h2>Desktop overlay</h2>
+      <p>Keep a global, always-on-top keyboard view beside any app. Highlight keys, follow compatible BLE layers, manage layouts, run guided self-test, and use desktop-only tools.</p>
+      <div class="cta"><a class="btn btn-primary" href={`${base}/setup/`}>Desktop setup</a><a class="btn btn-outline" href={releasesUrl} target="_blank" rel="noopener">Desktop releases</a></div>
+    </article>
+    <article class="product-card">
+      <span class="eyebrow">Foreground companion · Android preview</span><h2>Android Companion</h2>
+      <p>Browse keyboard layouts, inspect connection evidence, and follow compatible read-only Live telemetry from a phone. The companion never switches the keyboard's remote layer.</p>
+      <p><strong>{androidRelease.status}</strong></p>
+      <div class="cta"><a class="btn btn-primary" href={`${base}/android/`}>Android guide</a>{androidRelease.published && <a class="btn btn-outline" href={androidRelease.releaseUrl} target="_blank" rel="noopener">Open {androidRelease.version}</a>}</div>
+    </article>
   </section>
 
   <section class="section" aria-labelledby="platform-status">
-    <h2 id="platform-status">Platform Status</h2>
-    <p class="section-intro">Desktop remains the primary release. Android packages the accepted read-only companion experience; iOS is planned but unavailable.</p>
+    <h2 id="platform-status">Platform status</h2>
     <div class="status-grid">
-      <article class="status-card"><h3>Desktop</h3><p>Available for macOS, Windows, and Linux with overlay, diagnostics, and desktop-only synchronization tools.</p></article>
-      <article class="status-card"><h3>Android preview</h3><p>{androidPreview.published ? 'Available as a signed API 31+ arm64 APK from GitHub Releases.' : 'Packaging is being prepared. No verified public APK is available yet; the Releases page remains the source of truth.'}</p></article>
-      <article class="status-card"><h3>iOS</h3><p>Planned. No iOS build, signing channel, or availability date is currently promised.</p></article>
-    </div>
-    <div class="cta">
-      <a class="btn btn-outline" href={androidPreview.releaseUrl} target="_blank" rel="noopener">Check GitHub releases</a>
-      <a class="btn btn-outline" href={`${base}/setup/#android-preview`}>Android setup</a>
+      <article class="status-card"><h3>Desktop</h3><p>Available for macOS, Windows, and Linux with the global overlay, diagnostics, and platform-scoped synchronization tools.</p></article>
+      <article class="status-card"><h3>Android preview</h3><p>{androidRelease.status} Public physical BLE acceptance remains API 31+ and arm64.</p></article>
+      <article class="status-card"><h3>iOS</h3><p>Unavailable. There is no iOS build, signing channel, or promised availability date.</p></article>
     </div>
   </section>
 
-  <section class="section" aria-labelledby="mobile-capabilities">
-    <h2 id="mobile-capabilities">Android Firmware Capabilities</h2>
-    <p class="section-intro">Stock mode is useful without the optional extension. Enhanced firmware adds read-only Live telemetry; it does not give the phone control over keyboard layers.</p>
-    <div class="matrix-wrap">
-      <table>
-        <caption class="section-intro">Stock ZMK and optional Keyboard Helper enhanced firmware</caption>
-        <thead><tr><th scope="col">Capability</th><th scope="col">Stock ZMK</th><th scope="col">Enhanced firmware</th></tr></thead>
-        <tbody>
-          <tr><th scope="row">Layout Browse</th><td>Yes</td><td>Yes</td></tr>
-          <tr><th scope="row">Connection status</th><td>Yes</td><td>Yes</td></tr>
-          <tr><th scope="row">Battery / device evidence</th><td>When exposed by BAS/DIS</td><td>When exposed by BAS/DIS</td></tr>
-          <tr><th scope="row">Live layer, key, combo, diagnostics</th><td>Unavailable, reported honestly</td><td>Yes, read-only</td></tr>
-          <tr><th scope="row">Remote layer control</th><td>No</td><td>No</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="section" aria-labelledby="feature-overview">
-    <h2 id="feature-overview">Current Features</h2>
-    <p class="section-intro">
-      Keyboard Helper is built around the overlay, but the current app also includes setup, recovery,
-      diagnostics, synchronization, and practice tools.
-    </p>
+  <section class="section" aria-labelledby="desktop-features">
+    <h2 id="desktop-features">Desktop outcomes</h2><p class="section-intro">The desktop app remains the full overlay experience and owns global input, local configuration, and desktop-specific integrations.</p>
     <div class="feature-grid">
-      <article class="feature-card"><h3>Live overlay</h3><p>Pressed keys highlight globally while the always-on-top transparent window shows the active layout.</p><span class="scope">macOS, Windows, Linux</span></article>
-      <article class="feature-card"><h3>Built-in and custom layouts</h3><p>Use Corne, Dactyl, QWERTY, QWERTZ, Mac, Magic, or add an external JSON layout through Settings.</p><span class="scope">Settings + JSON</span></article>
-      <article class="feature-card"><h3>Application menu</h3><p>Keyboard, Language, and Connection flyouts keep layout selection, reload, sync state, and recovery actions organized.</p><span class="scope">Primary control surface</span></article>
-      <article class="feature-card"><h3>ZMK BLE layer sync</h3><p>Compatible keyboards can report their authoritative layer over Bluetooth so the overlay follows firmware state.</p><span class="scope">BLE-capable layouts</span></article>
-      <article class="feature-card"><h3>macOS language sync</h3><p>Layouts can map installed macOS input sources to ZMK language layers and reconcile stable mismatches through writable BLE.</p><span class="scope">macOS + compatible ZMK</span></article>
-      <article class="feature-card"><h3>Guided self-test</h3><p>Verify one layout layer position by position using HID events and outlines on the existing overlay.</p><span class="scope">Desktop app</span></article>
-      <article class="feature-card"><h3>Mini Mode</h3><p>Shrink the overlay for passive monitoring while preserving live highlighting and a direct restore control.</p><span class="scope">Desktop app</span></article>
-      <article class="feature-card"><h3>Shift-Space Invaders</h3><p>Open a separate typing arcade window that owns its focused input while the overlay can continue visualizing keys.</p><span class="scope">Practice mode</span></article>
-      <article class="feature-card"><h3>Tray and hotkey recovery</h3><p>Closing hides to tray, and an optional global shortcut or CLI toggle can show or hide the overlay.</p><span class="scope">Daily workflow</span></article>
+      <article class="feature-card"><h3>Live global overlay</h3><p>Pressed keys highlight while the transparent window shows the selected layout and compatible firmware layer.</p><span class="scope">Desktop app</span></article>
+      <article class="feature-card"><h3>Setup and diagnostics</h3><p>Configure built-in or JSON layouts, recover permissions, reconnect BLE, and run guided HID-output self-test.</p><span class="scope">Desktop app</span></article>
+      <article class="feature-card"><h3>Focused tools</h3><p>Use Mini Mode, macOS input-source sync where supported, and Shift-Space Invaders without changing the Android companion contract.</p><span class="scope">Platform-scoped</span></article>
     </div>
   </section>
 
-  <section class="section" aria-labelledby="menu-workflow">
-    <h2 id="menu-workflow">The App Menu Is The Map</h2>
-    <div class="workflow">
-      <p><strong>Keyboard</strong> contains layout choices, Reload layout for external files, and Keyboard Self-test.</p>
-      <p><strong>Language</strong> appears for valid macOS input-source synchronization metadata and shows source status.</p>
-      <p><strong>Connection</strong> shows BLE state and Reconnect BLE when the active layout supports it.</p>
-      <p><strong>Root actions</strong> open Mini Mode, Shift-Space Invaders, Settings, and Help.</p>
+  <section class="section" aria-labelledby="android-outcomes">
+    <h2 id="android-outcomes">Android outcomes</h2><p class="section-intro">The signed preview is a foreground companion: Browse works with stock firmware, while Live needs the compatible enhanced read-only telemetry extension.</p>
+    <div class="feature-grid">
+      <article class="feature-card"><h3>Browse layouts</h3><p>View bundled and validated custom layouts on a phone without requiring enhanced firmware.</p><span class="scope">Stock or enhanced ZMK</span></article>
+      <article class="feature-card"><h3>Connection evidence</h3><p>See honest permission, pairing, connection, battery, and device-information evidence when the keyboard exposes it.</p><span class="scope">API 31+ physical baseline</span></article>
+      <article class="feature-card"><h3>Compatible Live</h3><p>Follow read-only layer, key, combo, and diagnostic telemetry. The phone does not write remote layer changes.</p><span class="scope">Enhanced firmware</span></article>
     </div>
   </section>
 
-  <section class="section" aria-labelledby="screenshots">
-    <h2 id="screenshots">Product Tour</h2>
-    <p class="section-intro">
-      See the overlay, application controls, diagnostics, synchronization, and practice tools in the current app.
-    </p>
+  <section class="section" aria-labelledby="desktop-tour">
+    <h2 id="desktop-tour">Desktop product tour</h2><p class="section-intro">Clean captures from the current desktop experience replace mock imagery and retain an accessible fallback if an asset is removed.</p>
     <div class="shot-grid">
-      {screenshotSlots.map((shot) => (
-        <article class="shot-card">
-          {shot.available ? (
-            <img class="shot-image" src={shot.src} alt={shot.text} loading="lazy" />
-          ) : (
-            <div class="shot-placeholder" role="img" aria-label={shot.text}>
-              <div><strong>{shot.title}</strong><span>public/images/{shot.file}</span></div>
-            </div>
-          )}
-          <h3>{shot.title}</h3>
-          <p>{shot.text}</p>
-        </article>
-      ))}
+      {desktopSlots.map((shot) => <article class="shot-card">{shot.available ? <img class="shot-image" src={shot.src} alt={shot.text} loading="lazy" /> : <div class="shot-placeholder" role="img" aria-label={shot.text}><div><strong>{shot.title}</strong><span>public/images/{shot.file}</span></div></div>}<h3>{shot.title}</h3><p>{shot.text}</p></article>)}
     </div>
   </section>
 
-  <section class="download">
-    <h2>Ready to try it?</h2>
-    <p>Download a desktop release for macOS, Windows, or Linux, or install the signed Android arm64 preview APK and verify it with the published checksum.</p>
-    <div class="cta">
-      <a class="btn btn-primary" href={`${base}/setup/`}>Open setup guide</a>
-      <a class="btn btn-outline" href="https://github.com/maxistar/keyboard_helper/releases" target="_blank" rel="noopener">GitHub releases</a>
-    </div>
+  <section class="section" aria-labelledby="android-tour">
+    <h2 id="android-tour">Android workspace tour</h2>
+    {androidRelease.adaptiveWorkspace ? (
+      <><p class="section-intro">These captures match the adaptive workspace in the linked {androidRelease.version} preview.</p><div class="shot-grid">{androidSlots.map((shot) => <article class="shot-card">{shot.available ? <img class="shot-image" src={shot.src} alt={shot.text} loading="lazy" /> : <div class="shot-placeholder" role="img" aria-label={shot.text}><div><strong>{shot.title}</strong><span>public/images/{shot.file}</span></div></div>}<h3>{shot.title}</h3><p>{shot.text}</p></article>)}</div></>
+    ) : (
+      <div class="release-note"><span class="release-label">Later release preview — not in {androidRelease.version ?? 'the linked APK'}</span><p>The repository contains a newer viewport-first Browse/Live workspace and adaptive Settings design. Its navigation and screenshots will appear here only after a signed release containing that workspace is published and accepted.</p></div>
+    )}
   </section>
+
+  <section class="download"><h2>Choose your path</h2><p>Start with the guide for the product you are using; both guides keep platform-specific permissions and support boundaries explicit.</p><div class="cta"><a class="btn btn-primary" href={`${base}/setup/`}>Desktop setup</a><a class="btn btn-outline" href={`${base}/android/`}>Android guide</a></div></section>
 </Layout>

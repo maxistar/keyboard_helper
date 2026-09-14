@@ -1,0 +1,119 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { androidPreview, getAndroidPreviewView } from '../data/releases.js';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const androidRelease = getAndroidPreviewView(androidPreview);
+---
+<Layout title="Android Companion" description="Install, connect, browse layouts, use compatible read-only Live telemetry, and troubleshoot the Keyboard Helper Android Companion preview.">
+  <style>
+    h1 { font-size: clamp(2rem, 7vw, 3rem); font-weight: 700; line-height: 1.08; margin: 8px 0 12px; }
+    h2 { border-bottom: 1px solid var(--border); font-size: 1.25rem; margin: 42px 0 15px; padding-bottom: 9px; }
+    h3 { color: var(--accent); font-size: 1rem; margin: 24px 0 9px; }
+    p, li { color: var(--text-muted); line-height: 1.68; }
+    p { margin-bottom: 12px; }
+    ol, ul { padding-left: 22px; }
+    li + li { margin-top: 7px; }
+    code { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; color: var(--accent); font-family: "Cascadia Code", "Fira Code", "Courier New", monospace; font-size: 0.86em; padding: 1px 5px; }
+    .eyebrow, .tag { color: var(--accent); display: inline-block; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    .subtitle { font-size: 1.04rem; max-width: 720px; }
+    .toc, .note, .release-card, .path-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 9px; padding: 18px; }
+    .toc { margin: 28px 0; }
+    .toc ul { display: grid; gap: 8px 24px; grid-template-columns: repeat(2, minmax(0, 1fr)); list-style: none; padding: 0; }
+    .note { border-left: 3px solid var(--accent); margin: 16px 0; }
+    .release-card { border-color: rgba(60, 201, 199, 0.4); margin: 24px 0; }
+    .release-card strong { color: var(--text); }
+    .path-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); margin: 18px 0; }
+    .path-card h3 { margin-top: 0; }
+    .btn { background: var(--accent); border-radius: 8px; color: #081018; display: inline-block; font-weight: 700; margin-top: 8px; padding: 10px 16px; }
+    .btn:hover { opacity: 0.86; text-decoration: none; }
+    @media (max-width: 560px) { .toc ul { grid-template-columns: 1fr; } }
+  </style>
+
+  <span class="eyebrow">Foreground Android preview</span>
+  <h1>Keyboard Helper Companion</h1>
+  <p class="subtitle">A phone-sized companion for layout Browse, connection evidence, and compatible read-only Live telemetry. This guide separates the linked release from newer workspace work in the repository.</p>
+
+  <div class="release-card">
+    <span class="tag">Published artifact</span>
+    <p><strong>{androidRelease.status}</strong> The public physical-device baseline is Android 12 / API 31+ on arm64-v8a.</p>
+    {androidRelease.published ? <a class="btn" href={androidRelease.releaseUrl} target="_blank" rel="noopener">Open {androidRelease.version} release</a> : <p>Use GitHub Releases as the source of truth; do not install an unverified direct APK.</p>}
+  </div>
+
+  <nav class="toc" aria-label="Android guide sections">
+    <ul>
+      <li><a href="#installation">Download and install</a></li>
+      <li><a href="#connection">Pair and connect</a></li>
+      <li><a href="#workspace">Browse workspace</a></li>
+      <li><a href="#layouts">Custom layouts</a></li>
+      <li><a href="#live">Read-only Live</a></li>
+      <li><a href="#compatibility">Compatibility</a></li>
+      <li><a href="#troubleshooting">Troubleshooting</a></li>
+      <li><a href={`${base}/faq/`}>Short FAQ</a></li>
+    </ul>
+  </nav>
+
+  <h2 id="installation">1. Download, verify, and install</h2>
+  <ol>
+    <li>Open the published release above and download both <code>Keyboard-Helper-Companion_&lt;version&gt;_android-arm64_preview.apk</code> and its neighboring <code>.sha256</code> sidecar.</li>
+    <li>Compare the APK's SHA-256 value with the sidecar using a trusted checksum-capable file manager or utility.</li>
+    <li>Open the APK and allow unknown-app installation only for the browser or file manager that opened it. Do not disable Android security globally.</li>
+    <li>Launch <strong>Keyboard Helper Companion</strong>. Grant <strong>Nearby devices</strong> when the app asks for it during connection.</li>
+  </ol>
+  <div class="note">If Android refuses an update over a locally built debug APK, the signatures differ. Uninstall the debug app once and install the signed preview. App permission and private imported-layout data may reset; Android usually owns keyboard pairing separately.</div>
+
+  <h2 id="connection">2. Pair and connect</h2>
+  <ol>
+    <li>Wake the keyboard and choose an available ZMK Bluetooth profile.</li>
+    <li>Pair the keyboard in Android Settings before selecting it in the companion.</li>
+    {androidRelease.adaptiveWorkspace ? <li>Open <strong>Settings &gt; Connection</strong>, choose the bonded keyboard, and wait for the compact status to report connected.</li> : <li>In {androidRelease.version}, choose <strong>Connect</strong>, select the bonded keyboard, and wait for <strong>Connection: connected</strong>.</li>}
+    <li>Optional Battery Service and Device Information values appear only when the keyboard exposes them; a missing value is not itself a connection failure.</li>
+  </ol>
+
+  <h2 id="workspace">3. Browse workspace</h2>
+  <p><strong>Browse</strong> displays bundled layouts with stock or enhanced ZMK firmware. The companion is foreground-only: active connection, keyboard selection, highlights, and Live session state are process-local.</p>
+  {androidRelease.adaptiveWorkspace ? (
+    <div class="path-grid">
+      <section class="path-card"><h3>Keyboard-first stage</h3><p>The compact status and Browse/Live controls leave the selected layout as the main visual surface.</p></section>
+      <section class="path-card"><h3>Connection</h3><p>Use <strong>Settings &gt; Connection</strong> for device selection and reconnect actions.</p></section>
+      <section class="path-card"><h3>Layouts and status</h3><p>Use <strong>Settings &gt; Layouts</strong> for custom definitions and <strong>Settings &gt; Status</strong> for secondary Live diagnostics.</p></section>
+    </div>
+  ) : (
+    <div class="note"><strong>Later release preview — not in {androidRelease.version}.</strong> A newer adaptive workspace moves device actions to Settings &gt; Connection, custom definitions to Settings &gt; Layouts, and secondary Live diagnostics to Settings &gt; Status. Those directions and screenshots are not current for the linked APK.</div>
+  )}
+
+  <h2 id="layouts">4. Manage custom layouts</h2>
+  <p>Import one Keyboard Helper JSON document. After validation, the companion copies the definition and inline image bytes atomically into private app storage and does not retain the source URI. The selected visual layout returns at its first layer after relaunch; connection and Live state do not persist.</p>
+  <ul>
+    <li>Text-only layouts remain supported.</li>
+    <li>Image-bearing layouts declare <code>keyboard-helper-layout</code> version <code>1</code>, define a top-level <code>embeddedAssets</code> table, and reference images with <code>asset:&lt;id&gt;</code>.</li>
+    <li>Use non-animated PNG, JPEG, or WebP bitmaps. Limits are 128 KiB per image, 512 KiB total decoded image bytes, 16 assets, 256 × 256 pixels per image, and 1 MiB for the JSON document.</li>
+    <li>Keep accessible text beside each image legend. External paths, remote URLs, arbitrary data URLs, SVG, missing or unused assets, malformed base64, and oversized content are rejected.</li>
+    <li>Equivalent canonical JSON selects the existing record. Different content with the same custom name asks before replacement.</li>
+    <li>Removing a custom layout also removes its private images. Clearing app data or uninstalling removes every import. Nothing synchronizes with desktop or cloud storage.</li>
+  </ul>
+  <div class="note">The old <code>.khlayout</code> ZIP package was an unsupported preview format. It has no migration, conversion, or re-import compatibility path; use a supported JSON definition instead.</div>
+
+  <h2 id="live">5. Use compatible read-only Live</h2>
+  <p>Stock firmware remains useful for Browse and connection overview. <strong>Live</strong> requires the compatible Keyboard Helper enhanced firmware extension and follows read-only layer, key, combo, and diagnostic telemetry. The phone never activates or writes a remote keyboard layer.</p>
+  {androidRelease.adaptiveWorkspace ? <p>Open Live from the workspace controls. Use <strong>Settings &gt; Status</strong> for secondary diagnostics such as sequence gaps and layout mismatch.</p> : <p>Use the Live control available in {androidRelease.version}. The adaptive Settings &gt; Status route belongs to a later unpublished workspace.</p>}
+
+  <h2 id="compatibility">6. Understand the support boundary</h2>
+  <div class="path-grid">
+    <section class="path-card"><h3>Public preview support</h3><p>Physical BLE acceptance and the downloadable preview baseline are Android 12 / API 31+ and arm64-v8a.</p></section>
+    <section class="path-card"><h3>Android 11 evidence</h3><p>Browse startup has deterministic UI/runtime compatibility evidence on Android 11 / API 30 with WebView 91. This is not a claim of accepted physical BLE support.</p></section>
+    <section class="path-card"><h3>Package minimum</h3><p>The declared minimum SDK allows installation below the public baseline, but it is not a promise that all product behavior or BLE paths are supported there.</p></section>
+  </div>
+
+  <h2 id="troubleshooting">7. Troubleshoot bounded failures</h2>
+  <h3>Permission, Bluetooth, or empty scan</h3>
+  <p>Grant Nearby devices, enable Bluetooth, wake the keyboard, confirm Android pairing, and retry. If no bonded device appears, pair in system Settings first.</p>
+  <h3>PIN, security, capacity, or reconnect exhaustion</h3>
+  <p>Remove the Android pairing, clear the selected ZMK Bluetooth profile, restart both sides, pair again, and reconnect. If connection capacity is exhausted, disconnect another central or choose a free keyboard profile.</p>
+  <h3>Waiting for Live, unsupported protocol, or sequence gap</h3>
+  <p>Stock firmware honestly reports Live as unavailable. With enhanced firmware, press a key or change a physical layer, then reconnect if waiting persists. A sequence gap means telemetry was missed and the app will resubscribe; repeated unsupported-protocol errors require matching firmware and companion versions.</p>
+  <h3>Layout mismatch or invalid stored layout</h3>
+  <p>Select a layout containing the reported layer. If imported JSON fails, check its version, asset references, bitmap type, base64, dimensions, byte limits, and duplicate name. A missing or corrupt stored record is skipped and selection repairs to the bundled default.</p>
+
+  <p>Need the shorter diagnostic answer? Go to the <a href={`${base}/faq/`}>FAQ</a>. Using the desktop overlay instead? Follow <a href={`${base}/setup/`}>desktop setup</a>.</p>
+</Layout>
