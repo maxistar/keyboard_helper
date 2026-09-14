@@ -1,4 +1,4 @@
-import { consumeResult } from "../mini_games/runtime.js";
+import { attachFocusLifecycle, consumeResult } from "../mini_games/runtime.js";
 import { createSemanticInputAdapter } from "../mini_games/input.js";
 
 export function createKeyboardSnakeController({
@@ -13,6 +13,7 @@ export function createKeyboardSnakeController({
   let timer = null;
   let mounted = false;
   let resultDelivered = false;
+  let focusLifecycle = null;
 
   function render() {
     const snapshot = game.getSnapshot();
@@ -37,15 +38,20 @@ export function createKeyboardSnakeController({
     render();
   }
 
-  function performPrimaryAction() {
+  async function performPrimaryAction() {
     const phase = game.getSnapshot().phase;
-    if (phase === "ready") game.start();
+    let operation = null;
+    if (phase === "ready") operation = game.start();
     else if (phase === "paused") game.resume();
     else if (phase === "game-over" || phase === "finished") {
-      resultDelivered = false;
-      game.replay();
+      operation = game.replay();
     }
     render();
+    if (operation) {
+      const outcome = await operation;
+      if (outcome?.ok) resultDelivered = false;
+      render();
+    }
   }
 
   function togglePause() {
@@ -55,25 +61,18 @@ export function createKeyboardSnakeController({
     render();
   }
 
-  function pauseForFocus() {
-    if (game.getSnapshot().phase !== "playing") return false;
-    game.pause();
-    render();
-    return true;
-  }
-
-  function onVisibilityChange() {
-    if (documentTarget.hidden) pauseForFocus();
-  }
-
   function mount() {
     if (mounted) return false;
     mounted = true;
     view.setPrimaryActionHandler(performPrimaryAction);
     view.setPauseHandler(togglePause);
     adapter.mount();
-    windowTarget?.addEventListener?.("blur", pauseForFocus);
-    documentTarget?.addEventListener?.("visibilitychange", onVisibilityChange);
+    focusLifecycle = attachFocusLifecycle({
+      session: game,
+      windowTarget,
+      documentTarget,
+      onPause: render,
+    });
     const tickMs = game.getSnapshot().tickMs ?? 180;
     timer = setTimer(step, tickMs);
     render();
@@ -84,12 +83,13 @@ export function createKeyboardSnakeController({
     if (!mounted) return false;
     mounted = false;
     adapter.unmount();
-    windowTarget?.removeEventListener?.("blur", pauseForFocus);
-    documentTarget?.removeEventListener?.("visibilitychange", onVisibilityChange);
+    focusLifecycle?.destroy();
+    focusLifecycle = null;
+    game.cancelPendingSession?.();
     if (timer !== null) clearTimer(timer);
     timer = null;
     return true;
   }
 
-  return { mount, destroy, step, performPrimaryAction, togglePause, pauseForFocus };
+  return { mount, destroy, step, performPrimaryAction, togglePause };
 }

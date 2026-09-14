@@ -58,16 +58,128 @@ export async function resolveTargetSource({ adapter, bundledTargets = [], filter
   return filter(bundledTargets);
 }
 
-export function attachFocusLifecycle({ session, target = globalThis.document }) {
-  const pause = () => { if (session?.getSnapshot?.().phase === "playing") session.pause(); };
-  const visibility = () => { if (target.hidden) pause(); };
-  target?.addEventListener?.("visibilitychange", visibility);
-  target?.defaultView?.addEventListener?.("blur", pause);
+export function createMiniGameRuntime({
+  session = createMiniGameSession(),
+  results = null,
+  targetProvider = null,
+  bundledTargets = [],
+  filterTargets = (value) => value,
+  prepareSession = (targets) => targets,
+  commitSession = () => {},
+  onInitializationChange = () => {},
+} = {}) {
+  const resultAccumulator = results ?? createResultAccumulator({ session });
+  let generation = 0;
+  let pending = null;
+  let initializationError = null;
+
+  function state() {
+    return {
+      generation,
+      initializing: pending !== null,
+      initializationError,
+    };
+  }
+
+  function emit() {
+    onInitializationChange(state());
+  }
+
+  function startNewSession() {
+    if (pending) return pending;
+    const requestGeneration = generation + 1;
+    generation = requestGeneration;
+    initializationError = null;
+
+    const operation = (async () => {
+      try {
+        const targets = await resolveTargetSource({
+          adapter: targetProvider,
+          bundledTargets,
+          filter: filterTargets,
+        });
+        if (!Array.isArray(targets) || targets.length === 0) {
+          throw new Error("No compatible mini-game targets are available.");
+        }
+        const prepared = await prepareSession(targets.map((target) => (
+          Array.isArray(target) ? [...target] : target
+        )));
+        if (generation !== requestGeneration) {
+          return { ok: false, stale: true };
+        }
+        commitSession(prepared);
+        resultAccumulator.reset();
+        session.reset();
+        session.start();
+        return { ok: true, generation: requestGeneration };
+      } catch (error) {
+        if (generation !== requestGeneration) {
+          return { ok: false, stale: true };
+        }
+        initializationError = error instanceof Error
+          ? error.message
+          : "Mini-game session initialization failed.";
+        return { ok: false, error };
+      }
+    })();
+
+    pending = operation;
+    emit();
+    void operation.finally(() => {
+      if (pending !== operation) return;
+      pending = null;
+      emit();
+    });
+    return operation;
+  }
+
+  function invalidatePending() {
+    generation += 1;
+    pending = null;
+    initializationError = null;
+    emit();
+  }
+
   return {
+    session,
+    results: resultAccumulator,
+    startNewSession,
+    invalidatePending,
+    getInitializationState: state,
+  };
+}
+
+export function attachFocusLifecycle({
+  session,
+  windowTarget = globalThis.window,
+  documentTarget = globalThis.document,
+  onPause = () => {},
+} = {}) {
+  let mounted = false;
+  const pause = () => {
+    if (session?.getSnapshot?.().phase !== "playing") return false;
+    session.pause();
+    onPause(session.getSnapshot?.());
+    return true;
+  };
+  const visibility = () => { if (documentTarget?.hidden) pause(); };
+  function mount() {
+    if (mounted) return false;
+    mounted = true;
+    documentTarget?.addEventListener?.("visibilitychange", visibility);
+    windowTarget?.addEventListener?.("blur", pause);
+    return true;
+  }
+  mount();
+  return {
+    mount,
     pause,
     destroy() {
-      target?.removeEventListener?.("visibilitychange", visibility);
-      target?.defaultView?.removeEventListener?.("blur", pause);
+      if (!mounted) return false;
+      mounted = false;
+      documentTarget?.removeEventListener?.("visibilitychange", visibility);
+      windowTarget?.removeEventListener?.("blur", pause);
+      return true;
     },
   };
 }

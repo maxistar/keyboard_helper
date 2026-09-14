@@ -391,6 +391,28 @@ test("Language flyout is conditional, accessible, and keeps unavailable sources 
   }
 });
 
+test("stable root menu order is preserved with and without conditional Language", () => {
+  const env = createEnvironment();
+  try {
+    const root = env.document.querySelector(".menu-root");
+    const visibleLabels = () => root.children
+      .filter((item) => item.getAttribute("role") === "menuitem" && !item.hidden)
+      .map((item) => item.querySelector(".menu-root-label").textContent);
+
+    env.controls.update({ languageAvailable: false });
+    assert.deepEqual(visibleLabels(), [
+      "Keyboard", "Connection", "Mini Mode", "Games", "Settings", "Help",
+    ]);
+
+    env.controls.update({ languageAvailable: true });
+    assert.deepEqual(visibleLabels(), [
+      "Keyboard", "Language", "Connection", "Mini Mode", "Games", "Settings", "Help",
+    ]);
+  } finally {
+    env.restore();
+  }
+});
+
 test("keyboard navigation traverses levels and dismissal restores focus correctly", async () => {
   const env = createEnvironment();
   try {

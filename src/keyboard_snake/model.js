@@ -1,4 +1,4 @@
-import { createMiniGameSession, createResultAccumulator, resolveTargetSource } from "../mini_games/runtime.js";
+import { createMiniGameRuntime, createMiniGameSession, createResultAccumulator } from "../mini_games/runtime.js";
 import { createTargetMatcher, filterCompatibleTargets } from "../mini_games/targets.js";
 import { SNAKE_CONFIG } from "./config.js";
 
@@ -15,21 +15,26 @@ export async function createSnakeGameFromSources({
   config = SNAKE_CONFIG,
   ...options
 } = {}) {
-  const targets = await resolveTargetSource({
-    adapter: targetProvider,
+  return createSnakeGame({
+    ...options,
+    targetProvider,
     bundledTargets,
-    filter: filterCompatibleTargets,
+    config: { ...config, targets: bundledTargets },
   });
-  return createSnakeGame({ ...options, config: { ...config, targets } });
 }
 
 function sameCell(left, right) {
   return Boolean(left && right && left.x === right.x && left.y === right.y);
 }
 
-export function createSnakeGame({ config = SNAKE_CONFIG, random = Math.random, now } = {}) {
-  const targets = filterCompatibleTargets(config.targets);
-  if (!targets.length) throw new Error("Keyboard Snake requires at least one compatible target.");
+export function createSnakeGame({
+  config = SNAKE_CONFIG,
+  random = Math.random,
+  now,
+  targetProvider = null,
+  bundledTargets = config.targets,
+} = {}) {
+  let targets = filterCompatibleTargets(bundledTargets);
   const session = createMiniGameSession({ now });
   const results = createResultAccumulator({ session });
   const pointsPerFood = config.pointsPerFood ?? 10;
@@ -69,24 +74,42 @@ export function createSnakeGame({ config = SNAKE_CONFIG, random = Math.random, n
     return [{ x: Math.floor(config.columns / 2), y: Math.floor(config.rows / 2) }];
   }
 
-  function reset() {
+  function resetGameState(nextTargets = targets) {
+    targets = nextTargets;
     snake = initialSnake();
     direction = SNAKE_DIRECTIONS[config.initialDirection] ?? SNAKE_DIRECTIONS.ArrowRight;
     queuedDirection = direction;
     turnQueued = false;
     targetIndex = 0;
     targetArmed = false;
-    matcher = createTargetMatcher(targets[targetIndex]);
+    matcher = createTargetMatcher(targets[targetIndex] ?? []);
     feedback = "Type the target to arm the food.";
+    chooseFood();
+  }
+
+  const runtime = createMiniGameRuntime({
+    session,
+    results,
+    targetProvider,
+    bundledTargets,
+    filterTargets: filterCompatibleTargets,
+    prepareSession: (nextTargets) => nextTargets,
+    commitSession: resetGameState,
+  });
+
+  function reset() {
+    runtime.invalidatePending();
     results.reset();
     session.reset();
-    chooseFood();
+    resetGameState(filterCompatibleTargets(bundledTargets));
     return snapshot();
   }
 
   function snapshot() {
+    const initialization = runtime.getInitializationState();
     return {
       ...session.getSnapshot(),
+      ...initialization,
       columns: config.columns,
       rows: config.rows,
       tickMs: config.tickMs,
@@ -97,7 +120,7 @@ export function createSnakeGame({ config = SNAKE_CONFIG, random = Math.random, n
       target: matcher.target,
       targetProgress: matcher.progress,
       targetArmed,
-      feedback,
+      feedback: initialization.initializationError ?? feedback,
       ...results.snapshot(),
     };
   }
@@ -170,17 +193,18 @@ export function createSnakeGame({ config = SNAKE_CONFIG, random = Math.random, n
   }
 
   function start() {
-    if (session.getSnapshot().phase !== "ready") return false;
-    session.start();
-    return true;
+    if (session.getSnapshot().phase !== "ready") return Promise.resolve({ ok: false, ignored: true });
+    return runtime.startNewSession();
   }
 
   function replay() {
-    reset();
-    return start();
+    if (!["game-over", "finished"].includes(session.getSnapshot().phase)) {
+      return Promise.resolve({ ok: false, ignored: true });
+    }
+    return runtime.startNewSession();
   }
 
-  reset();
+  resetGameState(targets);
   return {
     reset,
     start,
@@ -191,5 +215,6 @@ export function createSnakeGame({ config = SNAKE_CONFIG, random = Math.random, n
     tick,
     setDirection,
     getSnapshot: snapshot,
+    cancelPendingSession: runtime.invalidatePending,
   };
 }

@@ -101,10 +101,12 @@ export function createKeyboardSnakeView(doc = globalThis.document) {
     if (presentation.overlay) {
       setText(refs.overlayTitle, presentation.title);
       setText(refs.overlayDescription, presentation.description);
-      setText(refs.primaryAction, presentation.action);
+      setText(refs.primaryAction, snapshot.initializing ? "Starting…" : presentation.action);
+      refs.primaryAction.disabled = Boolean(snapshot.initializing);
       refs.rules.hidden = snapshot.phase !== "ready";
       refs.results.hidden = !presentation.results;
     }
+    if (!presentation.overlay) refs.primaryAction.disabled = false;
     if (presentation.results) {
       setText(refs.finalScore, snapshot.score);
       setText(refs.finalFood, snapshot.consumedFood);

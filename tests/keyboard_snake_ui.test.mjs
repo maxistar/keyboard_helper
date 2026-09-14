@@ -87,17 +87,17 @@ test("view lifecycle actions keep one native click handler", () => {
   assert.equal(pauses, 1);
 });
 
-test("controller mounts once, processes input once, pauses on focus loss, and replays", () => {
+test("controller mounts once, processes input once, pauses on focus loss, and replays", async () => {
   const state = snapshot({ phase: "ready" });
   const calls = { input: [], ticks: 0, starts: 0, resumes: 0, pauses: 0, replays: 0, renders: 0, timers: 0 };
   const game = {
     getSnapshot: () => ({ ...state }),
     input: (token) => { calls.input.push(token); return { control: token === "Escape" }; },
     tick: () => { calls.ticks += 1; },
-    start: () => { calls.starts += 1; state.phase = "playing"; },
+    start: async () => { calls.starts += 1; state.phase = "playing"; return { ok: true }; },
     pause: () => { calls.pauses += 1; state.phase = "paused"; },
     resume: () => { calls.resumes += 1; state.phase = "playing"; },
-    replay: () => { calls.replays += 1; state.phase = "playing"; },
+    replay: async () => { calls.replays += 1; state.phase = "playing"; return { ok: true }; },
   };
   const view = {
     render: () => { calls.renders += 1; },
@@ -113,20 +113,54 @@ test("controller mounts once, processes input once, pauses on focus loss, and re
   assert.equal(controller.mount(), true);
   assert.equal(controller.mount(), false);
   assert.equal(calls.timers, 1);
-  view.primary();
+  await view.primary();
   assert.equal(calls.starts, 1);
   windowTarget.dispatch("keydown", { type: "keydown", key: "a", preventDefault() {} });
   assert.deepEqual(calls.input, ["a"]);
   windowTarget.dispatch("blur");
   assert.equal(state.phase, "paused");
-  view.primary();
+  await view.primary();
   assert.equal(calls.resumes, 1);
   state.phase = "game-over";
-  view.primary();
+  await view.primary();
   assert.equal(calls.replays, 1);
   assert.equal(controller.destroy(), true);
   windowTarget.dispatch("keydown", { type: "keydown", key: "b" });
   assert.deepEqual(calls.input, ["a"]);
+});
+
+test("controller delivers each completed result once across asynchronous replay", async () => {
+  const state = snapshot({ phase: "game-over" });
+  const deliveries = [];
+  const game = {
+    getSnapshot: () => ({ ...state }),
+    input: () => ({ ignored: true }),
+    tick: () => {},
+    pause: () => { state.phase = "paused"; },
+    resume: () => { state.phase = "playing"; },
+    replay: async () => { state.phase = "playing"; return { ok: true }; },
+  };
+  const view = { render() {}, setPrimaryActionHandler(handler) { this.primary = handler; }, setPauseHandler() {} };
+  const controller = createKeyboardSnakeController({
+    game,
+    view,
+    windowTarget: new EventTargetStub(),
+    documentTarget: new EventTargetStub(),
+    setTimer: () => 1,
+    clearTimer: () => {},
+    resultConsumer: { consume: async (result) => deliveries.push(result.phase) },
+  });
+  controller.mount();
+  controller.step();
+  await Promise.resolve();
+  assert.deepEqual(deliveries, ["game-over"]);
+  await view.primary();
+  state.phase = "game-over";
+  controller.step();
+  controller.step();
+  await Promise.resolve();
+  assert.deepEqual(deliveries, ["game-over", "game-over"]);
+  controller.destroy();
 });
 
 test("state descriptions cover ready, pause, active, and completion", () => {
