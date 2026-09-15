@@ -131,6 +131,7 @@ struct MacosInputSourceSyncConfig {
 
 const TYPING_INVADERS_WINDOW_LABEL: &str = "typing-invaders";
 const KEYBOARD_SNAKE_WINDOW_LABEL: &str = "keyboard-snake";
+const FLAPPY_KEY_BIRD_WINDOW_LABEL: &str = "flappy-key-bird";
 const SETTINGS_WINDOW_LABEL: &str = "settings";
 const KEYBOARD_SELF_TEST_WINDOW_LABEL: &str = "keyboard-self-test";
 const APP_NAME: &str = "Keyboard Helper";
@@ -140,6 +141,7 @@ const TOGGLE_OVERLAY_MENU_ID: &str = "view.toggle-overlay";
 const ENTER_MINI_MODE_MENU_ID: &str = "view.enter-mini-mode";
 const TYPING_INVADERS_MENU_ID: &str = "view.typing-invaders";
 const KEYBOARD_SNAKE_MENU_ID: &str = "view.keyboard-snake";
+const FLAPPY_KEY_BIRD_MENU_ID: &str = "view.flappy-key-bird";
 const HELP_MENU_ID: &str = "help.keyboard-helper";
 
 fn settings_window_creation_error(error: &str) -> String {
@@ -165,6 +167,7 @@ enum AppMenuAction {
     EnterMiniMode,
     OpenTypingInvaders,
     OpenKeyboardSnake,
+    OpenFlappyKeyBird,
     OpenHelp,
 }
 
@@ -176,6 +179,7 @@ impl AppMenuAction {
             ENTER_MINI_MODE_MENU_ID => Some(Self::EnterMiniMode),
             TYPING_INVADERS_MENU_ID => Some(Self::OpenTypingInvaders),
             KEYBOARD_SNAKE_MENU_ID => Some(Self::OpenKeyboardSnake),
+            FLAPPY_KEY_BIRD_MENU_ID => Some(Self::OpenFlappyKeyBird),
             HELP_MENU_ID => Some(Self::OpenHelp),
             _ => None,
         }
@@ -188,6 +192,7 @@ impl AppMenuAction {
             Self::EnterMiniMode => "Enter Mini Mode",
             Self::OpenTypingInvaders => "Shift-Space Invaders",
             Self::OpenKeyboardSnake => "Keyboard Snake",
+            Self::OpenFlappyKeyBird => "Flappy Key-Bird",
             Self::OpenHelp => "Keyboard Helper Help",
         }
     }
@@ -199,6 +204,7 @@ trait AppMenuActionHandler {
     fn enter_mini_mode(&mut self) -> Result<(), String>;
     fn open_typing_invaders(&mut self) -> Result<(), String>;
     fn open_keyboard_snake(&mut self) -> Result<(), String>;
+    fn open_flappy_key_bird(&mut self) -> Result<(), String>;
     fn open_help(&mut self) -> Result<(), String>;
 }
 
@@ -213,6 +219,7 @@ fn dispatch_app_menu_action(menu_id: &str, handler: &mut impl AppMenuActionHandl
         AppMenuAction::EnterMiniMode => handler.enter_mini_mode(),
         AppMenuAction::OpenTypingInvaders => handler.open_typing_invaders(),
         AppMenuAction::OpenKeyboardSnake => handler.open_keyboard_snake(),
+        AppMenuAction::OpenFlappyKeyBird => handler.open_flappy_key_bird(),
         AppMenuAction::OpenHelp => handler.open_help(),
     };
 
@@ -248,6 +255,10 @@ impl AppMenuActionHandler for NativeAppMenuActionHandler<'_> {
 
     fn open_keyboard_snake(&mut self) -> Result<(), String> {
         open_keyboard_snake_window(self.app_handle)
+    }
+
+    fn open_flappy_key_bird(&mut self) -> Result<(), String> {
+        open_flappy_key_bird_window(self.app_handle)
     }
 
     fn open_help(&mut self) -> Result<(), String> {
@@ -629,20 +640,70 @@ async fn open_keyboard_snake(app_handle: tauri::AppHandle) -> Result<(), String>
     open_keyboard_snake_window(&app_handle)
 }
 
+#[tauri::command]
+async fn open_flappy_key_bird(app_handle: tauri::AppHandle) -> Result<(), String> {
+    open_flappy_key_bird_window(&app_handle)
+}
+
 fn open_keyboard_snake_window(app_handle: &tauri::AppHandle) -> Result<(), String> {
     let existing = app_handle.get_webview_window(KEYBOARD_SNAKE_WINDOW_LABEL);
     match secondary_window_action(existing.is_some()) {
         SecondaryWindowAction::FocusExisting => {
             let window = existing.expect("existing snake window checked above");
             window.show().map_err(|error| error.to_string())?;
-            if window.is_minimized().map_err(|error| error.to_string())? { window.unminimize().map_err(|error| error.to_string())?; }
+            if window.is_minimized().map_err(|error| error.to_string())? {
+                window.unminimize().map_err(|error| error.to_string())?;
+            }
             window.set_focus().map_err(|error| error.to_string())
         }
         SecondaryWindowAction::Create => {
-            let window = WebviewWindowBuilder::new(app_handle, KEYBOARD_SNAKE_WINDOW_LABEL, WebviewUrl::App("keyboard-snake.html".into()))
-                .title("Keyboard Snake").inner_size(900.0, 760.0).min_inner_size(560.0, 520.0)
-                .resizable(true).decorations(true).transparent(false).always_on_top(false).center().build()
-                .map_err(|error| format!("failed to create Keyboard Snake window: {error}"))?;
+            let window = WebviewWindowBuilder::new(
+                app_handle,
+                KEYBOARD_SNAKE_WINDOW_LABEL,
+                WebviewUrl::App("keyboard-snake.html".into()),
+            )
+            .title("Keyboard Snake")
+            .inner_size(900.0, 760.0)
+            .min_inner_size(560.0, 520.0)
+            .resizable(true)
+            .decorations(true)
+            .transparent(false)
+            .always_on_top(false)
+            .center()
+            .build()
+            .map_err(|error| format!("failed to create Keyboard Snake window: {error}"))?;
+            window.set_focus().map_err(|error| error.to_string())
+        }
+    }
+}
+
+fn open_flappy_key_bird_window(app_handle: &tauri::AppHandle) -> Result<(), String> {
+    let existing = app_handle.get_webview_window(FLAPPY_KEY_BIRD_WINDOW_LABEL);
+    match secondary_window_action(existing.is_some()) {
+        SecondaryWindowAction::FocusExisting => {
+            let window = existing.expect("existing Flappy window checked above");
+            window.show().map_err(|error| error.to_string())?;
+            if window.is_minimized().map_err(|error| error.to_string())? {
+                window.unminimize().map_err(|error| error.to_string())?;
+            }
+            window.set_focus().map_err(|error| error.to_string())
+        }
+        SecondaryWindowAction::Create => {
+            let window = WebviewWindowBuilder::new(
+                app_handle,
+                FLAPPY_KEY_BIRD_WINDOW_LABEL,
+                WebviewUrl::App("flappy-key-bird.html".into()),
+            )
+            .title("Flappy Key-Bird")
+            .inner_size(1000.0, 760.0)
+            .min_inner_size(620.0, 540.0)
+            .resizable(true)
+            .decorations(true)
+            .transparent(false)
+            .always_on_top(false)
+            .center()
+            .build()
+            .map_err(|error| format!("failed to create Flappy Key-Bird window: {error}"))?;
             window.set_focus().map_err(|error| error.to_string())
         }
     }
@@ -844,6 +905,7 @@ async fn smoke_secondary_window(
         SETTINGS_WINDOW_LABEL => open_settings(app_handle.clone()).await,
         TYPING_INVADERS_WINDOW_LABEL => open_typing_invaders(app_handle.clone()).await,
         KEYBOARD_SNAKE_WINDOW_LABEL => open_keyboard_snake(app_handle.clone()).await,
+        FLAPPY_KEY_BIRD_WINDOW_LABEL => open_flappy_key_bird(app_handle.clone()).await,
         KEYBOARD_SELF_TEST_WINDOW_LABEL => {
             open_keyboard_self_test(app_handle.clone(), "qwerty".to_string()).await
         }
@@ -885,6 +947,7 @@ async fn smoke_secondary_window(
         SETTINGS_WINDOW_LABEL => open_settings(app_handle.clone()).await,
         TYPING_INVADERS_WINDOW_LABEL => open_typing_invaders(app_handle.clone()).await,
         KEYBOARD_SNAKE_WINDOW_LABEL => open_keyboard_snake(app_handle.clone()).await,
+        FLAPPY_KEY_BIRD_WINDOW_LABEL => open_flappy_key_bird(app_handle.clone()).await,
         KEYBOARD_SELF_TEST_WINDOW_LABEL => {
             open_keyboard_self_test(app_handle.clone(), "qwerty".to_string()).await
         }
@@ -911,6 +974,7 @@ async fn smoke_secondary_window(
         SETTINGS_WINDOW_LABEL => open_settings(app_handle.clone()).await,
         TYPING_INVADERS_WINDOW_LABEL => open_typing_invaders(app_handle.clone()).await,
         KEYBOARD_SNAKE_WINDOW_LABEL => open_keyboard_snake(app_handle.clone()).await,
+        FLAPPY_KEY_BIRD_WINDOW_LABEL => open_flappy_key_bird(app_handle.clone()).await,
         KEYBOARD_SELF_TEST_WINDOW_LABEL => {
             open_keyboard_self_test(app_handle.clone(), "qwerty".to_string()).await
         }
@@ -964,6 +1028,7 @@ async fn run_secondary_window_smoke(
         SETTINGS_WINDOW_LABEL,
         TYPING_INVADERS_WINDOW_LABEL,
         KEYBOARD_SNAKE_WINDOW_LABEL,
+        FLAPPY_KEY_BIRD_WINDOW_LABEL,
         KEYBOARD_SELF_TEST_WINDOW_LABEL,
     ] {
         windows.push(smoke_secondary_window(&app_handle, &mut receiver, label).await);
@@ -1227,6 +1292,13 @@ fn install_macos_application_menu(app: &mut tauri::App) -> tauri::Result<()> {
         true,
         None::<&str>,
     )?;
+    let flappy_key_bird = MenuItem::with_id(
+        app,
+        FLAPPY_KEY_BIRD_MENU_ID,
+        "Flappy Key-Bird",
+        true,
+        None::<&str>,
+    )?;
     let help = MenuItem::with_id(
         app,
         HELP_MENU_ID,
@@ -1263,7 +1335,13 @@ fn install_macos_application_menu(app: &mut tauri::App) -> tauri::Result<()> {
         app,
         "View",
         true,
-        &[&toggle_overlay, &enter_mini_mode, &typing_invaders, &keyboard_snake],
+        &[
+            &toggle_overlay,
+            &enter_mini_mode,
+            &typing_invaders,
+            &keyboard_snake,
+            &flappy_key_bird,
+        ],
     )?;
     let window_menu = Submenu::with_items(
         app,
@@ -1344,6 +1422,7 @@ fn main() {
             restore_full_geometry,
             open_typing_invaders,
             open_keyboard_snake,
+            open_flappy_key_bird,
             open_settings,
             open_keyboard_self_test,
             secondary_window_ready,
@@ -1364,8 +1443,8 @@ mod tests {
         overlay_visibility_action, read_bounded_layout, secondary_window_action, self_test_url,
         settings_window_creation_error, AppMenuAction, AppMenuActionHandler, GeometryRect,
         OverlayGeometryState, OverlayVisibilityAction, OverlayWindowSnapshot,
-        SecondaryWindowAction, ENTER_MINI_MODE_MENU_ID, HELP_MENU_ID, SETTINGS_MENU_ID,
-        TOGGLE_OVERLAY_MENU_ID, TYPING_INVADERS_MENU_ID, KEYBOARD_SNAKE_MENU_ID,
+        SecondaryWindowAction, ENTER_MINI_MODE_MENU_ID, FLAPPY_KEY_BIRD_MENU_ID, HELP_MENU_ID,
+        KEYBOARD_SNAKE_MENU_ID, SETTINGS_MENU_ID, TOGGLE_OVERLAY_MENU_ID, TYPING_INVADERS_MENU_ID,
     };
     use std::io::Cursor;
     use tauri::{PhysicalPosition, PhysicalSize};
@@ -1412,6 +1491,10 @@ mod tests {
 
         fn open_keyboard_snake(&mut self) -> Result<(), String> {
             self.record(AppMenuAction::OpenKeyboardSnake)
+        }
+
+        fn open_flappy_key_bird(&mut self) -> Result<(), String> {
+            self.record(AppMenuAction::OpenFlappyKeyBird)
         }
 
         fn open_help(&mut self) -> Result<(), String> {
@@ -1561,7 +1644,14 @@ mod tests {
             TYPING_INVADERS_MENU_ID,
             &mut handler
         ));
-        assert!(dispatch_app_menu_action(KEYBOARD_SNAKE_MENU_ID, &mut handler));
+        assert!(dispatch_app_menu_action(
+            KEYBOARD_SNAKE_MENU_ID,
+            &mut handler
+        ));
+        assert!(dispatch_app_menu_action(
+            FLAPPY_KEY_BIRD_MENU_ID,
+            &mut handler
+        ));
         assert!(dispatch_app_menu_action(HELP_MENU_ID, &mut handler));
         assert!(!dispatch_app_menu_action("unknown", &mut handler));
 
@@ -1573,6 +1663,7 @@ mod tests {
                 AppMenuAction::EnterMiniMode,
                 AppMenuAction::OpenTypingInvaders,
                 AppMenuAction::OpenKeyboardSnake,
+                AppMenuAction::OpenFlappyKeyBird,
                 AppMenuAction::OpenHelp,
             ]
         );

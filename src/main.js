@@ -738,6 +738,12 @@ async function openKeyboardSnake() {
   return true;
 }
 
+async function openFlappyKeyBird() {
+  if (!tauriHandle?.core?.invoke) throw new Error("Flappy Key-Bird requires the desktop application.");
+  await tauriHandle.core.invoke("open_flappy_key_bird");
+  return true;
+}
+
 async function openSettingsWindow() {
   if (!tauriHandle?.core?.invoke) {
     throw new Error("Settings require the desktop application.");
@@ -941,6 +947,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     reconnectBle: reconnectCurrentBle,
     openTypingInvaders,
     openKeyboardSnake,
+    openFlappyKeyBird,
     openKeyboardSelfTest,
     enterMiniMode,
     openSettings: openSettingsWindow,
@@ -956,6 +963,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     onMiniMode: () => menuStateController.mini(),
     onStartGame: () => menuStateController.launchGame(),
     onStartSnake: () => menuStateController.launchSnake(),
+    onStartFlappy: () => menuStateController.launchFlappy(),
     onSettings: () => menuStateController.settings(),
     onHelp: () => menuStateController.help(),
     onLanguageSelect: selectLanguage,

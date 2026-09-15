@@ -19,6 +19,7 @@ function createHarness(overrides = {}) {
     helpCalls: [],
     gameCalls: 0,
     snakeCalls: 0,
+    flappyCalls: 0,
     selfTestCalls: [],
     miniCalls: 0,
     settingsCalls: 0,
@@ -46,6 +47,10 @@ function createHarness(overrides = {}) {
     },
     openKeyboardSnake: async () => {
       data.snakeCalls += 1;
+      return true;
+    },
+    openFlappyKeyBird: async () => {
+      data.flappyCalls += 1;
       return true;
     },
     openKeyboardSelfTest: async (key) => {
@@ -360,6 +365,52 @@ test("Snake launch is desktop-only, serialized, and exposes launch failures", as
   });
   assert.equal(await failing.launchSnake(), false);
   assert.equal(failing.getSnapshot().feedback.message, "Snake window unavailable");
+});
+
+test("Flappy launch is desktop-only, serialized, and exposes launch failures", async () => {
+  let finishLaunch;
+  const pending = new Promise((resolve) => { finishLaunch = resolve; });
+  const base = createHarness();
+  const controller = createAppMenuStateController({
+    getCurrentLayoutKey: () => base.data.currentKey,
+    getCurrentLayoutLabel: (key) => key,
+    getCurrentLayoutSource: () => true,
+    getCurrentBleSource: () => null,
+    hasNativeBridge: () => true,
+    reloadLayout: async () => true,
+    reconnectBle: async () => true,
+    openTypingInvaders: async () => true,
+    openKeyboardSnake: async () => true,
+    openFlappyKeyBird: async () => pending,
+    openHelp: async () => true,
+  });
+  const first = controller.launchFlappy();
+  assert.equal(controller.getSnapshot().flappyPending, true);
+  assert.equal(await controller.launchFlappy(), false);
+  finishLaunch(true);
+  assert.equal(await first, true);
+  assert.equal(controller.getSnapshot().flappyPending, false);
+
+  const unavailable = createHarness({ native: false });
+  assert.equal(unavailable.controller.getSnapshot().flappyAvailable, false);
+  assert.equal(await unavailable.controller.launchFlappy(), false);
+  assert.equal(unavailable.data.flappyCalls, 0);
+
+  const failing = createAppMenuStateController({
+    getCurrentLayoutKey: () => "builtin",
+    getCurrentLayoutLabel: () => "Built in",
+    getCurrentLayoutSource: () => true,
+    getCurrentBleSource: () => null,
+    hasNativeBridge: () => true,
+    reloadLayout: async () => true,
+    reconnectBle: async () => true,
+    openTypingInvaders: async () => true,
+    openKeyboardSnake: async () => true,
+    openFlappyKeyBird: async () => { throw new Error("Flappy window unavailable"); },
+    openHelp: async () => true,
+  });
+  assert.equal(await failing.launchFlappy(), false);
+  assert.equal(failing.getSnapshot().feedback.message, "Flappy window unavailable");
 });
 
 test("Settings requires native availability, prevents duplicates, and reports failure", async () => {

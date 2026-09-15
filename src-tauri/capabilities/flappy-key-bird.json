@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "flappy-key-bird",
+  "description": "Capability for the Flappy Key-Bird window",
+  "windows": ["flappy-key-bird"],
+  "platforms": ["macOS", "windows", "linux"],
+  "permissions": ["core:default"]
+}

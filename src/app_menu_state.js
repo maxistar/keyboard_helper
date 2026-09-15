@@ -20,6 +20,7 @@ export function createAppMenuStateController({
   reconnectBle,
   openTypingInvaders,
   openKeyboardSnake = async () => false,
+  openFlappyKeyBird = async () => false,
   openKeyboardSelfTest = async () => false,
   enterMiniMode = async () => false,
   openSettings,
@@ -32,6 +33,7 @@ export function createAppMenuStateController({
   let reconnectPending = false;
   let gamePending = false;
   let snakePending = false;
+  let flappyPending = false;
   let selfTestPending = false;
   let miniPending = false;
   let settingsPending = false;
@@ -63,6 +65,8 @@ export function createAppMenuStateController({
       gamePending,
       snakeAvailable: hasNativeBridge(),
       snakePending,
+      flappyAvailable: hasNativeBridge(),
+      flappyPending,
       selfTestAvailable: hasNativeBridge(),
       selfTestPending,
       miniAvailable: hasNativeBridge(),
@@ -224,6 +228,19 @@ export function createAppMenuStateController({
     } finally { snakePending = false; notify(); }
   }
 
+  async function launchFlappy() {
+    if (flappyPending || !hasNativeBridge()) return false;
+    flappyPending = true; feedback = null; notify();
+    try {
+      const result = await openFlappyKeyBird();
+      if (result === false) throw new Error("Flappy Key-Bird could not be opened.");
+      return true;
+    } catch (error) {
+      feedback = { kind: "error", message: errorMessage(error, "Failed to open Flappy Key-Bird.") };
+      return false;
+    } finally { flappyPending = false; notify(); }
+  }
+
   async function selfTest() {
     if (selfTestPending || !hasNativeBridge()) return false;
     selfTestPending = true;
@@ -299,6 +316,7 @@ export function createAppMenuStateController({
     reconnect,
     launchGame,
     launchSnake,
+    launchFlappy,
     selfTest,
     mini,
     settings,

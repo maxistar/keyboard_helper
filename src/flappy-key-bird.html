@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flappy Key-Bird</title>
+  <link rel="stylesheet" href="flappy_key_bird/game.css" />
+</head>
+<body class="flappy-page" data-game-phase="ready">
+  <main class="flappy-shell" aria-labelledby="flappyTitle">
+    <header class="flappy-header">
+      <div><span class="flappy-kicker">Keyboard Helper Arcade</span><h1 id="flappyTitle">Flappy Key-Bird</h1></div>
+      <dl class="flappy-hud" aria-label="Current run">
+        <div><dt>Score</dt><dd id="flappyScore">0</dd></div>
+        <div><dt>Gates</dt><dd id="flappyGateCount">0</dd></div>
+        <div><dt>Mistakes</dt><dd id="flappyMistakes">0</dd></div>
+        <div><dt>Misses</dt><dd id="flappyMisses">0</dd></div>
+        <div><dt>Streak</dt><dd><span id="flappyStreak">0</span> <span id="flappyMultiplier">×1</span></dd></div>
+        <div><dt>Time</dt><dd id="flappyDuration">0:00</dd></div>
+      </dl>
+    </header>
+
+    <section class="flappy-target-panel" aria-labelledby="flappyTargetLabel">
+      <span id="flappyStatus" class="flappy-state" role="status" aria-live="polite">Ready</span>
+      <span id="flappyTargetLabel">Active gate</span>
+      <strong class="flappy-target" aria-live="polite"><span id="flappyTargetCompleted"></span><span id="flappyTargetRemaining"></span></strong>
+      <span id="flappyFeedback" role="status" aria-live="polite">Type the target in rhythm to stay airborne.</span>
+    </section>
+
+    <section id="flappyStage" class="flappy-stage" role="img" aria-label="Flappy field">
+      <div id="flappyGates" class="flappy-gates" aria-hidden="true"></div>
+      <div id="flappyBird" class="flappy-bird" aria-hidden="true"><span></span></div>
+      <section id="flappyOverlay" class="flappy-overlay visible" aria-live="polite">
+        <div class="flappy-card">
+          <h2 id="flappyOverlayTitle">Flappy Key-Bird</h2>
+          <p id="flappyOverlayDescription">Type each gate target in rhythm to flap through the opening.</p>
+          <div id="flappyRules" class="flappy-rules">
+            <h3>How to play</h3>
+            <ol>
+              <li>Type the visible target; every correct symbol gives one flap.</li>
+              <li>Finish the target before its gate passes the bird.</li>
+              <li>Wrong keys count as mistakes and give no lift.</li>
+              <li>Avoid the pipes, floor, and ceiling.</li>
+              <li>Press <kbd>Esc</kbd> whenever you want to pause.</li>
+            </ol>
+          </div>
+          <dl id="flappyFinalResults" class="flappy-results" hidden>
+            <div><dt>Score</dt><dd id="flappyFinalScore">0</dd></div>
+            <div><dt>Gates</dt><dd id="flappyFinalGates">0</dd></div>
+            <div><dt>Correct</dt><dd id="flappyFinalCorrect">0</dd></div>
+            <div><dt>Mistakes</dt><dd id="flappyFinalMistakes">0</dd></div>
+            <div><dt>Misses</dt><dd id="flappyFinalMisses">0</dd></div>
+            <div><dt>Accuracy</dt><dd id="flappyFinalAccuracy">100%</dd></div>
+            <div><dt>Best streak</dt><dd id="flappyFinalStreak">0</dd></div>
+            <div><dt>Active time</dt><dd id="flappyFinalDuration">0:00</dd></div>
+          </dl>
+          <button id="flappyPrimaryAction" type="button">Start flight</button>
+        </div>
+      </section>
+    </section>
+
+    <footer class="flappy-controls"><span>Type the active target to flap · <kbd>Esc</kbd> pause/resume</span><button id="flappyPause" type="button" disabled>Pause</button></footer>
+  </main>
+  <script type="module" src="flappy_key_bird/game.js"></script>
+</body>
+</html>
