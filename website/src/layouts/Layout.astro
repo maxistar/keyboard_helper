@@ -34,9 +34,9 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       :global(*), :global(*::before), :global(*::after) { box-sizing: border-box; margin: 0; padding: 0; }
       html { font-family: "Trebuchet MS", "Segoe UI", Tahoma, sans-serif; background: var(--bg); color: var(--text); }
       body { min-height: 100vh; display: flex; flex-direction: column; overflow-wrap: anywhere; }
-      a { color: var(--accent); text-decoration: none; }
-      a:hover { text-decoration: underline; }
-      a:focus-visible { border-radius: 3px; outline: 3px solid var(--accent); outline-offset: 4px; }
+      :global(a) { color: var(--text); text-decoration: underline; }
+      :global(a:hover) { color: #fff; }
+      :global(a:focus-visible) { border-radius: 3px; outline: 3px solid var(--accent); outline-offset: 4px; }
       header {
         border-bottom: 1px solid var(--border);
         padding: 16px 32px;
@@ -45,9 +45,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         justify-content: space-between;
         background: var(--bg2);
       }
-      header .logo { font-weight: 700; font-size: 1.1rem; letter-spacing: 0.04em; color: var(--text); }
+      header .logo { font-weight: 700; font-size: 1.1rem; letter-spacing: 0.04em; color: var(--text); text-decoration: none; }
+      header .logo:hover { text-decoration: underline; }
       header nav { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: flex-end; }
-      header nav a { color: var(--text-muted); font-size: 0.9rem; }
+      header nav a { color: var(--text-muted); font-size: 0.9rem; text-decoration: none; }
       header nav a:hover { color: var(--text); text-decoration: none; }
       main { flex: 1; max-width: 860px; margin: 0 auto; padding: 48px 32px; width: 100%; }
       footer {
