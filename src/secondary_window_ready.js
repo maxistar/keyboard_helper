@@ -3,6 +3,7 @@ export const SECONDARY_WINDOWS = Object.freeze({
   typingInvaders: Object.freeze({ label: "typing-invaders", page: "game.html", capability: "typing-invaders" }),
   keyboardSnake: Object.freeze({ label: "keyboard-snake", page: "keyboard-snake.html", capability: "keyboard-snake" }),
   flappyKeyBird: Object.freeze({ label: "flappy-key-bird", page: "flappy-key-bird.html", capability: "flappy-key-bird" }),
+  underwaterTypingFishing: Object.freeze({ label: "underwater-typing-fishing", page: "underwater-typing-fishing.html", capability: "underwater-typing-fishing" }),
   selfTest: Object.freeze({ label: "keyboard-self-test", page: "self-test.html", capability: "self-test" }),
 });
 

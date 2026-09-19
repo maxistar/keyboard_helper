@@ -231,7 +231,7 @@ function createEnvironment(callbacks = {}) {
   globalThis.document = document;
   globalThis.window = window;
   let controls;
-  const calls = { layout: [], language: [], reload: 0, selfTest: 0, reconnect: 0, mini: 0, game: 0, snake: 0, flappy: 0, settings: 0, help: 0 };
+  const calls = { layout: [], language: [], reload: 0, selfTest: 0, reconnect: 0, mini: 0, game: 0, snake: 0, flappy: 0, fishing: 0, settings: 0, help: 0 };
   const layoutOptions = [
     { key: "alpha", label: "Alpha" },
     { key: "beta", label: "Beta" },
@@ -270,6 +270,10 @@ function createEnvironment(callbacks = {}) {
     }),
     onStartFlappy: callbacks.onStartFlappy ?? (async () => {
       calls.flappy += 1;
+      return true;
+    }),
+    onStartFishing: callbacks.onStartFishing ?? (async () => {
+      calls.fishing += 1;
       return true;
     }),
     onSettings: callbacks.onSettings ?? (async () => {
@@ -542,9 +546,9 @@ test("contextual flyouts switch exclusively and actions preserve their close beh
 });
 
 test("Games flyout exposes all desktop games and keeps launch errors in context", async () => {
-  const env = createEnvironment({ onStartFlappy: async () => false });
+  const env = createEnvironment({ onStartFishing: async () => false });
   try {
-    env.controls.update({ gameAvailable: true, snakeAvailable: true, flappyAvailable: true });
+    env.controls.update({ gameAvailable: true, snakeAvailable: true, flappyAvailable: true, fishingAvailable: true });
     const toggle = env.document.querySelector(".menu-toggle");
     const gamesParent = env.document.querySelector(".menu-parent-games");
     const gamesFlyout = env.document.querySelector(".menu-flyout-games");
@@ -554,10 +558,11 @@ test("Games flyout exposes all desktop games and keeps launch errors in context"
     assert.equal(env.document.querySelector(".menu-action-game").disabled, false);
     assert.equal(env.document.querySelector(".menu-action-snake").disabled, false);
     assert.equal(env.document.querySelector(".menu-action-flappy").disabled, false);
-    await env.document.querySelector(".menu-action-flappy").click();
-    env.controls.update({ feedback: { kind: "error", message: "Flappy window unavailable" } });
+    assert.equal(env.document.querySelector(".menu-action-fishing").disabled, false);
+    await env.document.querySelector(".menu-action-fishing").click();
+    env.controls.update({ feedback: { kind: "error", message: "Fishing window unavailable" } });
     assert.equal(gamesFlyout.classList.contains("open"), true);
-    assert.equal(env.document.querySelector(".menu-feedback-games").textContent, "Flappy window unavailable");
+    assert.equal(env.document.querySelector(".menu-feedback-games").textContent, "Fishing window unavailable");
   } finally {
     env.restore();
   }

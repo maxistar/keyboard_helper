@@ -88,6 +88,19 @@ The desktop application includes a word-typing arcade game. Open the application
 
 The first release uses curated English words and keeps results only for the current session. It does not save profiles, achievements, or high scores. The game window is available through the native Tauri application; the standalone browser frontend does not create desktop windows.
 
+## Underwater Typing Fishing
+
+Open the application menu, expand **Games**, and choose **Underwater Typing Fishing** to start a calm Zen typing session in a separate desktop window. Choosing it again focuses the existing fishing window.
+
+- Each visible fish carries a word and no two visible fish begin with the same character.
+- Type a fish's first character to hook it, then complete the word to reel it in.
+- A mistake resets the current streak but preserves the correctly typed prefix; fish never escape merely because time passes.
+- Reach the catch quota to finish the dive, or choose **End dive** to see the current results early.
+- Press `Esc` to pause or resume. Moving focus away from the game pauses it automatically.
+- Results include score, caught fish, correct characters, mistakes, accuracy, words per minute, best streak, and active time.
+
+The initial Zen mode uses bundled English words and stores no profile or high score. The game accepts focused semantic keyboard input and does not require BLE telemetry or global key events. Like the other secondary game windows, it is available in the native desktop application rather than the standalone browser frontend.
+
 ## Guided Keyboard Self-test
 
 Open the overlay menu, expand **Keyboard**, and choose **Keyboard Self-test**. The desktop app opens one separate test window (or focuses the existing one), initially selecting the overlay's current layout and its base layer.

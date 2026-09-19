@@ -21,6 +21,7 @@ export function createAppMenuStateController({
   openTypingInvaders,
   openKeyboardSnake = async () => false,
   openFlappyKeyBird = async () => false,
+  openUnderwaterTypingFishing = async () => false,
   openKeyboardSelfTest = async () => false,
   enterMiniMode = async () => false,
   openSettings,
@@ -34,6 +35,7 @@ export function createAppMenuStateController({
   let gamePending = false;
   let snakePending = false;
   let flappyPending = false;
+  let fishingPending = false;
   let selfTestPending = false;
   let miniPending = false;
   let settingsPending = false;
@@ -67,6 +69,8 @@ export function createAppMenuStateController({
       snakePending,
       flappyAvailable: hasNativeBridge(),
       flappyPending,
+      fishingAvailable: hasNativeBridge(),
+      fishingPending,
       selfTestAvailable: hasNativeBridge(),
       selfTestPending,
       miniAvailable: hasNativeBridge(),
@@ -241,6 +245,19 @@ export function createAppMenuStateController({
     } finally { flappyPending = false; notify(); }
   }
 
+  async function launchFishing() {
+    if (fishingPending || !hasNativeBridge()) return false;
+    fishingPending = true; feedback = null; notify();
+    try {
+      const result = await openUnderwaterTypingFishing();
+      if (result === false) throw new Error("Underwater Typing Fishing could not be opened.");
+      return true;
+    } catch (error) {
+      feedback = { kind: "error", message: errorMessage(error, "Failed to open Underwater Typing Fishing.") };
+      return false;
+    } finally { fishingPending = false; notify(); }
+  }
+
   async function selfTest() {
     if (selfTestPending || !hasNativeBridge()) return false;
     selfTestPending = true;
@@ -317,6 +334,7 @@ export function createAppMenuStateController({
     launchGame,
     launchSnake,
     launchFlappy,
+    launchFishing,
     selfTest,
     mini,
     settings,

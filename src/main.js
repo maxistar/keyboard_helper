@@ -744,6 +744,12 @@ async function openFlappyKeyBird() {
   return true;
 }
 
+async function openUnderwaterTypingFishing() {
+  if (!tauriHandle?.core?.invoke) throw new Error("Underwater Typing Fishing requires the desktop application.");
+  await tauriHandle.core.invoke("open_underwater_typing_fishing");
+  return true;
+}
+
 async function openSettingsWindow() {
   if (!tauriHandle?.core?.invoke) {
     throw new Error("Settings require the desktop application.");
@@ -948,6 +954,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     openTypingInvaders,
     openKeyboardSnake,
     openFlappyKeyBird,
+    openUnderwaterTypingFishing,
     openKeyboardSelfTest,
     enterMiniMode,
     openSettings: openSettingsWindow,
@@ -964,6 +971,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     onStartGame: () => menuStateController.launchGame(),
     onStartSnake: () => menuStateController.launchSnake(),
     onStartFlappy: () => menuStateController.launchFlappy(),
+    onStartFishing: () => menuStateController.launchFishing(),
     onSettings: () => menuStateController.settings(),
     onHelp: () => menuStateController.help(),
     onLanguageSelect: selectLanguage,

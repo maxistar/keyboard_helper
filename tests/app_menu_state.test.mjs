@@ -20,6 +20,7 @@ function createHarness(overrides = {}) {
     gameCalls: 0,
     snakeCalls: 0,
     flappyCalls: 0,
+    fishingCalls: 0,
     selfTestCalls: [],
     miniCalls: 0,
     settingsCalls: 0,
@@ -51,6 +52,10 @@ function createHarness(overrides = {}) {
     },
     openFlappyKeyBird: async () => {
       data.flappyCalls += 1;
+      return true;
+    },
+    openUnderwaterTypingFishing: async () => {
+      data.fishingCalls += 1;
       return true;
     },
     openKeyboardSelfTest: async (key) => {
@@ -411,6 +416,49 @@ test("Flappy launch is desktop-only, serialized, and exposes launch failures", a
   });
   assert.equal(await failing.launchFlappy(), false);
   assert.equal(failing.getSnapshot().feedback.message, "Flappy window unavailable");
+});
+
+test("Fishing launch is desktop-only, serialized, and exposes launch failures", async () => {
+  let finishLaunch;
+  const pending = new Promise((resolve) => { finishLaunch = resolve; });
+  const controller = createAppMenuStateController({
+    getCurrentLayoutKey: () => "builtin",
+    getCurrentLayoutLabel: () => "Built in",
+    getCurrentLayoutSource: () => true,
+    getCurrentBleSource: () => null,
+    hasNativeBridge: () => true,
+    reloadLayout: async () => true,
+    reconnectBle: async () => true,
+    openTypingInvaders: async () => true,
+    openUnderwaterTypingFishing: async () => pending,
+    openHelp: async () => true,
+  });
+  const first = controller.launchFishing();
+  assert.equal(controller.getSnapshot().fishingPending, true);
+  assert.equal(await controller.launchFishing(), false);
+  finishLaunch(true);
+  assert.equal(await first, true);
+  assert.equal(controller.getSnapshot().fishingPending, false);
+
+  const unavailable = createHarness({ native: false });
+  assert.equal(unavailable.controller.getSnapshot().fishingAvailable, false);
+  assert.equal(await unavailable.controller.launchFishing(), false);
+  assert.equal(unavailable.data.fishingCalls, 0);
+
+  const failing = createAppMenuStateController({
+    getCurrentLayoutKey: () => "builtin",
+    getCurrentLayoutLabel: () => "Built in",
+    getCurrentLayoutSource: () => true,
+    getCurrentBleSource: () => null,
+    hasNativeBridge: () => true,
+    reloadLayout: async () => true,
+    reconnectBle: async () => true,
+    openTypingInvaders: async () => true,
+    openUnderwaterTypingFishing: async () => { throw new Error("Fishing window unavailable"); },
+    openHelp: async () => true,
+  });
+  assert.equal(await failing.launchFishing(), false);
+  assert.equal(failing.getSnapshot().feedback.message, "Fishing window unavailable");
 });
 
 test("Settings requires native availability, prevents duplicates, and reports failure", async () => {

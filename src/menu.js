@@ -22,6 +22,7 @@ export function createMenu({
   onStartGame,
   onStartSnake = async () => false,
   onStartFlappy = async () => false,
+  onStartFishing = async () => false,
   onSettings,
   onHelp,
   onLanguageSelect = async () => false,
@@ -50,6 +51,8 @@ export function createMenu({
     snakePending: false,
     flappyAvailable: false,
     flappyPending: false,
+    fishingAvailable: false,
+    fishingPending: false,
     miniAvailable: false,
     miniPending: false,
     settingsAvailable: false,
@@ -91,6 +94,7 @@ export function createMenu({
   let gameButton;
   let snakeButton;
   let flappyButton;
+  let fishingButton;
   let gamesButton;
   let gamesFlyout;
   let miniButton;
@@ -463,6 +467,11 @@ export function createMenu({
       const opened = await onStartFlappy();
       if (opened !== false) closeMenu();
     });
+    fishingButton = createFlyoutAction("Underwater Typing Fishing", "menu-action-fishing", "games", async () => {
+      feedbackContext = activeSubmenu === "games" ? "games" : "root";
+      const opened = await onStartFishing();
+      if (opened !== false) closeMenu();
+    });
 
     settingsButton = createRootItem("Settings", "menu-action-settings");
     settingsButton.addEventListener("click", async () => {
@@ -494,7 +503,7 @@ export function createMenu({
 
     gamesFlyout = createFlyout("games", "gamesMenuFlyout", "gamesMenuParent");
     gamesFeedback = createFeedback("menu-feedback-games");
-    gamesFlyout.append(gameButton, snakeButton, flappyButton, gamesFeedback);
+    gamesFlyout.append(gameButton, snakeButton, flappyButton, fishingButton, gamesFeedback);
     keyboardFlyout = createFlyout("keyboard", "keyboardMenuFlyout", "keyboardMenuParent");
     const keyboardHeader = document.createElement("header");
     keyboardHeader.className = "menu-flyout-header";
@@ -652,7 +661,7 @@ export function createMenu({
   function renderFeedback() {
     if (state.reloadPending || state.selfTestPending) feedbackContext = "keyboard";
     else if (state.reconnectPending) feedbackContext = "connection";
-    else if (state.gamePending || state.snakePending || state.flappyPending) feedbackContext = activeSubmenu === "games" ? "games" : "root";
+    else if (state.gamePending || state.snakePending || state.flappyPending || state.fishingPending) feedbackContext = activeSubmenu === "games" ? "games" : "root";
     else if (state.miniPending || state.settingsPending) feedbackContext = "root";
 
     const targets = {
@@ -752,6 +761,11 @@ export function createMenu({
     flappyButton.textContent = state.flappyPending ? "Launching…" : "Flappy Key-Bird";
     flappyButton.title = state.flappyAvailable
       ? "Open Flappy Key-Bird in a separate window"
+      : "Available in the desktop application";
+    fishingButton.disabled = !state.fishingAvailable || state.fishingPending;
+    fishingButton.textContent = state.fishingPending ? "Launching…" : "Underwater Typing Fishing";
+    fishingButton.title = state.fishingAvailable
+      ? "Open Underwater Typing Fishing in a separate window"
       : "Available in the desktop application";
 
     settingsButton.disabled = !state.settingsAvailable || state.settingsPending;
