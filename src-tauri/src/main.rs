@@ -11,6 +11,8 @@ mod ble_layer_sync;
 mod config_store;
 #[cfg(target_os = "macos")]
 mod input_source_macos;
+#[cfg(target_os = "linux")]
+mod input_source_x11;
 use rdev::{listen, Event, EventType, Key};
 use serde::{Deserialize, Serialize};
 #[cfg(target_os = "macos")]
@@ -37,6 +39,12 @@ struct BleLayerSyncTauriState {
 struct MacosInputSourceTauriState {
     #[cfg(target_os = "macos")]
     inner: Arc<input_source_macos::MacosInputSourceState>,
+}
+
+#[derive(Default)]
+struct X11InputSourceTauriState {
+    #[cfg(target_os = "linux")]
+    inner: Arc<input_source_x11::X11InputSourceState>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1256,6 +1264,76 @@ async fn refresh_macos_input_source_sync(
         .map_err(|_| "macOS input-source refresh was cancelled".to_string())?
 }
 
+#[cfg(target_os = "linux")]
+#[tauri::command]
+async fn start_x11_input_source_sync(
+    app_handle: tauri::AppHandle,
+    state: State<'_, X11InputSourceTauriState>,
+    config: input_source_x11::X11InputSourceSyncConfig,
+) -> Result<input_source_x11::X11InputSourceSnapshot, input_source_x11::X11InputSourceError> {
+    let input_source_state = state.inner.clone();
+    let result = tokio::task::spawn_blocking(move || input_source_state.start(app_handle, config))
+        .await
+        .map_err(|error| input_source_x11::X11InputSourceError {
+            reason: "startup-cancelled".into(),
+            message: error.to_string(),
+            diagnostics: None,
+        })?;
+    if let Err(error) = &result {
+        eprintln!(
+            "X11 input-source sync failed to start: {} ({})",
+            error.message, error.reason
+        );
+    }
+    result
+}
+
+#[cfg(target_os = "linux")]
+#[tauri::command]
+async fn stop_x11_input_source_sync(
+    state: State<'_, X11InputSourceTauriState>,
+) -> Result<(), input_source_x11::X11InputSourceError> {
+    let input_source_state = state.inner.clone();
+    tokio::task::spawn_blocking(move || input_source_state.stop())
+        .await
+        .map_err(|error| input_source_x11::X11InputSourceError {
+            reason: "stop-cancelled".into(),
+            message: error.to_string(),
+            diagnostics: None,
+        })?
+}
+
+#[cfg(target_os = "linux")]
+#[tauri::command]
+async fn refresh_x11_input_source_sync(
+    state: State<'_, X11InputSourceTauriState>,
+) -> Result<input_source_x11::X11InputSourceSnapshot, input_source_x11::X11InputSourceError> {
+    let input_source_state = state.inner.clone();
+    tokio::task::spawn_blocking(move || input_source_state.refresh())
+        .await
+        .map_err(|error| input_source_x11::X11InputSourceError {
+            reason: "refresh-cancelled".into(),
+            message: error.to_string(),
+            diagnostics: None,
+        })?
+}
+
+#[cfg(target_os = "linux")]
+#[tauri::command]
+async fn select_x11_input_source(
+    state: State<'_, X11InputSourceTauriState>,
+    source_id: String,
+) -> Result<(), input_source_x11::X11InputSourceError> {
+    let input_source_state = state.inner.clone();
+    tokio::task::spawn_blocking(move || input_source_state.select(&source_id))
+        .await
+        .map_err(|error| input_source_x11::X11InputSourceError {
+            reason: "selection-cancelled".into(),
+            message: error.to_string(),
+            diagnostics: None,
+        })?
+}
+
 /// Преобразуем rdev::Event в удобный для фронта формат
 fn convert_event(ev: Event) -> Option<KeyEventPayload> {
     //if let Some(name) = ev.name.as_deref() {
@@ -1453,6 +1531,7 @@ fn main() {
         .manage(KeyboardListenerState::default())
         .manage(BleLayerSyncTauriState::default())
         .manage(MacosInputSourceTauriState::default())
+        .manage(X11InputSourceTauriState::default())
         .manage(OverlayGeometryState::default())
         .manage(SecondaryWindowReadinessState::default())
         .setup(|app| {
@@ -1483,6 +1562,14 @@ fn main() {
             select_macos_input_source,
             #[cfg(target_os = "macos")]
             refresh_macos_input_source_sync,
+            #[cfg(target_os = "linux")]
+            start_x11_input_source_sync,
+            #[cfg(target_os = "linux")]
+            stop_x11_input_source_sync,
+            #[cfg(target_os = "linux")]
+            select_x11_input_source,
+            #[cfg(target_os = "linux")]
+            refresh_x11_input_source_sync,
             toggle_window,
             set_window_decorations,
             enter_mini_geometry,

@@ -211,6 +211,7 @@ let bleLayerSync = null;
 const runtimePlatform = detectRuntimePlatform();
 let inputSourceSyncAdapter = null;
 let sourceLayerReconciler = null;
+let inputSourceDiagnosticsMessage = null;
 let languageMenuState = {
   languageVisible: false,
   languageAvailable: false,
@@ -261,9 +262,19 @@ function configuredLanguageOptions(config, availableIds = new Set()) {
   }));
 }
 
+function formatInputSourceDiagnostics(diagnostics) {
+  if (!diagnostics || !Array.isArray(diagnostics.groups)) return null;
+  const groups = diagnostics.groups.map((group) => {
+    const identifiers = Array.isArray(group.identifiers) ? group.identifiers.join(", ") : "";
+    return `${group.groupIndex}: ${group.groupName}${identifiers ? ` (${identifiers})` : ""}`;
+  });
+  return groups.length ? `Detected XKB groups: ${groups.join("; ")}` : null;
+}
+
 async function startLanguageSync(layoutKey) {
   sourceLayerReconciler?.dispose();
   sourceLayerReconciler = null;
+  inputSourceDiagnosticsMessage = null;
   const syncConfig = layoutInputSourceSync[layoutKey] ?? null;
   if (!syncConfig || !inputSourceSyncAdapter || !bleLayerSync) {
     await inputSourceSyncAdapter?.stop();
@@ -303,7 +314,7 @@ async function startLanguageSync(layoutKey) {
     onStateChange: (syncState) => updateLanguageMenu({
       languageStatus: syncState.status,
       languageStatusLabel: languageStatusLabel(syncState.status),
-      languageMessage: syncState.message,
+      languageMessage: syncState.message ?? inputSourceDiagnosticsMessage,
     }),
   });
   updateLanguageMenu({
@@ -318,9 +329,12 @@ async function startLanguageSync(layoutKey) {
   });
   const started = await inputSourceSyncAdapter.start(layoutKey, syncConfig);
   if (!started && currentLayoutKey === layoutKey) {
+    const status = inputSourceSyncAdapter.getStatus();
     updateLanguageMenu({
       languageStatus: "error",
-      languageStatusLabel: "Synchronization error",
+      languageStatusLabel: "Input Source Sync unavailable",
+      languageAvailable: false,
+      languageMessage: status.message ?? "The platform input-source adapter could not start.",
     });
   }
   return started;
@@ -947,6 +961,12 @@ window.addEventListener("DOMContentLoaded", async () => {
       updateLanguageMenu({
         languageOptions: configuredLanguageOptions(syncConfig, availableIds),
       });
+    },
+    onDiagnosticsChange: (diagnostics) => {
+      inputSourceDiagnosticsMessage = formatInputSourceDiagnostics(diagnostics);
+      if (inputSourceDiagnosticsMessage && languageMenuState.languageStatus !== "error") {
+        updateLanguageMenu({ languageMessage: inputSourceDiagnosticsMessage });
+      }
     },
     onError: (error) => updateLanguageMenu({
       languageStatus: "error",

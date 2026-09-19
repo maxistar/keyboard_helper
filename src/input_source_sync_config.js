@@ -1,8 +1,10 @@
 /** @typedef {"macos" | "windows" | "linux" | "unknown"} RuntimePlatform */
+/** @typedef {"macos" | "windows" | "x11" | "unknown"} InputSourceAdapterKind */
 /** @typedef {{ id: string, label: string, inputSourceId: string, baseLayer: number, layers: number[] }} InputSourceDefinition */
-/** @typedef {{ platform: RuntimePlatform, sources: InputSourceDefinition[], neutralLayers: number[], settleMs: number }} InputSourceSyncConfig */
+/** @typedef {{ platform: RuntimePlatform, adapter: InputSourceAdapterKind, sources: InputSourceDefinition[], neutralLayers: number[], settleMs: number }} InputSourceSyncConfig */
 /** @typedef {{ config: InputSourceSyncConfig, error: null } | { config: null, error: string | null }} InputSourceSyncNormalization */
 /** @typedef {{ platform?: string, userAgentData?: { platform?: string } }} NavigatorPlatformLike */
+/** @typedef {{ raw: unknown, path: string, adapter: InputSourceAdapterKind }} PlatformConfigSelection */
 
 /** @param {unknown} value @returns {value is Record<string, unknown>} */
 function isRecord(value) {
@@ -31,9 +33,32 @@ export function detectRuntimePlatform(navigatorLike = globalThis.navigator) {
   return "unknown";
 }
 
-/** @param {RuntimePlatform} platform @returns {string} */
-function platformConfigKey(platform) {
-  return ["macos", "windows", "linux"].includes(platform) ? platform : "";
+/** @param {RuntimePlatform} platform @param {Record<string, unknown>} inputSourceSync @returns {PlatformConfigSelection} */
+function platformConfig(platform, inputSourceSync) {
+  if (platform === "macos" || platform === "windows") {
+    return {
+      raw: inputSourceSync[platform],
+      path: platform,
+      adapter: platform,
+    };
+  }
+  if (platform === "linux") {
+    const linux = isRecord(inputSourceSync.linux) ? inputSourceSync.linux : null;
+    return {
+      raw: linux?.x11,
+      path: "linux.x11",
+      adapter: "x11",
+    };
+  }
+  return { raw: undefined, path: "", adapter: "unknown" };
+}
+
+const XKB_LAYOUT_SOURCE_ID = /^xkb:layout:[A-Za-z0-9_+.-]+(?::[A-Za-z0-9_+.-]+)?$/;
+const XKB_GROUP_SOURCE_ID = /^xkb:group:[0-3]$/;
+
+/** @param {string} inputSourceId */
+export function isValidXkbInputSourceId(inputSourceId) {
+  return XKB_LAYOUT_SOURCE_ID.test(inputSourceId) || XKB_GROUP_SOURCE_ID.test(inputSourceId);
 }
 
 /** @param {RuntimePlatform} platform @returns {string} */
@@ -66,18 +91,19 @@ export function normalizeInputSourceSync(
   const inputSourceSync = isRecord(layoutDefinition) && isRecord(layoutDefinition.inputSourceSync)
     ? layoutDefinition.inputSourceSync
     : null;
-  const configKey = platformConfigKey(platform);
-  if (!inputSourceSync || !configKey) return { config: null, error: null };
-  const raw = inputSourceSync[configKey];
+  if (!inputSourceSync) return { config: null, error: null };
+  const selected = platformConfig(platform, inputSourceSync);
+  if (!selected.path) return { config: null, error: null };
+  const raw = selected.raw;
   if (raw === undefined || raw === null) {
     return { config: null, error: null };
   }
   if (!isRecord(raw) || !Array.isArray(raw.sources) || raw.sources.length === 0) {
-    return invalid(platform, `${configKey}.sources must be a non-empty array.`);
+    return invalid(platform, `${selected.path}.sources must be a non-empty array.`);
   }
   const settleMs = raw.settleMs ?? DEFAULT_INPUT_SOURCE_SETTLE_MS;
   if (typeof settleMs !== "number" || !Number.isInteger(settleMs) || settleMs < 0 || settleMs > MAX_INPUT_SOURCE_SETTLE_MS) {
-    return invalid(platform, `${configKey}.settleMs must be an integer between 0 and ${MAX_INPUT_SOURCE_SETTLE_MS}.`);
+    return invalid(platform, `${selected.path}.settleMs must be an integer between 0 and ${MAX_INPUT_SOURCE_SETTLE_MS}.`);
   }
 
   const sourceIds = new Set();
@@ -98,6 +124,9 @@ export function normalizeInputSourceSync(
 
     if (!id || !label || !inputSourceId) {
       return invalid(platform, `sources[${index}] requires id, label, and inputSourceId.`);
+    }
+    if (selected.adapter === "x11" && !isValidXkbInputSourceId(inputSourceId)) {
+      return invalid(platform, `sources[${index}].inputSourceId must use xkb:layout:<layout>[:<variant>] or xkb:group:<0-3>.`);
     }
     if (sourceIds.has(id)) return invalid(platform, `duplicate source id "${id}".`);
     if (inputSourceIds.has(inputSourceId)) {
@@ -141,7 +170,7 @@ export function normalizeInputSourceSync(
   const neutralSet = new Set();
   const rawNeutralLayers = raw.neutralLayers ?? [];
   if (!Array.isArray(rawNeutralLayers)) {
-    return invalid(platform, `${configKey}.neutralLayers must be an array.`);
+    return invalid(platform, `${selected.path}.neutralLayers must be an array.`);
   }
   for (const layer of rawNeutralLayers) {
     if (!validLayerIndex(layer, layerCount)) {
@@ -156,7 +185,7 @@ export function normalizeInputSourceSync(
   }
 
   return {
-    config: { platform, sources, neutralLayers, settleMs },
+    config: { platform, adapter: selected.adapter, sources, neutralLayers, settleMs },
     error: null,
   };
 }

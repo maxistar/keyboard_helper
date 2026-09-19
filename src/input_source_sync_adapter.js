@@ -1,10 +1,11 @@
 import { createMacosInputSourceController } from "./macos_input_source.js";
+import { createX11InputSourceController } from "./x11_input_source.js";
 import { detectRuntimePlatform } from "./input_source_sync_config.js";
 
 /** @typedef {import("./input_source_sync_config.js").RuntimePlatform} RuntimePlatform */
 /** @typedef {import("./input_source_sync_config.js").InputSourceSyncConfig} InputSourceSyncConfig */
 /** @typedef {{ observe: boolean, select: boolean, listAvailable: boolean }} InputSourceAdapterCapabilities */
-/** @typedef {{ platform: RuntimePlatform, supported: boolean, reason: string | null, message: string | null, capabilities: InputSourceAdapterCapabilities }} InputSourceAdapterStatus */
+/** @typedef {{ platform: RuntimePlatform, supported: boolean, available: boolean, reason: string | null, message: string | null, capabilities: InputSourceAdapterCapabilities }} InputSourceAdapterStatus */
 
 /** @param {RuntimePlatform} platform */
 function unsupportedMessage(platform) {
@@ -22,6 +23,7 @@ export function createUnsupportedInputSourceAdapter({ platform, reason = "unsupp
   const status = Object.freeze({
     platform,
     supported: false,
+    available: false,
     reason,
     message: unsupportedMessage(platform),
     capabilities,
@@ -47,6 +49,7 @@ export function createUnsupportedInputSourceAdapter({ platform, reason = "unsupp
     },
     getCurrentSourceId: () => null,
     getAvailableSourceIds: () => new Set(),
+    getDiagnostics: () => null,
     getActiveLayoutKey: () => null,
   };
 }
@@ -57,6 +60,7 @@ export function createUnsupportedInputSourceAdapter({ platform, reason = "unsupp
  *   tauri?: unknown,
  *   onSourceChange?: (sourceId: string, detail?: unknown) => void,
  *   onAvailabilityChange?: (ids: Set<string>) => void,
+ *   onDiagnosticsChange?: (diagnostics: unknown) => void,
  *   onError?: (error: unknown) => void,
  * }} options
  */
@@ -65,6 +69,7 @@ export function createPlatformInputSourceAdapter({
   tauri,
   onSourceChange = () => {},
   onAvailabilityChange = () => {},
+  onDiagnosticsChange = () => {},
   onError = () => {},
 } = {}) {
   const hasNativeBridge = Boolean(tauri?.core?.invoke && tauri?.event?.listen);
@@ -84,10 +89,30 @@ export function createPlatformInputSourceAdapter({
       getStatus: () => ({
         platform,
         supported: true,
+        available: true,
         reason: null,
         message: null,
         capabilities,
       }),
+      getDiagnostics: () => null,
+    };
+  }
+
+  if (platform === "linux" && hasNativeBridge) {
+    const capabilities = Object.freeze({ observe: true, select: true, listAvailable: true });
+    const x11 = createX11InputSourceController({
+      tauri,
+      onSourceChange: (sourceId, detail = {}) => onSourceChange(sourceId, { platform, ...detail }),
+      onAvailabilityChange,
+      onDiagnosticsChange,
+      onError,
+    });
+    return {
+      ...x11,
+      platform,
+      supported: true,
+      capabilities,
+      getStatus: () => ({ ...x11.getStatus(), capabilities }),
     };
   }
 

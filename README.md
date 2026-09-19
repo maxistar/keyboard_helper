@@ -162,9 +162,13 @@ If the selected layout defines `bleLayerSource`, the app attempts to connect to 
 - If BLE metadata is absent, BLE startup fails, or the BLE feed disconnects, the app falls back to the existing non-BLE behavior.
 - BLE sync starts and stops automatically when you switch layouts.
 
-### macOS input-source and ZMK layer synchronization
+### Input-source and ZMK layer synchronization
 
-A layout may add `inputSourceSync.macos` to make the selected macOS input source authoritative for its ZMK language family. This capability is macOS-only and requires the same `bleLayerSource` characteristic to support encrypted **Write with response** and Notify. Windows, Linux, browser execution, layouts without metadata, and malformed metadata retain ordinary read-only BLE observation and local layer preview.
+A layout may add a platform-scoped input-source block to make the confirmed OS input source authoritative for its ZMK language family. This requires the same `bleLayerSource` characteristic to support encrypted **Write with response** and Notify. Unsupported platforms, layouts without current-platform metadata, and malformed metadata retain ordinary read-only BLE observation and local layer preview.
+
+#### macOS
+
+Use `inputSourceSync.macos` with exact installed Text Input Source Services identifiers.
 
 Each source has a unique app ID and label, the exact installed macOS `inputSourceId`, one stable `baseLayer`, and all related language layers. `neutralLayers` lists utility layers that belong to neither language. Family and neutral layer indexes must exist and must not overlap. Non-base family layers and neutral layers defer correction; the app only corrects a stable foreign base layer after `settleMs`. This optional interval defaults to `1000` milliseconds and accepts integers from `0` through `60000`.
 
@@ -196,3 +200,47 @@ Each source has a unique app ID and label, the exact installed macOS `inputSourc
 ```
 
 Use `defaults read ~/Library/Preferences/com.apple.HIToolbox.plist AppleEnabledInputSources` to inspect enabled sources. The configured value must be the exact Text Input Source Services `kTISPropertyInputSourceID`; plist fields vary by source type, so treat names and bundle fields as discovery hints rather than transforming them. A configured but uninstalled ID is shown as unavailable and is never replaced by a guessed or cycled source. See `../corney/layout_corney.json` for the full Corney layout example.
+
+#### Linux X11/XKB
+
+Use `inputSourceSync.linux.x11` in a real X11 session. Wayland and XWayland are intentionally unsupported. Stable identifiers use `xkb:layout:<layout>` or `xkb:layout:<layout>:<variant>`; zero-based `xkb:group:<index>` identifiers are available as a positional fallback. Prefer stable layout identifiers because group indexes change when the desktop keyboard-layout order changes.
+
+```json
+{
+  "inputSourceSync": {
+    "linux": {
+      "x11": {
+        "settleMs": 1000,
+        "sources": [
+          {
+            "id": "de",
+            "label": "Deutsch",
+            "inputSourceId": "xkb:layout:de",
+            "baseLayer": 1,
+            "layers": [1, 2, 3, 15]
+          },
+          {
+            "id": "ru",
+            "label": "Русский",
+            "inputSourceId": "xkb:layout:ru",
+            "baseLayer": 8,
+            "layers": [8, 11]
+          },
+          {
+            "id": "en",
+            "label": "English",
+            "inputSourceId": "xkb:layout:us",
+            "baseLayer": 0,
+            "layers": [0]
+          }
+        ],
+        "neutralLayers": [13, 14, 18]
+      }
+    }
+  }
+}
+```
+
+The Language flyout reports the detected zero-based group index, XKB group name, layout, variant, and accepted identifiers. Selection must be confirmed by an XKB state event or read-back within 1000 milliseconds before reconciliation may write a keyboard layer. The adapter follows the XKB group only; it does not observe IBus or Fcitx language state, so do not enable it when an input method is the actual language authority.
+
+On Debian/Ubuntu, Linux development and packaging require `libx11-dev` in addition to the existing Tauri GTK/WebKit/AppIndicator packages. The complete test layout is [`../corney/layout_corney.json`](../corney/layout_corney.json); point a Keyboard Helper external layout entry at that file to exercise its `de → ru → en` cycle. The English XKB group uses the canonical `xkb:layout:us` identifier and maps to Corney's layer 0.

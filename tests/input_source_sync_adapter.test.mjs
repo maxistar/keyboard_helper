@@ -9,9 +9,10 @@ import {
 
 const syncConfig = {
   platform: "linux",
+  adapter: "x11",
   sources: [
-    { id: "de", label: "DE", inputSourceId: "de", baseLayer: 1, layers: [1] },
-    { id: "us", label: "US", inputSourceId: "us", baseLayer: 2, layers: [2] },
+    { id: "de", label: "DE", inputSourceId: "xkb:layout:de", baseLayer: 1, layers: [1] },
+    { id: "us", label: "US", inputSourceId: "xkb:layout:us", baseLayer: 2, layers: [2] },
   ],
   neutralLayers: [],
   settleMs: 0,
@@ -34,6 +35,18 @@ test("browser or missing Tauri bridge uses unsupported macOS adapter", async () 
   assert.equal(await adapter.refresh(), null);
 });
 
+test("Linux native bridge selects the implemented adapter before runtime probing", () => {
+  const tauri = {
+    core: { async invoke() {} },
+    event: { async listen() { return () => {}; } },
+  };
+  const adapter = createPlatformInputSourceAdapter({ platform: "linux", tauri });
+  assert.equal(adapter.supported, true);
+  assert.equal(adapter.getStatus().available, false);
+  assert.equal(adapter.getStatus().reason, "not-started");
+  assert.deepEqual(adapter.capabilities, { observe: true, select: true, listAvailable: true });
+});
+
 test("unsupported adapter does not feed guessed sources into reconciliation", async () => {
   const writes = [];
   const adapter = createUnsupportedInputSourceAdapter({ platform: "linux" });
@@ -50,6 +63,39 @@ test("unsupported adapter does not feed guessed sources into reconciliation", as
   reconciler.setBleStatus("connected", true);
   reconciler.setLayer(1);
 
+  assert.deepEqual(writes, []);
+  assert.equal(reconciler.getState().status, "waiting");
+});
+
+test("failed X11 startup never feeds reconciliation or writes a BLE layer", async () => {
+  const writes = [];
+  const reconciler = createInputSourceLayerReconciler({
+    config: syncConfig,
+    writeLayer: async (layer) => writes.push(layer),
+    settleMs: 0,
+  });
+  const tauri = {
+    core: {
+      async invoke(command) {
+        if (command === "start_x11_input_source_sync") {
+          throw { reason: "wayland-session", message: "X11 is unavailable under Wayland" };
+        }
+      },
+    },
+    event: { async listen() { return () => {}; } },
+  };
+  const adapter = createPlatformInputSourceAdapter({
+    platform: "linux",
+    tauri,
+    onSourceChange: (sourceId) => reconciler.setSource(sourceId),
+  });
+
+  assert.equal(await adapter.start("corney", syncConfig), false);
+  reconciler.setBleStatus("connected", true);
+  reconciler.setLayer(1);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  assert.equal(adapter.getStatus().reason, "wayland-session");
   assert.deepEqual(writes, []);
   assert.equal(reconciler.getState().status, "waiting");
 });

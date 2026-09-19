@@ -16,7 +16,8 @@ npm --prefix website run build
 ```
 
 `quality.yml` repeats JavaScript and Rust source checks on Ubuntu, Windows, and
-macOS 15. Linux needs the Tauri GTK/WebKit/AppIndicator development packages.
+macOS 15. Linux needs the Tauri GTK/WebKit/AppIndicator development packages
+and `libx11-dev` for the X11/XKB input-source adapter.
 Native window behavior, WebView2, platform packaging, macOS architecture, and
 signing cannot be established by a different host: those checks remain on their
 own runners.

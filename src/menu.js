@@ -690,7 +690,7 @@ export function createMenu({
 
     const languageVisible = state.languageVisible ?? state.languageAvailable;
     languageButton.hidden = !languageVisible;
-    languageButton.disabled = !state.languageAvailable;
+    languageButton.disabled = !languageVisible;
     languageFlyout.hidden = !languageVisible;
     if (!languageVisible && activeSubmenu === "language") closeSubmenu();
     renderLanguageOptions();

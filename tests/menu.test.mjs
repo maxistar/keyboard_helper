@@ -392,7 +392,16 @@ test("Language flyout is conditional, accessible, and keeps unavailable sources 
     assert.equal(env.document.querySelector(".menu-language-status").getAttribute("role"), "status");
     assert.equal(env.document.querySelector(".menu-language-status").textContent, "Synchronization error");
 
-    env.controls.update({ languageAvailable: false });
+    env.controls.update({
+      languageVisible: true,
+      languageAvailable: false,
+      languageMessage: "XKB startup failed",
+    });
+    assert.equal(languageParent.hidden, false);
+    assert.equal(languageParent.disabled, false);
+    assert.equal(flyout.querySelector(".menu-status-detail").textContent, "XKB startup failed");
+
+    env.controls.update({ languageVisible: false });
     assert.equal(languageParent.hidden, true);
   } finally {
     env.restore();
