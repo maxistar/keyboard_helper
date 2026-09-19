@@ -18,6 +18,7 @@ test("detectRuntimePlatform recognizes supported desktop families", () => {
 test("normalizes valid macOS language families", () => {
   assert.deepEqual(normalizeInputSourceSync(validDefinition, 5, { platform: "macos" }), {
     config: {
+      platform: "macos",
       ...validDefinition.inputSourceSync.macos,
       settleMs: 1000,
     },
@@ -47,6 +48,30 @@ test("non-macOS runtimes ignore macOS metadata and validation", () => {
     config: null,
     error: null,
   });
+});
+
+test("ignores malformed non-current platform blocks", () => {
+  const value = structuredClone(validDefinition);
+  value.inputSourceSync.linux = { sources: "bad" };
+  const result = normalizeInputSourceSync(value, 5, { platform: "macos" });
+  assert.equal(result.error, null);
+  assert.equal(result.config.platform, "macos");
+});
+
+test("normalizes valid current-platform metadata independently of adapter support", () => {
+  const value = { inputSourceSync: { linux: structuredClone(validDefinition.inputSourceSync.macos) } };
+  const result = normalizeInputSourceSync(value, 5, { platform: "linux" });
+  assert.equal(result.error, null);
+  assert.equal(result.config.platform, "linux");
+  assert.deepEqual(result.config.sources, validDefinition.inputSourceSync.macos.sources);
+});
+
+test("reports malformed current-platform metadata with platform-specific diagnostics", () => {
+  const malformed = { inputSourceSync: { linux: { sources: "bad" } } };
+  const result = normalizeInputSourceSync(malformed, 5, { platform: "linux" });
+  assert.equal(result.config, null);
+  assert.match(result.error, /Invalid Linux input-source synchronization metadata/);
+  assert.match(result.error, /linux\.sources/);
 });
 
 for (const [name, mutate, fragment] of [

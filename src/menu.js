@@ -570,7 +570,7 @@ export function createMenu({
     languageHeader.className = "menu-flyout-header";
     const languageEyebrow = document.createElement("span");
     languageEyebrow.className = "menu-eyebrow";
-    languageEyebrow.textContent = "macOS input source";
+    languageEyebrow.textContent = "Input Source Sync";
     languageStatus = document.createElement("div");
     languageStatus.className = "menu-language-status";
     languageStatus.setAttribute("role", "status");
@@ -688,10 +688,11 @@ export function createMenu({
     currentLayoutName.textContent = layoutLabel;
     keyboardSummary.textContent = layoutLabel;
 
-    languageButton.hidden = !state.languageAvailable;
+    const languageVisible = state.languageVisible ?? state.languageAvailable;
+    languageButton.hidden = !languageVisible;
     languageButton.disabled = !state.languageAvailable;
-    languageFlyout.hidden = !state.languageAvailable;
-    if (!state.languageAvailable && activeSubmenu === "language") closeSubmenu();
+    languageFlyout.hidden = !languageVisible;
+    if (!languageVisible && activeSubmenu === "language") closeSubmenu();
     renderLanguageOptions();
     const selectedLanguage = state.languageOptions.find(
       (option) => option.inputSourceId === state.currentInputSourceId,
