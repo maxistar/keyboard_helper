@@ -57,6 +57,12 @@ const XKB_LAYOUT_SOURCE_ID = /^xkb:layout:[A-Za-z0-9_+.-]+(?::[A-Za-z0-9_+.-]+)?
 const XKB_GROUP_SOURCE_ID = /^xkb:group:[0-3]$/;
 
 /** @param {string} inputSourceId */
+export function isValidWindowsInputSourceId(inputSourceId) {
+  return /^windows:klid:[0-9A-F]{8}$/.test(inputSourceId)
+    && inputSourceId !== "windows:klid:00000000";
+}
+
+/** @param {string} inputSourceId */
 export function isValidXkbInputSourceId(inputSourceId) {
   return XKB_LAYOUT_SOURCE_ID.test(inputSourceId) || XKB_GROUP_SOURCE_ID.test(inputSourceId);
 }
@@ -127,6 +133,9 @@ export function normalizeInputSourceSync(
     }
     if (selected.adapter === "x11" && !isValidXkbInputSourceId(inputSourceId)) {
       return invalid(platform, `sources[${index}].inputSourceId must use xkb:layout:<layout>[:<variant>] or xkb:group:<0-3>.`);
+    }
+    if (selected.adapter === "windows" && !isValidWindowsInputSourceId(inputSourceId)) {
+      return invalid(platform, `sources[${index}].inputSourceId must use windows:klid:<8 uppercase hex digits> with a nonzero KLID.`);
     }
     if (sourceIds.has(id)) return invalid(platform, `duplicate source id "${id}".`);
     if (inputSourceIds.has(inputSourceId)) {

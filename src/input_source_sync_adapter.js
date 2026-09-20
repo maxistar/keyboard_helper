@@ -1,5 +1,6 @@
 import { createMacosInputSourceController } from "./macos_input_source.js";
 import { createX11InputSourceController } from "./x11_input_source.js";
+import { createWindowsInputSourceController } from "./windows_input_source.js";
 import { detectRuntimePlatform } from "./input_source_sync_config.js";
 
 /** @typedef {import("./input_source_sync_config.js").RuntimePlatform} RuntimePlatform */
@@ -9,7 +10,7 @@ import { detectRuntimePlatform } from "./input_source_sync_config.js";
 
 /** @param {RuntimePlatform} platform */
 function unsupportedMessage(platform) {
-  if (platform === "windows") return "Input Source Sync is not available on Windows yet.";
+  if (platform === "windows") return "Input Source Sync requires the Tauri Windows bridge.";
   if (platform === "linux") return "Input Source Sync is not available on Linux yet.";
   if (platform === "macos") return "Input Source Sync requires the Tauri macOS bridge.";
   return "Input Source Sync is not available on this platform.";
@@ -73,6 +74,14 @@ export function createPlatformInputSourceAdapter({
   onError = () => {},
 } = {}) {
   const hasNativeBridge = Boolean(tauri?.core?.invoke && tauri?.event?.listen);
+  if (platform === "windows" && hasNativeBridge) {
+    const controller = createWindowsInputSourceController({
+      tauri, onSourceChange, onAvailabilityChange, onDiagnosticsChange, onError,
+    });
+    const capabilities = Object.freeze({ observe: true, select: true, listAvailable: true });
+    return { ...controller, platform, supported: true, capabilities,
+      getStatus: () => ({ ...controller.getStatus(), capabilities }) };
+  }
   if (platform === "macos" && hasNativeBridge) {
     const macos = createMacosInputSourceController({
       tauri,

@@ -11,6 +11,8 @@ mod ble_layer_sync;
 mod config_store;
 #[cfg(target_os = "macos")]
 mod input_source_macos;
+#[cfg(target_os = "windows")]
+mod input_source_windows;
 #[cfg(target_os = "linux")]
 mod input_source_x11;
 use rdev::{listen, Event, EventType, Key};
@@ -45,6 +47,61 @@ struct MacosInputSourceTauriState {
 struct X11InputSourceTauriState {
     #[cfg(target_os = "linux")]
     inner: Arc<input_source_x11::X11InputSourceState>,
+}
+
+#[derive(Default)]
+struct WindowsInputSourceTauriState {
+    #[cfg(target_os = "windows")]
+    inner: Arc<input_source_windows::WindowsInputSourceState>,
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+async fn start_windows_input_source_sync(
+    app_handle: tauri::AppHandle,
+    state: State<'_, WindowsInputSourceTauriState>,
+    config: input_source_windows::WindowsConfig,
+) -> Result<input_source_windows::WindowsSnapshot, String> {
+    let inner = state.inner.clone();
+    tokio::task::spawn_blocking(move || inner.start(app_handle, config))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+async fn stop_windows_input_source_sync(
+    state: State<'_, WindowsInputSourceTauriState>,
+) -> Result<(), String> {
+    let inner = state.inner.clone();
+    tokio::task::spawn_blocking(move || inner.stop())
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+async fn refresh_windows_input_source_sync(
+    state: State<'_, WindowsInputSourceTauriState>,
+    session: String,
+) -> Result<input_source_windows::WindowsSnapshot, String> {
+    let inner = state.inner.clone();
+    tokio::task::spawn_blocking(move || inner.request(&session, None))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+async fn select_windows_input_source(
+    state: State<'_, WindowsInputSourceTauriState>,
+    source_id: String,
+    session: String,
+) -> Result<input_source_windows::WindowsSnapshot, String> {
+    let inner = state.inner.clone();
+    tokio::task::spawn_blocking(move || inner.request(&session, Some(source_id)))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1532,6 +1589,7 @@ fn main() {
         .manage(BleLayerSyncTauriState::default())
         .manage(MacosInputSourceTauriState::default())
         .manage(X11InputSourceTauriState::default())
+        .manage(WindowsInputSourceTauriState::default())
         .manage(OverlayGeometryState::default())
         .manage(SecondaryWindowReadinessState::default())
         .setup(|app| {
@@ -1570,6 +1628,14 @@ fn main() {
             select_x11_input_source,
             #[cfg(target_os = "linux")]
             refresh_x11_input_source_sync,
+            #[cfg(target_os = "windows")]
+            start_windows_input_source_sync,
+            #[cfg(target_os = "windows")]
+            stop_windows_input_source_sync,
+            #[cfg(target_os = "windows")]
+            refresh_windows_input_source_sync,
+            #[cfg(target_os = "windows")]
+            select_windows_input_source,
             toggle_window,
             set_window_decorations,
             enter_mini_geometry,

@@ -263,6 +263,12 @@ function configuredLanguageOptions(config, availableIds = new Set()) {
 }
 
 function formatInputSourceDiagnostics(diagnostics) {
+  if (diagnostics?.platform === "windows") {
+    const installed = diagnostics.installedSourceIds?.join(", ") || "none";
+    const missing = diagnostics.missingSourceIds?.join(", ");
+    const context = diagnostics.contextId ? "Following the foreground window." : "Foreground context unavailable.";
+    return `Windows layouts: ${installed}. ${context}${missing ? ` Missing configured layouts: ${missing}.` : ""}`;
+  }
   if (!diagnostics || !Array.isArray(diagnostics.groups)) return null;
   const groups = diagnostics.groups.map((group) => {
     const identifiers = Array.isArray(group.identifiers) ? group.identifiers.join(", ") : "";

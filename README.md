@@ -201,6 +201,10 @@ Each source has a unique app ID and label, the exact installed macOS `inputSourc
 
 Use `defaults read ~/Library/Preferences/com.apple.HIToolbox.plist AppleEnabledInputSources` to inspect enabled sources. The configured value must be the exact Text Input Source Services `kTISPropertyInputSourceID`; plist fields vary by source type, so treat names and bundle fields as discovery hints rather than transforming them. A configured but uninstalled ID is shown as unavailable and is never replaced by a guessed or cycled source. See `../corney/layout_corney.json` for the full Corney layout example.
 
+#### Windows
+
+Use `inputSourceSync.windows` with canonical Windows KLIDs such as `windows:klid:00000409`. Helper follows the foreground application's layout and respects Windows settings. See [Windows configuration, selection policy, and CorneyMX verification](docs/windows-input-source-sync.md).
+
 #### Linux X11/XKB
 
 Use `inputSourceSync.linux.x11` in a real X11 session. Wayland and XWayland are intentionally unsupported. Stable identifiers use `xkb:layout:<layout>` or `xkb:layout:<layout>:<variant>`; zero-based `xkb:group:<index>` identifiers are available as a positional fallback. Prefer stable layout identifiers because group indexes change when the desktop keyboard-layout order changes.
