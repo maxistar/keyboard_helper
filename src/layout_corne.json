@@ -67,7 +67,7 @@
       ["i", "KeyI"],
       ["o", "KeyO"],
       ["p", "KeyP"],
-      ["Backspace", "Backspace"],
+      ["⌫", "Backspace"],
 
       ["Ctrl", "ControlLeft"],
       ["a", "KeyA"],
@@ -114,7 +114,7 @@
       ["8", "Num8"],
       ["9", "Num9"],
       ["0", "Num0"],
-      ["Backspace", "Backspace"],
+      ["⌫", "Backspace"],
 
       ["BT CLR", ""],
       ["BT 1", ""],
@@ -161,7 +161,7 @@
       ["*", "Shift+Num8"],
       ["(", "Shift+Num9"],
       [")", "Shift+Num0"],
-      ["Backspace", "Backspace"],
+      ["⌫", "Backspace"],
 
       ["Ctrl", "ControlLeft"],
       null,

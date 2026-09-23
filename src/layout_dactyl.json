@@ -404,7 +404,7 @@
         "Quote"
       ],
       [
-        "( / Shift",
+        "( / ⇧",
         ""
       ],
       [
@@ -448,7 +448,7 @@
         "Slash"
       ],
       [
-        ") / Shift",
+        ") / ⇧",
         ""
       ],
       [
@@ -460,19 +460,19 @@
         "AltLeft"
       ],
       [
-        "Numeric",
+        "Num",
         ""
       ],
       [
-        "Space / Mouse",
+        "_ / Mouse",
         "Space"
       ],
       [
-        "Delete / Navigation",
+        "⌫ / Nav",
         "Delete"
       ],
       [
-        "Enter / Navigation",
+        "⏎ / Nav",
         "Return"
       ],
       [
@@ -480,7 +480,7 @@
         "Space"
       ],
       [
-        "Backspace / Numeric",
+        "⌫ / Num",
         "Backspace"
       ],
       [
@@ -500,7 +500,7 @@
         "LeftBracket"
       ],
       [
-        "Enter / Navigation",
+        "⏎ / Nav",
         "Return"
       ],
       [
@@ -654,7 +654,7 @@
         "Quote"
       ],
       [
-        "( / Shift",
+        "( / ⇧",
         ""
       ],
       [
@@ -698,7 +698,7 @@
         "Slash"
       ],
       [
-        ") / Shift",
+        ") / ⇧",
         ""
       ],
       [
@@ -710,19 +710,19 @@
         "AltLeft"
       ],
       [
-        "Numeric",
+        "Num",
         ""
       ],
       [
-        "Space / Mouse",
+        "_ / Mouse",
         "Space"
       ],
       [
-        "Delete / Navigation",
+        "⌫ / Nav",
         "Delete"
       ],
       [
-        "Enter / Navigation",
+        "⏎ / Nav",
         "Return"
       ],
       [
@@ -730,7 +730,7 @@
         "Space"
       ],
       [
-        "Backspace / Numeric",
+        "⌫ / Num",
         "Backspace"
       ],
       [
@@ -750,7 +750,7 @@
         "LeftBracket"
       ],
       [
-        "Enter / Navigation",
+        "⏎ / Nav",
         "Return"
       ],
       [
@@ -820,7 +820,7 @@
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
@@ -861,19 +861,19 @@
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
@@ -905,11 +905,11 @@
         "Space"
       ],
       [
-        "Delete",
+        "⌫",
         "Delete"
       ],
       [
-        "Enter",
+        "⏎",
         "Return"
       ],
       [
@@ -917,7 +917,7 @@
         "Num0"
       ],
       [
-        "Backspace",
+        "⌫",
         "Backspace"
       ],
       null,
@@ -928,7 +928,7 @@
       ],
       null,
       [
-        "Enter",
+        "⏎",
         "Return"
       ],
       null
@@ -981,23 +981,23 @@
       ],
       null,
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
@@ -1021,20 +1021,20 @@
         "F10"
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       null,
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
@@ -1066,28 +1066,28 @@
         "F11"
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       null,
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
@@ -1119,11 +1119,11 @@
         "Space"
       ],
       [
-        "Delete",
+        "⌫",
         "Delete"
       ],
       [
-        "Enter",
+        "⏎",
         "Return"
       ],
       [
@@ -1131,7 +1131,7 @@
         "Space"
       ],
       [
-        "Backspace",
+        "⌫",
         "Backspace"
       ],
       null,
@@ -1142,7 +1142,7 @@
       ],
       null,
       [
-        "Enter",
+        "⏎",
         "Return"
       ],
       null
@@ -1153,47 +1153,47 @@
         "Escape"
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
@@ -1237,7 +1237,7 @@
         "Insert"
       ],
       [
-        "Shift+Insert",
+        "⇧+Insert",
         ""
       ],
       [
@@ -1291,15 +1291,15 @@
       ],
       null,
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
@@ -1320,7 +1320,7 @@
         "DownArrow"
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
@@ -1336,11 +1336,11 @@
         "Space"
       ],
       [
-        "Delete",
+        "⌫",
         "Delete"
       ],
       [
-        "Enter",
+        "⏎",
         "Return"
       ],
       [
@@ -1348,7 +1348,7 @@
         "Space"
       ],
       [
-        "Backspace",
+        "⌫",
         "Backspace"
       ],
       null,
@@ -1359,63 +1359,63 @@
       ],
       null,
       [
-        "Enter",
+        "⏎",
         "Return"
       ],
       null
     ],
     "media": [
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       null,
       [
-        "Disabled",
+        "",
         ""
       ],
       [
@@ -1431,23 +1431,23 @@
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
@@ -1460,7 +1460,7 @@
       ],
       null,
       [
-        "Disabled",
+        "",
         ""
       ],
       [
@@ -1476,27 +1476,27 @@
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
@@ -1509,7 +1509,7 @@
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
@@ -1521,31 +1521,31 @@
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       null,
@@ -1556,11 +1556,11 @@
         "Space"
       ],
       [
-        "Delete",
+        "⌫",
         "Delete"
       ],
       [
-        "Enter",
+        "⏎",
         "Return"
       ],
       [
@@ -1568,7 +1568,7 @@
         "Space"
       ],
       [
-        "Backspace",
+        "⌫",
         "Backspace"
       ],
       null,
@@ -1582,58 +1582,58 @@
         ""
       ],
       [
-        "Enter",
+        "⏎",
         "Return"
       ],
       null
     ],
     "mouse": [
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       null,
@@ -1642,19 +1642,19 @@
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
@@ -1674,11 +1674,11 @@
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       null,
@@ -1719,11 +1719,11 @@
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       null,
@@ -1732,19 +1732,19 @@
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
@@ -1752,7 +1752,7 @@
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
@@ -1760,11 +1760,11 @@
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       [
-        "Disabled",
+        "",
         ""
       ],
       null,
@@ -1776,11 +1776,11 @@
         "Space"
       ],
       [
-        "Delete",
+        "⌫",
         "Delete"
       ],
       [
-        "Enter",
+        "⏎",
         "Return"
       ],
       [
@@ -1788,7 +1788,7 @@
         "Space"
       ],
       [
-        "Backspace",
+        "⌫",
         "Backspace"
       ],
       null,
@@ -1799,7 +1799,7 @@
       ],
       null,
       [
-        "Enter",
+        "⏎",
         "Return"
       ],
       null
