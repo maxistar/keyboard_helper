@@ -282,18 +282,14 @@ test("near-limit inline JSON records remain readable after a cold relaunch", asy
   assert.equal(controller.records.length, 1);
 });
 
-test("bundled inline legends are decoded, resolved, and revoked by the mobile runtime owner", async () => {
+test("stock Corne selection owns no inline asset presentation URLs", async () => {
   const created = [];
   const revoked = [];
-  const decodedDimensions = [[256, 256], [220, 256], [256, 256]];
   const model = new MobileLayoutViewerModel();
   const controller = new CustomLayoutController(model, new MemoryAdapter(), {
     crypto: webcrypto,
     Blob,
-    createImageBitmap: async () => {
-      const [width, height] = decodedDimensions.shift();
-      return { width, height, close() {} };
-    },
+    createImageBitmap: async () => { throw new Error("stock Corne has no image to decode"); },
     requireCompleteDecoding: true,
     urlApi: {
       createObjectURL: () => `blob:bundled-${created.push(true)}`,
@@ -302,11 +298,11 @@ test("bundled inline legends are decoded, resolved, and revoked by the mobile ru
   });
   await controller.initialize();
   await controller.selectLayout("corne");
-  model.selectLayer(3);
-  assert.match(model.snapshot().presentation.keys.find(({ image }) => image)?.image ?? "", /^blob:bundled-/u);
-  assert.equal(created.length, 3);
+  model.selectLayer(2);
+  assert.equal(model.snapshot().presentation.keys.some(({ image }) => Boolean(image)), false);
+  assert.equal(created.length, 0);
   controller.dispose();
-  assert.equal(revoked.length, 3);
+  assert.equal(revoked.length, 0);
 });
 
 test("picker cancellation is a no-op and a failed preference commit rolls back a new record", async () => {

@@ -104,9 +104,9 @@ test("cold viewer state is immutable, deterministic, and process local", () => {
 test("layout and layer actions validate selection and reset layers deterministically", () => {
   const model = new MobileLayoutViewerModel();
   model.selectLayout("corne");
-  model.selectLayer(3);
-  assert.equal(model.snapshot().selectedLayerIndex, 3);
-  const unchanged = model.selectLayer(3);
+  model.selectLayer(2);
+  assert.equal(model.snapshot().selectedLayerIndex, 2);
+  const unchanged = model.selectLayer(2);
   assert.equal(unchanged, model.snapshot());
   model.selectLayout("dactyl");
   assert.equal(model.snapshot().selectedLayerIndex, 0);

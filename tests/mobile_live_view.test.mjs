@@ -95,7 +95,7 @@ test("Browse and Live controls expose stream state and preserve manual navigatio
 
   browseButton.dispatch("click");
   assert.equal(subject.presentation.snapshot().mode, LayoutPresentationMode.BROWSE);
-  subject.browse.selectLayer(3);
+  subject.browse.selectLayer(2);
   subject.telemetry.publish(live({ activeLayer: 2, pressedPositions: [7] }));
   assert.equal(subject.presentation.snapshot().mode, LayoutPresentationMode.BROWSE);
   liveButton.dispatch("click");
