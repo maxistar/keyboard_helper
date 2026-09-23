@@ -5806,7 +5806,9 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
     }
   },
   "dactyl": {
-    "name": "Dactyl Manuform (split)",
+    "format": "keyboard-helper-layout",
+    "version": 1,
+    "name": "Dactyl Manuform 5x6_5 Stock (QMK 0.33.0)",
     "keySize": {
       "w": 57,
       "h": 45,
@@ -5814,343 +5816,307 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
     },
     "keyPositions": [
       {
-        "row": 0.2,
-        "col": 0,
-        "w": 1.5,
-        "cls": "action"
-      },
-      {
-        "row": 0.2,
-        "col": 1.5
+        "row": 0,
+        "col": 0
       },
       {
         "row": 0,
-        "col": 2.5
+        "col": 1
       },
       {
         "row": 0,
-        "col": 3.5
+        "col": 2
       },
       {
         "row": 0,
-        "col": 4.5
+        "col": 3
       },
       {
         "row": 0,
-        "col": 5.5
+        "col": 4
       },
       {
         "row": 0,
-        "col": 10.5
+        "col": 5
       },
       {
         "row": 0,
-        "col": 11.5
+        "col": 11
       },
       {
         "row": 0,
-        "col": 12.5
+        "col": 12
       },
       {
         "row": 0,
-        "col": 13.5
+        "col": 13
       },
       {
-        "row": 0.2,
-        "col": 14.5
+        "row": 0,
+        "col": 14
       },
       {
-        "row": 0.2,
-        "col": 15.5,
-        "w": 1.5,
-        "cls": "action"
+        "row": 0,
+        "col": 15
       },
       {
-        "row": 1.2,
-        "col": 0,
-        "w": 1.5,
-        "cls": "action"
-      },
-      {
-        "row": 1.2,
-        "col": 1.5
+        "row": 0,
+        "col": 16
       },
       {
         "row": 1,
-        "col": 2.5
+        "col": 0
       },
       {
         "row": 1,
-        "col": 3.5
+        "col": 1
       },
       {
         "row": 1,
-        "col": 4.5
+        "col": 2
       },
       {
         "row": 1,
-        "col": 5.5
+        "col": 3
       },
       {
         "row": 1,
-        "col": 10.5
+        "col": 4
       },
       {
         "row": 1,
-        "col": 11.5
+        "col": 5
       },
       {
         "row": 1,
-        "col": 12.5
+        "col": 11
       },
       {
         "row": 1,
-        "col": 13.5
+        "col": 12
       },
       {
-        "row": 1.2,
-        "col": 14.5
+        "row": 1,
+        "col": 13
       },
       {
-        "row": 1.2,
-        "col": 15.5,
-        "w": 1.5,
-        "cls": "action"
+        "row": 1,
+        "col": 14
       },
       {
-        "row": 2.2,
-        "col": 0,
-        "w": 1.5,
-        "cls": "action"
+        "row": 1,
+        "col": 15
       },
       {
-        "row": 2.2,
-        "col": 1.5
+        "row": 1,
+        "col": 16
       },
       {
         "row": 2,
-        "col": 2.5
+        "col": 0
       },
       {
         "row": 2,
-        "col": 3.5
+        "col": 1
       },
       {
         "row": 2,
-        "col": 4.5
+        "col": 2
       },
       {
         "row": 2,
-        "col": 5.5
+        "col": 3
       },
       {
         "row": 2,
-        "col": 10.5
+        "col": 4
       },
       {
         "row": 2,
-        "col": 11.5
+        "col": 5
       },
       {
         "row": 2,
-        "col": 12.5
+        "col": 11
       },
       {
         "row": 2,
-        "col": 13.5
+        "col": 12
       },
       {
-        "row": 2.2,
-        "col": 14.5
+        "row": 2,
+        "col": 13
       },
       {
-        "row": 2.2,
-        "col": 15.5,
-        "w": 1.5,
-        "cls": "action"
+        "row": 2,
+        "col": 14
       },
       {
-        "row": 3.2,
-        "col": 0,
-        "w": 1.5,
-        "cls": "action"
+        "row": 2,
+        "col": 15
       },
       {
-        "row": 3.2,
-        "col": 1.5
+        "row": 2,
+        "col": 16
       },
       {
         "row": 3,
-        "col": 2.5
+        "col": 0
       },
       {
         "row": 3,
-        "col": 3.5
+        "col": 1
       },
       {
         "row": 3,
-        "col": 4.5
+        "col": 2
       },
       {
         "row": 3,
-        "col": 5.5
+        "col": 3
       },
       {
         "row": 3,
-        "col": 10.5
+        "col": 4
       },
       {
         "row": 3,
-        "col": 11.5
+        "col": 5
       },
       {
         "row": 3,
-        "col": 12.5
+        "col": 11
       },
       {
         "row": 3,
-        "col": 13.5
+        "col": 12
       },
       {
-        "row": 3.2,
-        "col": 14.5
+        "row": 3,
+        "col": 13
       },
       {
-        "row": 3.2,
-        "col": 15.5,
-        "w": 1.5,
-        "cls": "action"
+        "row": 3,
+        "col": 14
+      },
+      {
+        "row": 3,
+        "col": 15
+      },
+      {
+        "row": 3,
+        "col": 16
       },
       {
         "row": 4,
-        "col": 2.5
+        "col": 2
       },
       {
         "row": 4,
-        "col": 3.5
+        "col": 3
       },
       {
         "row": 4,
-        "col": 12.5
+        "col": 5
       },
       {
         "row": 4,
-        "col": 13.5
+        "col": 6
       },
       {
-        "row": 4.2,
-        "col": 4.8,
-        "cls": "action",
-        "angle": 3
+        "row": 4,
+        "col": 7
       },
       {
-        "row": 4.35,
-        "col": 5.8,
-        "cls": "action",
-        "angle": 8
+        "row": 4,
+        "col": 9
       },
       {
-        "row": 4.6,
-        "col": 6.8,
-        "cls": "action",
-        "angle": 10
+        "row": 4,
+        "col": 10
       },
       {
-        "row": 4.6,
-        "col": 9.2,
-        "cls": "action",
-        "angle": -8
+        "row": 4,
+        "col": 11
       },
       {
-        "row": 4.35,
-        "col": 10.2,
-        "cls": "action",
-        "angle": -8
+        "row": 4,
+        "col": 13
       },
       {
-        "row": 4.2,
-        "col": 11.2,
-        "cls": "action",
-        "angle": -3
+        "row": 4,
+        "col": 14
       },
       {
-        "row": 5.4,
-        "col": 5.6,
-        "cls": "action",
-        "angle": 9
+        "row": 5,
+        "col": 6
       },
       {
-        "row": 5.6,
-        "col": 6.7,
-        "cls": "action",
-        "angle": 10
+        "row": 5,
+        "col": 7
       },
       {
-        "row": 5.6,
-        "col": 9.3,
-        "cls": "action",
-        "angle": -10
+        "row": 5,
+        "col": 9
       },
       {
-        "row": 5.4,
-        "col": 10.4,
-        "cls": "action",
-        "angle": -9
+        "row": 5,
+        "col": 10
       }
     ],
     "keyLayers": {
-      "default": [
+      "qwerty": [
         [
-          "ESC",
-          "KeyQ"
+          "`",
+          "BackQuote"
         ],
         [
           "1",
-          "Digit1"
+          "Num1"
         ],
         [
           "2",
-          "Digit2"
+          "Num2"
         ],
         [
           "3",
-          "Digit3"
+          "Num3"
         ],
         [
           "4",
-          "Digit4"
+          "Num4"
         ],
         [
           "5",
-          "Digit5"
+          "Num5"
         ],
         [
           "6",
-          "Digit6"
+          "Num6"
         ],
         [
           "7",
-          "Digit7"
+          "Num7"
         ],
         [
           "8",
-          "Digit8"
+          "Num8"
         ],
         [
           "9",
-          "Digit9"
+          "Num9"
         ],
         [
           "0",
-          "Digit0"
+          "Num0"
         ],
         [
-          "^",
-          "KeyA"
+          "-",
+          "Minus"
         ],
         [
-          "TAB",
-          "KeyQ"
+          "Tab",
+          "Tab"
         ],
         [
           "q",
@@ -6193,12 +6159,12 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "KeyP"
         ],
         [
-          "ß",
-          "KeyA"
+          "[",
+          "LeftBracket"
         ],
         [
-          "🌐",
-          "KeyA"
+          "Esc / Ctrl",
+          "Escape"
         ],
         [
           "a",
@@ -6237,16 +6203,16 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "KeyL"
         ],
         [
-          "ö",
-          "Semicolon"
+          ";",
+          "SemiColon"
         ],
         [
-          "ä",
-          "Semicolon"
+          "'",
+          "Quote"
         ],
         [
-          "⇧",
-          "KeyZ"
+          "( / Shift",
+          ""
         ],
         [
           "z",
@@ -6282,132 +6248,125 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
         ],
         [
           ".",
-          "Period"
+          "Dot"
         ],
         [
           "/",
           "Slash"
         ],
         [
-          "⇧",
-          "Slash"
+          ") / Shift",
+          ""
         ],
         [
-          "[",
+          "GUI",
+          "MetaLeft"
+        ],
+        [
+          "Alt",
+          "AltLeft"
+        ],
+        [
+          "Numeric",
+          ""
+        ],
+        [
+          "Space / Mouse",
           "Space"
         ],
         [
-          "Enter",
-          "Enter"
+          "Delete / Navigation",
+          "Delete"
         ],
         [
-          " ",
-          "Space"
-        ],
-        [
-          "]",
-          "Enter"
+          "Enter / Navigation",
+          "Return"
         ],
         [
           "Space",
           "Space"
         ],
         [
-          "Lower",
-          "F18"
-        ],
-        [
-          "Win",
-          "AltLeft"
-        ],
-        [
-          "Win",
-          "AltLeft"
-        ],
-        [
-          "Bksp",
+          "Backspace / Numeric",
           "Backspace"
         ],
         [
-          "Magic",
-          "F19"
+          "AltGr / Alt",
+          "AltGr"
         ],
         [
-          " ",
-          "Enter"
+          "GUI",
+          "MetaRight"
         ],
         [
-          "Ctrl",
-          "AltLeft"
+          "[ / Ctrl",
+          "LeftBracket"
         ],
         [
-          "Alt",
-          "Backspace"
+          "[ / Ctrl",
+          "LeftBracket"
         ],
         [
-          "AltGr",
-          "Backspace"
+          "Enter / Navigation",
+          "Return"
         ],
         [
-          "Ctrl",
-          "Backspace"
+          "] / Ctrl",
+          "RightBracket"
         ]
       ],
-      "lower": [
+      "colemak": [
         [
-          "BTCLR",
-          "KeyQ"
+          "`",
+          "BackQuote"
         ],
         [
-          "BT1",
-          "Digit1",
-          "assets/images/linux-logo-penguin.png"
+          "1",
+          "Num1"
         ],
         [
-          "BT2",
-          "Digit2",
-          "assets/images/apple_rainbow.png"
+          "2",
+          "Num2"
         ],
         [
-          "BT3",
-          "Digit3",
-          "assets/images/android-logo.png"
+          "3",
+          "Num3"
         ],
         [
-          "BT4",
-          "Digit4"
+          "4",
+          "Num4"
         ],
         [
-          "BT5",
-          "Digit5"
+          "5",
+          "Num5"
         ],
         [
           "6",
-          "Digit6"
+          "Num6"
         ],
         [
           "7",
-          "Digit7"
+          "Num7"
         ],
         [
           "8",
-          "Digit8"
+          "Num8"
         ],
         [
           "9",
-          "Digit9"
+          "Num9"
         ],
         [
           "0",
-          "Digit0"
+          "Num0"
         ],
         [
-          "^",
-          "KeyA"
+          "-",
+          "Minus"
         ],
         [
-          "TAB",
-          "KeyQ"
+          "Tab",
+          "Tab"
         ],
         [
           "q",
@@ -6418,24 +6377,76 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "KeyW"
         ],
         [
-          "e",
-          "KeyE"
+          "f",
+          "KeyF"
         ],
         [
-          "r",
-          "KeyR"
+          "p",
+          "KeyP"
         ],
         [
-          "t",
-          "KeyT"
+          "g",
+          "KeyG"
+        ],
+        [
+          "j",
+          "KeyJ"
+        ],
+        [
+          "l",
+          "KeyL"
+        ],
+        [
+          "u",
+          "KeyU"
         ],
         [
           "y",
           "KeyY"
         ],
         [
-          "u",
-          "KeyU"
+          ";",
+          "SemiColon"
+        ],
+        [
+          "[",
+          "LeftBracket"
+        ],
+        [
+          "Esc / Ctrl",
+          "Escape"
+        ],
+        [
+          "a",
+          "KeyA"
+        ],
+        [
+          "r",
+          "KeyR"
+        ],
+        [
+          "s",
+          "KeyS"
+        ],
+        [
+          "t",
+          "KeyT"
+        ],
+        [
+          "d",
+          "KeyD"
+        ],
+        [
+          "h",
+          "KeyH"
+        ],
+        [
+          "n",
+          "KeyN"
+        ],
+        [
+          "e",
+          "KeyE"
         ],
         [
           "i",
@@ -6446,59 +6457,13 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "KeyO"
         ],
         [
-          "p",
-          "KeyP"
+          "'",
+          "Quote"
         ],
         [
-          "ß",
-          "KeyA"
+          "( / Shift",
+          ""
         ],
-        null,
-        [
-          "a",
-          "KeyA"
-        ],
-        [
-          "s",
-          "KeyS"
-        ],
-        [
-          "d",
-          "KeyD"
-        ],
-        [
-          "f",
-          "KeyF"
-        ],
-        [
-          "g",
-          "KeyG"
-        ],
-        [
-          "←",
-          "KeyH"
-        ],
-        [
-          "↓",
-          "KeyJ"
-        ],
-        [
-          "↑",
-          "KeyK"
-        ],
-        [
-          "→",
-          "KeyL"
-        ],
-        [
-          "ö",
-          "Semicolon"
-        ],
-        [
-          "ä",
-          "Semicolon"
-        ],
-        null,
         [
           "z",
           "KeyZ"
@@ -6520,221 +6485,10 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "KeyB"
         ],
         [
-          "n",
-          "KeyN"
-        ],
-        [
-          "m",
-          "KeyM"
-        ],
-        [
-          ",",
-          "Comma"
-        ],
-        [
-          ".",
-          "Period"
-        ],
-        [
-          "/",
-          "Slash"
-        ],
-        null,
-        [
-          "Space",
-          "Space"
-        ],
-        [
-          "Enter",
-          "Enter"
-        ],
-        [
-          "Space",
-          "Space"
-        ],
-        [
-          "Enter",
-          "Enter"
-        ],
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
-      ],
-      "magic": [
-        [
-          "ESC",
-          "KeyQ"
-        ],
-        [
-          "F1",
-          "Digit1"
-        ],
-        [
-          "F2",
-          "Digit2"
-        ],
-        [
-          "F3",
-          "Digit3"
-        ],
-        [
-          "F4",
-          "Digit4"
-        ],
-        [
-          "F5",
-          "Digit5"
-        ],
-        [
-          "F6",
-          "Digit6"
-        ],
-        [
-          "F7",
-          "Digit7"
-        ],
-        [
-          "F8",
-          "Digit8"
-        ],
-        [
-          "F9",
-          "Digit9"
-        ],
-        [
-          "F10",
-          "Digit0"
-        ],
-        [
-          "F11",
-          "KeyA"
-        ],
-        [
-          "TAB",
-          "KeyQ"
-        ],
-        [
-          "q",
-          "KeyQ"
-        ],
-        [
-          "1",
-          "KeyW"
-        ],
-        [
-          "2",
-          "KeyE"
-        ],
-        [
-          "3",
-          "KeyR"
-        ],
-        [
-          "+",
-          "KeyT"
-        ],
-        [
-          "y",
-          "KeyY"
-        ],
-        [
-          "u",
-          "KeyU"
-        ],
-        [
-          "i",
-          "KeyI"
-        ],
-        [
-          "o",
-          "KeyO"
-        ],
-        [
-          "p",
-          "KeyP"
-        ],
-        [
-          "F12",
-          "KeyA"
-        ],
-        null,
-        [
-          "a",
-          "KeyA"
-        ],
-        [
-          "4",
-          "KeyS"
-        ],
-        [
-          "5",
-          "KeyD"
-        ],
-        [
-          "6",
-          "KeyF"
-        ],
-        [
-          "-",
-          "KeyG"
-        ],
-        [
-          "←",
-          "KeyH"
-        ],
-        [
-          "↓",
-          "KeyJ"
-        ],
-        [
-          "↑",
+          "k",
           "KeyK"
         ],
         [
-          "→",
-          "KeyL"
-        ],
-        [
-          "+",
-          "Semicolon"
-        ],
-        [
-          "ä",
-          "Semicolon"
-        ],
-        null,
-        [
-          "z",
-          "KeyZ"
-        ],
-        [
-          "7",
-          "KeyX"
-        ],
-        [
-          "8",
-          "KeyC"
-        ],
-        [
-          "9",
-          "KeyV"
-        ],
-        [
-          "b",
-          "KeyB"
-        ],
-        [
-          "n",
-          "KeyN"
-        ],
-        [
           "m",
           "KeyM"
         ],
@@ -6744,28 +6498,81 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
         ],
         [
           ".",
-          "Period"
+          "Dot"
         ],
         [
           "/",
           "Slash"
         ],
-        null,
         [
-          "/",
+          ") / Shift",
+          ""
+        ],
+        [
+          "GUI",
+          "MetaLeft"
+        ],
+        [
+          "Alt",
+          "AltLeft"
+        ],
+        [
+          "Numeric",
+          ""
+        ],
+        [
+          "Space / Mouse",
           "Space"
         ],
         [
-          "0",
-          "Enter"
+          "Delete / Navigation",
+          "Delete"
+        ],
+        [
+          "Enter / Navigation",
+          "Return"
         ],
         [
           "Space",
           "Space"
         ],
         [
-          "Enter",
-          "Enter"
+          "Backspace / Numeric",
+          "Backspace"
+        ],
+        [
+          "AltGr / Alt",
+          "AltGr"
+        ],
+        [
+          "GUI",
+          "MetaRight"
+        ],
+        [
+          "[ / Ctrl",
+          "LeftBracket"
+        ],
+        [
+          "[ / Ctrl",
+          "LeftBracket"
+        ],
+        [
+          "Enter / Navigation",
+          "Return"
+        ],
+        [
+          "] / Ctrl",
+          "RightBracket"
+        ]
+      ],
+      "numeric": [
+        [
+          "Boot",
+          ""
+        ],
+        [
+          "Power",
+          ""
         ],
         null,
         null,
@@ -6775,7 +6582,1033 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
         null,
         null,
         null,
+        [
+          "Power",
+          ""
+        ],
+        [
+          "Boot",
+          ""
+        ],
         null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        [
+          "7",
+          "Num7"
+        ],
+        [
+          "7",
+          "Num7"
+        ],
+        [
+          "8",
+          "Num8"
+        ],
+        [
+          "9",
+          "Num9"
+        ],
+        null,
+        [
+          "]",
+          "RightBracket"
+        ],
+        null,
+        [
+          "QWERTY",
+          ""
+        ],
+        [
+          "Colemak",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Function",
+          ""
+        ],
+        [
+          "Function",
+          ""
+        ],
+        [
+          "4",
+          "Num4"
+        ],
+        [
+          "4",
+          "Num4"
+        ],
+        [
+          "5",
+          "Num5"
+        ],
+        [
+          "6",
+          "Num6"
+        ],
+        [
+          "-",
+          "Minus"
+        ],
+        [
+          "=",
+          "Equal"
+        ],
+        null,
+        [
+          "Media",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "1",
+          "Num1"
+        ],
+        [
+          "1",
+          "Num1"
+        ],
+        [
+          "2",
+          "Num2"
+        ],
+        [
+          "3",
+          "Num3"
+        ],
+        [
+          "\\",
+          "BackSlash"
+        ],
+        null,
+        null,
+        null,
+        null,
+        [
+          "Space",
+          "Space"
+        ],
+        [
+          "Delete",
+          "Delete"
+        ],
+        [
+          "Enter",
+          "Return"
+        ],
+        [
+          "0",
+          "Num0"
+        ],
+        [
+          "Backspace",
+          "Backspace"
+        ],
+        null,
+        null,
+        [
+          "Numeric Lock",
+          ""
+        ],
+        null,
+        [
+          "Enter",
+          "Return"
+        ],
+        null
+      ],
+      "function": [
+        null,
+        [
+          "F1",
+          "F1"
+        ],
+        [
+          "F2",
+          "F2"
+        ],
+        [
+          "F3",
+          "F3"
+        ],
+        [
+          "F4",
+          "F4"
+        ],
+        [
+          "F5",
+          "F5"
+        ],
+        [
+          "F6",
+          "F6"
+        ],
+        [
+          "F7",
+          "F7"
+        ],
+        [
+          "F8",
+          "F8"
+        ],
+        [
+          "F9",
+          "F9"
+        ],
+        [
+          "F10",
+          "F10"
+        ],
+        [
+          "F11",
+          "F11"
+        ],
+        null,
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "F7",
+          "F7"
+        ],
+        [
+          "F7",
+          "F7"
+        ],
+        [
+          "F8",
+          "F8"
+        ],
+        [
+          "F9",
+          "F9"
+        ],
+        [
+          "F10",
+          "F10"
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        null,
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Function",
+          ""
+        ],
+        [
+          "Function",
+          ""
+        ],
+        [
+          "F4",
+          "F4"
+        ],
+        [
+          "F4",
+          "F4"
+        ],
+        [
+          "F5",
+          "F5"
+        ],
+        [
+          "F6",
+          "F6"
+        ],
+        [
+          "F11",
+          "F11"
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        null,
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "F1",
+          "F1"
+        ],
+        [
+          "F1",
+          "F1"
+        ],
+        [
+          "F2",
+          "F2"
+        ],
+        [
+          "F3",
+          "F3"
+        ],
+        [
+          "F12",
+          "F12"
+        ],
+        null,
+        null,
+        null,
+        null,
+        [
+          "Space",
+          "Space"
+        ],
+        [
+          "Delete",
+          "Delete"
+        ],
+        [
+          "Enter",
+          "Return"
+        ],
+        [
+          "Space",
+          "Space"
+        ],
+        [
+          "Backspace",
+          "Backspace"
+        ],
+        null,
+        null,
+        [
+          "Function Lock",
+          ""
+        ],
+        null,
+        [
+          "Enter",
+          "Return"
+        ],
+        null
+      ],
+      "navigation": [
+        [
+          "Esc",
+          "Escape"
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Esc",
+          "Escape"
+        ],
+        [
+          "Esc",
+          "Escape"
+        ],
+        [
+          "Ctrl+W",
+          ""
+        ],
+        [
+          "Ctrl+T",
+          ""
+        ],
+        [
+          "Ctrl+Page Down",
+          ""
+        ],
+        [
+          "Ctrl+Page Down",
+          ""
+        ],
+        [
+          "Page Down",
+          "PageDown"
+        ],
+        [
+          "Home",
+          "Home"
+        ],
+        [
+          "Up",
+          "UpArrow"
+        ],
+        [
+          "Insert",
+          "Insert"
+        ],
+        [
+          "Shift+Insert",
+          ""
+        ],
+        [
+          "Esc",
+          "Escape"
+        ],
+        null,
+        [
+          "Caps Lock",
+          "CapsLock"
+        ],
+        [
+          "GUI+Left",
+          ""
+        ],
+        [
+          "GUI+Tab",
+          ""
+        ],
+        [
+          "GUI+Right",
+          ""
+        ],
+        [
+          "GUI+Right",
+          ""
+        ],
+        [
+          "Left",
+          "LeftArrow"
+        ],
+        [
+          "Left",
+          "LeftArrow"
+        ],
+        [
+          "Down",
+          "DownArrow"
+        ],
+        [
+          "Right",
+          "RightArrow"
+        ],
+        [
+          "End",
+          "End"
+        ],
+        [
+          "Print Screen",
+          "PrintScreen"
+        ],
+        null,
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Ctrl+Page Up",
+          ""
+        ],
+        [
+          "Ctrl+Page Up",
+          ""
+        ],
+        [
+          "Page Up",
+          "PageUp"
+        ],
+        null,
+        [
+          "Down",
+          "DownArrow"
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Menu",
+          "Menu"
+        ],
+        null,
+        null,
+        null,
+        null,
+        [
+          "Space",
+          "Space"
+        ],
+        [
+          "Delete",
+          "Delete"
+        ],
+        [
+          "Enter",
+          "Return"
+        ],
+        [
+          "Space",
+          "Space"
+        ],
+        [
+          "Backspace",
+          "Backspace"
+        ],
+        null,
+        null,
+        [
+          "Navigation Lock",
+          ""
+        ],
+        null,
+        [
+          "Enter",
+          "Return"
+        ],
+        null
+      ],
+      "media": [
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        null,
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Play / Pause",
+          ""
+        ],
+        [
+          "Volume Up",
+          ""
+        ],
+        [
+          "Volume Up",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Boot",
+          ""
+        ],
+        [
+          "Power",
+          ""
+        ],
+        null,
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Previous",
+          ""
+        ],
+        [
+          "Mute",
+          ""
+        ],
+        [
+          "Next",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Sleep",
+          ""
+        ],
+        null,
+        [
+          "Media",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Volume Down",
+          ""
+        ],
+        [
+          "Volume Down",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        null,
+        null,
+        null,
+        [
+          "Space",
+          "Space"
+        ],
+        [
+          "Delete",
+          "Delete"
+        ],
+        [
+          "Enter",
+          "Return"
+        ],
+        [
+          "Space",
+          "Space"
+        ],
+        [
+          "Backspace",
+          "Backspace"
+        ],
+        null,
+        null,
+        [
+          "Media Lock",
+          ""
+        ],
+        [
+          "Media Lock",
+          ""
+        ],
+        [
+          "Enter",
+          "Return"
+        ],
+        null
+      ],
+      "mouse": [
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        null,
+        [
+          "Mouse Accel 1",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Wheel Up",
+          ""
+        ],
+        [
+          "Wheel Left",
+          ""
+        ],
+        [
+          "Mouse Up",
+          ""
+        ],
+        [
+          "Wheel Right",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        null,
+        [
+          "Mouse Accel 2",
+          ""
+        ],
+        [
+          "Mouse 2",
+          ""
+        ],
+        [
+          "Mouse 3",
+          ""
+        ],
+        [
+          "Mouse 1",
+          ""
+        ],
+        [
+          "Mouse 1",
+          ""
+        ],
+        [
+          "Mouse Left",
+          ""
+        ],
+        [
+          "Mouse Left",
+          ""
+        ],
+        [
+          "Mouse Down",
+          ""
+        ],
+        [
+          "Mouse Right",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        null,
+        [
+          "Mouse Accel 0",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Wheel Down",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Mouse Down",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        [
+          "Disabled",
+          ""
+        ],
+        null,
+        null,
+        null,
+        null,
+        [
+          "Space",
+          "Space"
+        ],
+        [
+          "Delete",
+          "Delete"
+        ],
+        [
+          "Enter",
+          "Return"
+        ],
+        [
+          "Space",
+          "Space"
+        ],
+        [
+          "Backspace",
+          "Backspace"
+        ],
+        null,
+        null,
+        [
+          "Mouse Lock",
+          ""
+        ],
+        null,
+        [
+          "Enter",
+          "Return"
+        ],
         null
       ]
     }

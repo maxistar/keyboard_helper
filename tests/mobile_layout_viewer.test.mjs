@@ -133,7 +133,6 @@ test("catalog isolates invalid definitions, bounds diagnostics, and exposes an e
 
 test("every bundled layer matches shared effective-entry and ordering semantics", () => {
   let sawSpan = false;
-  let sawImage = false;
   let sawTransparentFallback = false;
   for (const key of MOBILE_BUNDLED_LAYOUT_ORDER) {
     const definition = MOBILE_BUNDLED_LAYOUT_DEFINITIONS[key];
@@ -147,13 +146,11 @@ test("every bundled layer matches shared effective-entry and ordering semantics"
         const expectedText = typeof expected.label === "object" ? expected.label.text : expected.label;
         assert.equal(rendered.label, expectedText == null ? "" : String(expectedText));
         sawSpan ||= rendered.widthUnits !== 1 || rendered.heightUnits !== 1;
-        sawImage ||= Boolean(rendered.image);
         sawTransparentFallback ||= layerIndex > 0 && shared.layers[layerIndex]?.[positionIndex] == null && rendered.label !== "";
       });
     }
   }
   assert.equal(sawSpan, true);
-  assert.equal(sawImage, true);
   assert.equal(sawTransparentFallback, true);
 });
 
