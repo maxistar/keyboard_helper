@@ -1,13 +1,15 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 import { isValidWindowsInputSourceId, normalizeInputSourceSync } from "../src/input_source_sync_config.js";
 
 const path = process.env.CORNEY_LAYOUT_PATH ?? new URL("../../corney/layout_corney.json", import.meta.url);
-const layout = JSON.parse(readFileSync(path, "utf8"));
-const count = Object.keys(layout.keyLayers).length;
+// The Corney layout lives in the sibling monorepo project and is absent from standalone checkouts.
+const layout = existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : null;
+const count = layout ? Object.keys(layout.keyLayers).length : 0;
+const skip = layout ? false : "requires the sibling corney/layout_corney.json";
 
-test("actual Corney Windows fixture matches Linux layer families", () => {
+test("actual Corney Windows fixture matches Linux layer families", { skip }, () => {
   const result = normalizeInputSourceSync(layout, count, { platform: "windows" });
   assert.equal(result.error, null);
   assert.equal(result.config.adapter, "windows");
@@ -23,7 +25,7 @@ test("actual Corney Windows fixture matches Linux layer families", () => {
   ]);
 });
 
-test("Windows IDs require a canonical nonzero KLID, preserving variants", () => {
+test("Windows IDs require a canonical nonzero KLID, preserving variants", { skip }, () => {
   for (const id of ["windows:klid:00000409", "windows:klid:00010409", "windows:klid:A0000409"]) {
     assert.equal(isValidWindowsInputSourceId(id), true);
   }
@@ -45,7 +47,7 @@ for (const [label, mutate] of [
   ["invalid delay", (c) => { c.settleMs = -1; }],
   ["empty label", (c) => { c.sources[0].label = ""; }],
 ]) {
-  test(`Windows normalization rejects ${label}`, () => {
+  test(`Windows normalization rejects ${label}`, { skip }, () => {
     const value = structuredClone(layout);
     mutate(value.inputSourceSync.windows);
     assert.equal(normalizeInputSourceSync(value, count, { platform: "windows" }).config, null);

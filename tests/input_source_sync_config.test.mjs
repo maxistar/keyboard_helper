@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -115,8 +115,12 @@ test("rejects malformed XKB identifiers without rejecting the layout", () => {
   assert.match(result.error, /must use xkb:layout/);
 });
 
-test("normalizes the external Corney X11 test layout", () => {
-  const corney = JSON.parse(readFileSync(new URL("../../corney/layout_corney.json", import.meta.url), "utf8"));
+// The Corney layout lives in the sibling monorepo project and is absent from standalone checkouts.
+const corneyLayoutUrl = new URL("../../corney/layout_corney.json", import.meta.url);
+const corneySkip = existsSync(corneyLayoutUrl) ? false : "requires the sibling corney/layout_corney.json";
+
+test("normalizes the external Corney X11 test layout", { skip: corneySkip }, () => {
+  const corney = JSON.parse(readFileSync(corneyLayoutUrl, "utf8"));
   const layerCount = Object.keys(corney.keyLayers).length;
   const result = normalizeInputSourceSync(corney, layerCount, { platform: "linux" });
   assert.equal(result.error, null);
