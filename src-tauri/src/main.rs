@@ -11,6 +11,10 @@ mod ble_layer_sync;
 mod config_store;
 #[cfg(target_os = "macos")]
 mod input_source_macos;
+#[cfg(target_os = "windows")]
+mod input_source_windows;
+#[cfg(target_os = "linux")]
+mod input_source_x11;
 use rdev::{listen, Event, EventType, Key};
 use serde::{Deserialize, Serialize};
 #[cfg(target_os = "macos")]
@@ -37,6 +41,67 @@ struct BleLayerSyncTauriState {
 struct MacosInputSourceTauriState {
     #[cfg(target_os = "macos")]
     inner: Arc<input_source_macos::MacosInputSourceState>,
+}
+
+#[derive(Default)]
+struct X11InputSourceTauriState {
+    #[cfg(target_os = "linux")]
+    inner: Arc<input_source_x11::X11InputSourceState>,
+}
+
+#[derive(Default)]
+struct WindowsInputSourceTauriState {
+    #[cfg(target_os = "windows")]
+    inner: Arc<input_source_windows::WindowsInputSourceState>,
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+async fn start_windows_input_source_sync(
+    app_handle: tauri::AppHandle,
+    state: State<'_, WindowsInputSourceTauriState>,
+    config: input_source_windows::WindowsConfig,
+) -> Result<input_source_windows::WindowsSnapshot, String> {
+    let inner = state.inner.clone();
+    tokio::task::spawn_blocking(move || inner.start(app_handle, config))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+async fn stop_windows_input_source_sync(
+    state: State<'_, WindowsInputSourceTauriState>,
+) -> Result<(), String> {
+    let inner = state.inner.clone();
+    tokio::task::spawn_blocking(move || inner.stop())
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+async fn refresh_windows_input_source_sync(
+    state: State<'_, WindowsInputSourceTauriState>,
+    session: String,
+) -> Result<input_source_windows::WindowsSnapshot, String> {
+    let inner = state.inner.clone();
+    tokio::task::spawn_blocking(move || inner.request(&session, None))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+async fn select_windows_input_source(
+    state: State<'_, WindowsInputSourceTauriState>,
+    source_id: String,
+    session: String,
+) -> Result<input_source_windows::WindowsSnapshot, String> {
+    let inner = state.inner.clone();
+    tokio::task::spawn_blocking(move || inner.request(&session, Some(source_id)))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -132,6 +197,7 @@ struct MacosInputSourceSyncConfig {
 const TYPING_INVADERS_WINDOW_LABEL: &str = "typing-invaders";
 const KEYBOARD_SNAKE_WINDOW_LABEL: &str = "keyboard-snake";
 const FLAPPY_KEY_BIRD_WINDOW_LABEL: &str = "flappy-key-bird";
+const UNDERWATER_TYPING_FISHING_WINDOW_LABEL: &str = "underwater-typing-fishing";
 const SETTINGS_WINDOW_LABEL: &str = "settings";
 const KEYBOARD_SELF_TEST_WINDOW_LABEL: &str = "keyboard-self-test";
 const APP_NAME: &str = "Keyboard Helper";
@@ -142,6 +208,7 @@ const ENTER_MINI_MODE_MENU_ID: &str = "view.enter-mini-mode";
 const TYPING_INVADERS_MENU_ID: &str = "view.typing-invaders";
 const KEYBOARD_SNAKE_MENU_ID: &str = "view.keyboard-snake";
 const FLAPPY_KEY_BIRD_MENU_ID: &str = "view.flappy-key-bird";
+const UNDERWATER_TYPING_FISHING_MENU_ID: &str = "view.underwater-typing-fishing";
 const HELP_MENU_ID: &str = "help.keyboard-helper";
 
 fn settings_window_creation_error(error: &str) -> String {
@@ -168,6 +235,7 @@ enum AppMenuAction {
     OpenTypingInvaders,
     OpenKeyboardSnake,
     OpenFlappyKeyBird,
+    OpenUnderwaterTypingFishing,
     OpenHelp,
 }
 
@@ -180,6 +248,7 @@ impl AppMenuAction {
             TYPING_INVADERS_MENU_ID => Some(Self::OpenTypingInvaders),
             KEYBOARD_SNAKE_MENU_ID => Some(Self::OpenKeyboardSnake),
             FLAPPY_KEY_BIRD_MENU_ID => Some(Self::OpenFlappyKeyBird),
+            UNDERWATER_TYPING_FISHING_MENU_ID => Some(Self::OpenUnderwaterTypingFishing),
             HELP_MENU_ID => Some(Self::OpenHelp),
             _ => None,
         }
@@ -193,6 +262,7 @@ impl AppMenuAction {
             Self::OpenTypingInvaders => "Shift-Space Invaders",
             Self::OpenKeyboardSnake => "Keyboard Snake",
             Self::OpenFlappyKeyBird => "Flappy Key-Bird",
+            Self::OpenUnderwaterTypingFishing => "Underwater Typing Fishing",
             Self::OpenHelp => "Keyboard Helper Help",
         }
     }
@@ -205,6 +275,7 @@ trait AppMenuActionHandler {
     fn open_typing_invaders(&mut self) -> Result<(), String>;
     fn open_keyboard_snake(&mut self) -> Result<(), String>;
     fn open_flappy_key_bird(&mut self) -> Result<(), String>;
+    fn open_underwater_typing_fishing(&mut self) -> Result<(), String>;
     fn open_help(&mut self) -> Result<(), String>;
 }
 
@@ -220,6 +291,7 @@ fn dispatch_app_menu_action(menu_id: &str, handler: &mut impl AppMenuActionHandl
         AppMenuAction::OpenTypingInvaders => handler.open_typing_invaders(),
         AppMenuAction::OpenKeyboardSnake => handler.open_keyboard_snake(),
         AppMenuAction::OpenFlappyKeyBird => handler.open_flappy_key_bird(),
+        AppMenuAction::OpenUnderwaterTypingFishing => handler.open_underwater_typing_fishing(),
         AppMenuAction::OpenHelp => handler.open_help(),
     };
 
@@ -259,6 +331,10 @@ impl AppMenuActionHandler for NativeAppMenuActionHandler<'_> {
 
     fn open_flappy_key_bird(&mut self) -> Result<(), String> {
         open_flappy_key_bird_window(self.app_handle)
+    }
+
+    fn open_underwater_typing_fishing(&mut self) -> Result<(), String> {
+        open_underwater_typing_fishing_window(self.app_handle)
     }
 
     fn open_help(&mut self) -> Result<(), String> {
@@ -645,6 +721,11 @@ async fn open_flappy_key_bird(app_handle: tauri::AppHandle) -> Result<(), String
     open_flappy_key_bird_window(&app_handle)
 }
 
+#[tauri::command]
+async fn open_underwater_typing_fishing(app_handle: tauri::AppHandle) -> Result<(), String> {
+    open_underwater_typing_fishing_window(&app_handle)
+}
+
 fn open_keyboard_snake_window(app_handle: &tauri::AppHandle) -> Result<(), String> {
     let existing = app_handle.get_webview_window(KEYBOARD_SNAKE_WINDOW_LABEL);
     match secondary_window_action(existing.is_some()) {
@@ -704,6 +785,40 @@ fn open_flappy_key_bird_window(app_handle: &tauri::AppHandle) -> Result<(), Stri
             .center()
             .build()
             .map_err(|error| format!("failed to create Flappy Key-Bird window: {error}"))?;
+            window.set_focus().map_err(|error| error.to_string())
+        }
+    }
+}
+
+fn open_underwater_typing_fishing_window(app_handle: &tauri::AppHandle) -> Result<(), String> {
+    let existing = app_handle.get_webview_window(UNDERWATER_TYPING_FISHING_WINDOW_LABEL);
+    match secondary_window_action(existing.is_some()) {
+        SecondaryWindowAction::FocusExisting => {
+            let window = existing.expect("existing fishing window checked above");
+            window.show().map_err(|error| error.to_string())?;
+            if window.is_minimized().map_err(|error| error.to_string())? {
+                window.unminimize().map_err(|error| error.to_string())?;
+            }
+            window.set_focus().map_err(|error| error.to_string())
+        }
+        SecondaryWindowAction::Create => {
+            let window = WebviewWindowBuilder::new(
+                app_handle,
+                UNDERWATER_TYPING_FISHING_WINDOW_LABEL,
+                WebviewUrl::App("underwater-typing-fishing.html".into()),
+            )
+            .title("Underwater Typing Fishing")
+            .inner_size(1100.0, 780.0)
+            .min_inner_size(640.0, 560.0)
+            .resizable(true)
+            .decorations(true)
+            .transparent(false)
+            .always_on_top(false)
+            .center()
+            .build()
+            .map_err(|error| {
+                format!("failed to create Underwater Typing Fishing window: {error}")
+            })?;
             window.set_focus().map_err(|error| error.to_string())
         }
     }
@@ -906,6 +1021,9 @@ async fn smoke_secondary_window(
         TYPING_INVADERS_WINDOW_LABEL => open_typing_invaders(app_handle.clone()).await,
         KEYBOARD_SNAKE_WINDOW_LABEL => open_keyboard_snake(app_handle.clone()).await,
         FLAPPY_KEY_BIRD_WINDOW_LABEL => open_flappy_key_bird(app_handle.clone()).await,
+        UNDERWATER_TYPING_FISHING_WINDOW_LABEL => {
+            open_underwater_typing_fishing(app_handle.clone()).await
+        }
         KEYBOARD_SELF_TEST_WINDOW_LABEL => {
             open_keyboard_self_test(app_handle.clone(), "qwerty".to_string()).await
         }
@@ -948,6 +1066,9 @@ async fn smoke_secondary_window(
         TYPING_INVADERS_WINDOW_LABEL => open_typing_invaders(app_handle.clone()).await,
         KEYBOARD_SNAKE_WINDOW_LABEL => open_keyboard_snake(app_handle.clone()).await,
         FLAPPY_KEY_BIRD_WINDOW_LABEL => open_flappy_key_bird(app_handle.clone()).await,
+        UNDERWATER_TYPING_FISHING_WINDOW_LABEL => {
+            open_underwater_typing_fishing(app_handle.clone()).await
+        }
         KEYBOARD_SELF_TEST_WINDOW_LABEL => {
             open_keyboard_self_test(app_handle.clone(), "qwerty".to_string()).await
         }
@@ -975,6 +1096,9 @@ async fn smoke_secondary_window(
         TYPING_INVADERS_WINDOW_LABEL => open_typing_invaders(app_handle.clone()).await,
         KEYBOARD_SNAKE_WINDOW_LABEL => open_keyboard_snake(app_handle.clone()).await,
         FLAPPY_KEY_BIRD_WINDOW_LABEL => open_flappy_key_bird(app_handle.clone()).await,
+        UNDERWATER_TYPING_FISHING_WINDOW_LABEL => {
+            open_underwater_typing_fishing(app_handle.clone()).await
+        }
         KEYBOARD_SELF_TEST_WINDOW_LABEL => {
             open_keyboard_self_test(app_handle.clone(), "qwerty".to_string()).await
         }
@@ -1029,6 +1153,7 @@ async fn run_secondary_window_smoke(
         TYPING_INVADERS_WINDOW_LABEL,
         KEYBOARD_SNAKE_WINDOW_LABEL,
         FLAPPY_KEY_BIRD_WINDOW_LABEL,
+        UNDERWATER_TYPING_FISHING_WINDOW_LABEL,
         KEYBOARD_SELF_TEST_WINDOW_LABEL,
     ] {
         windows.push(smoke_secondary_window(&app_handle, &mut receiver, label).await);
@@ -1196,6 +1321,76 @@ async fn refresh_macos_input_source_sync(
         .map_err(|_| "macOS input-source refresh was cancelled".to_string())?
 }
 
+#[cfg(target_os = "linux")]
+#[tauri::command]
+async fn start_x11_input_source_sync(
+    app_handle: tauri::AppHandle,
+    state: State<'_, X11InputSourceTauriState>,
+    config: input_source_x11::X11InputSourceSyncConfig,
+) -> Result<input_source_x11::X11InputSourceSnapshot, input_source_x11::X11InputSourceError> {
+    let input_source_state = state.inner.clone();
+    let result = tokio::task::spawn_blocking(move || input_source_state.start(app_handle, config))
+        .await
+        .map_err(|error| input_source_x11::X11InputSourceError {
+            reason: "startup-cancelled".into(),
+            message: error.to_string(),
+            diagnostics: None,
+        })?;
+    if let Err(error) = &result {
+        eprintln!(
+            "X11 input-source sync failed to start: {} ({})",
+            error.message, error.reason
+        );
+    }
+    result
+}
+
+#[cfg(target_os = "linux")]
+#[tauri::command]
+async fn stop_x11_input_source_sync(
+    state: State<'_, X11InputSourceTauriState>,
+) -> Result<(), input_source_x11::X11InputSourceError> {
+    let input_source_state = state.inner.clone();
+    tokio::task::spawn_blocking(move || input_source_state.stop())
+        .await
+        .map_err(|error| input_source_x11::X11InputSourceError {
+            reason: "stop-cancelled".into(),
+            message: error.to_string(),
+            diagnostics: None,
+        })?
+}
+
+#[cfg(target_os = "linux")]
+#[tauri::command]
+async fn refresh_x11_input_source_sync(
+    state: State<'_, X11InputSourceTauriState>,
+) -> Result<input_source_x11::X11InputSourceSnapshot, input_source_x11::X11InputSourceError> {
+    let input_source_state = state.inner.clone();
+    tokio::task::spawn_blocking(move || input_source_state.refresh())
+        .await
+        .map_err(|error| input_source_x11::X11InputSourceError {
+            reason: "refresh-cancelled".into(),
+            message: error.to_string(),
+            diagnostics: None,
+        })?
+}
+
+#[cfg(target_os = "linux")]
+#[tauri::command]
+async fn select_x11_input_source(
+    state: State<'_, X11InputSourceTauriState>,
+    source_id: String,
+) -> Result<(), input_source_x11::X11InputSourceError> {
+    let input_source_state = state.inner.clone();
+    tokio::task::spawn_blocking(move || input_source_state.select(&source_id))
+        .await
+        .map_err(|error| input_source_x11::X11InputSourceError {
+            reason: "selection-cancelled".into(),
+            message: error.to_string(),
+            diagnostics: None,
+        })?
+}
+
 /// Преобразуем rdev::Event в удобный для фронта формат
 fn convert_event(ev: Event) -> Option<KeyEventPayload> {
     //if let Some(name) = ev.name.as_deref() {
@@ -1299,6 +1494,13 @@ fn install_macos_application_menu(app: &mut tauri::App) -> tauri::Result<()> {
         true,
         None::<&str>,
     )?;
+    let underwater_typing_fishing = MenuItem::with_id(
+        app,
+        UNDERWATER_TYPING_FISHING_MENU_ID,
+        "Underwater Typing Fishing",
+        true,
+        None::<&str>,
+    )?;
     let help = MenuItem::with_id(
         app,
         HELP_MENU_ID,
@@ -1341,6 +1543,7 @@ fn install_macos_application_menu(app: &mut tauri::App) -> tauri::Result<()> {
             &typing_invaders,
             &keyboard_snake,
             &flappy_key_bird,
+            &underwater_typing_fishing,
         ],
     )?;
     let window_menu = Submenu::with_items(
@@ -1385,6 +1588,8 @@ fn main() {
         .manage(KeyboardListenerState::default())
         .manage(BleLayerSyncTauriState::default())
         .manage(MacosInputSourceTauriState::default())
+        .manage(X11InputSourceTauriState::default())
+        .manage(WindowsInputSourceTauriState::default())
         .manage(OverlayGeometryState::default())
         .manage(SecondaryWindowReadinessState::default())
         .setup(|app| {
@@ -1415,6 +1620,22 @@ fn main() {
             select_macos_input_source,
             #[cfg(target_os = "macos")]
             refresh_macos_input_source_sync,
+            #[cfg(target_os = "linux")]
+            start_x11_input_source_sync,
+            #[cfg(target_os = "linux")]
+            stop_x11_input_source_sync,
+            #[cfg(target_os = "linux")]
+            select_x11_input_source,
+            #[cfg(target_os = "linux")]
+            refresh_x11_input_source_sync,
+            #[cfg(target_os = "windows")]
+            start_windows_input_source_sync,
+            #[cfg(target_os = "windows")]
+            stop_windows_input_source_sync,
+            #[cfg(target_os = "windows")]
+            refresh_windows_input_source_sync,
+            #[cfg(target_os = "windows")]
+            select_windows_input_source,
             toggle_window,
             set_window_decorations,
             enter_mini_geometry,
@@ -1423,6 +1644,7 @@ fn main() {
             open_typing_invaders,
             open_keyboard_snake,
             open_flappy_key_bird,
+            open_underwater_typing_fishing,
             open_settings,
             open_keyboard_self_test,
             secondary_window_ready,
@@ -1445,6 +1667,7 @@ mod tests {
         OverlayGeometryState, OverlayVisibilityAction, OverlayWindowSnapshot,
         SecondaryWindowAction, ENTER_MINI_MODE_MENU_ID, FLAPPY_KEY_BIRD_MENU_ID, HELP_MENU_ID,
         KEYBOARD_SNAKE_MENU_ID, SETTINGS_MENU_ID, TOGGLE_OVERLAY_MENU_ID, TYPING_INVADERS_MENU_ID,
+        UNDERWATER_TYPING_FISHING_MENU_ID,
     };
     use std::io::Cursor;
     use tauri::{PhysicalPosition, PhysicalSize};
@@ -1495,6 +1718,10 @@ mod tests {
 
         fn open_flappy_key_bird(&mut self) -> Result<(), String> {
             self.record(AppMenuAction::OpenFlappyKeyBird)
+        }
+
+        fn open_underwater_typing_fishing(&mut self) -> Result<(), String> {
+            self.record(AppMenuAction::OpenUnderwaterTypingFishing)
         }
 
         fn open_help(&mut self) -> Result<(), String> {
@@ -1652,6 +1879,10 @@ mod tests {
             FLAPPY_KEY_BIRD_MENU_ID,
             &mut handler
         ));
+        assert!(dispatch_app_menu_action(
+            UNDERWATER_TYPING_FISHING_MENU_ID,
+            &mut handler
+        ));
         assert!(dispatch_app_menu_action(HELP_MENU_ID, &mut handler));
         assert!(!dispatch_app_menu_action("unknown", &mut handler));
 
@@ -1664,6 +1895,7 @@ mod tests {
                 AppMenuAction::OpenTypingInvaders,
                 AppMenuAction::OpenKeyboardSnake,
                 AppMenuAction::OpenFlappyKeyBird,
+                AppMenuAction::OpenUnderwaterTypingFishing,
                 AppMenuAction::OpenHelp,
             ]
         );

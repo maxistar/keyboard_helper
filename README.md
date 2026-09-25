@@ -1,6 +1,6 @@
 # Keyboard Helper
 
-Desktop helper to visualize split/ergonomic keyboard layouts (Corne, QWERTZ, Dactyl, Magic) and highlight pressed keys in real time. Built with vanilla HTML/CSS/JS on top of Tauri.
+Desktop helper to visualize split/ergonomic keyboard layouts (Corne, Lily58, Sofle, Dactyl, QWERTZ, Magic) and highlight pressed keys in real time. Built with vanilla HTML/CSS/JS on top of Tauri.
 
 ## Clone
 
@@ -88,6 +88,19 @@ The desktop application includes a word-typing arcade game. Open the application
 
 The first release uses curated English words and keeps results only for the current session. It does not save profiles, achievements, or high scores. The game window is available through the native Tauri application; the standalone browser frontend does not create desktop windows.
 
+## Underwater Typing Fishing
+
+Open the application menu, expand **Games**, and choose **Underwater Typing Fishing** to start a calm Zen typing session in a separate desktop window. Choosing it again focuses the existing fishing window.
+
+- Each visible fish carries a word and no two visible fish begin with the same character.
+- Type a fish's first character to hook it, then complete the word to reel it in.
+- A mistake resets the current streak but preserves the correctly typed prefix; fish never escape merely because time passes.
+- Reach the catch quota to finish the dive, or choose **End dive** to see the current results early.
+- Press `Esc` to pause or resume. Moving focus away from the game pauses it automatically.
+- Results include score, caught fish, correct characters, mistakes, accuracy, words per minute, best streak, and active time.
+
+The initial Zen mode uses bundled English words and stores no profile or high score. The game accepts focused semantic keyboard input and does not require BLE telemetry or global key events. Like the other secondary game windows, it is available in the native desktop application rather than the standalone browser frontend.
+
 ## Guided Keyboard Self-test
 
 Open the overlay menu, expand **Keyboard**, and choose **Keyboard Self-test**. The desktop app opens one separate test window (or focuses the existing one), initially selecting the overlay's current layout and its base layer.
@@ -138,7 +151,7 @@ Advanced users can still edit the compatible JSON configuration directly. The ap
   - `serviceUuid`: custom GATT service UUID
   - `characteristicUuid`: custom active-layer characteristic UUID
   - `format`: currently `int32-le`
-- References: see built-in layouts for structure (`src/layout_corne.json`, `src/layout_qwertz.json`, `src/layout_dactyl.json`, `src/layout_mac.json`, `src/layout_magic.json`). Copy one, edit, and point your config at the new path. Keep a personal config in `~/.keyri.json`.
+- References: see built-in layouts for structure (`src/layout_corne.json`, `src/layout_qwertz.json`, `src/layout_dactyl.json`, `src/layout_lily58.json`, `src/layout_sofle.json`, `src/layout_mac.json`, `src/layout_magic.json`). Copy one, edit, and point your config at the new path. Keep a personal config in `~/.keyri.json`.
 - If no config file is found, the Settings window starts from all built-in layouts with QWERTY selected. A malformed config is never silently replaced: recovery requires confirmation and creates a timestamped backup. Unreadable external layouts produce a visible error while the overlay falls back to an available built-in layout.
 
 ## BLE layer sync
@@ -149,9 +162,13 @@ If the selected layout defines `bleLayerSource`, the app attempts to connect to 
 - If BLE metadata is absent, BLE startup fails, or the BLE feed disconnects, the app falls back to the existing non-BLE behavior.
 - BLE sync starts and stops automatically when you switch layouts.
 
-### macOS input-source and ZMK layer synchronization
+### Input-source and ZMK layer synchronization
 
-A layout may add `inputSourceSync.macos` to make the selected macOS input source authoritative for its ZMK language family. This capability is macOS-only and requires the same `bleLayerSource` characteristic to support encrypted **Write with response** and Notify. Windows, Linux, browser execution, layouts without metadata, and malformed metadata retain ordinary read-only BLE observation and local layer preview.
+A layout may add a platform-scoped input-source block to make the confirmed OS input source authoritative for its ZMK language family. This requires the same `bleLayerSource` characteristic to support encrypted **Write with response** and Notify. Unsupported platforms, layouts without current-platform metadata, and malformed metadata retain ordinary read-only BLE observation and local layer preview.
+
+#### macOS
+
+Use `inputSourceSync.macos` with exact installed Text Input Source Services identifiers.
 
 Each source has a unique app ID and label, the exact installed macOS `inputSourceId`, one stable `baseLayer`, and all related language layers. `neutralLayers` lists utility layers that belong to neither language. Family and neutral layer indexes must exist and must not overlap. Non-base family layers and neutral layers defer correction; the app only corrects a stable foreign base layer after `settleMs`. This optional interval defaults to `1000` milliseconds and accepts integers from `0` through `60000`.
 
@@ -183,3 +200,51 @@ Each source has a unique app ID and label, the exact installed macOS `inputSourc
 ```
 
 Use `defaults read ~/Library/Preferences/com.apple.HIToolbox.plist AppleEnabledInputSources` to inspect enabled sources. The configured value must be the exact Text Input Source Services `kTISPropertyInputSourceID`; plist fields vary by source type, so treat names and bundle fields as discovery hints rather than transforming them. A configured but uninstalled ID is shown as unavailable and is never replaced by a guessed or cycled source. See `../corney/layout_corney.json` for the full Corney layout example.
+
+#### Windows
+
+Use `inputSourceSync.windows` with canonical Windows KLIDs such as `windows:klid:00000409`. Helper follows the foreground application's layout and respects Windows settings. See [Windows configuration, selection policy, and CorneyMX verification](docs/windows-input-source-sync.md).
+
+#### Linux X11/XKB
+
+Use `inputSourceSync.linux.x11` in a real X11 session. Wayland and XWayland are intentionally unsupported. Stable identifiers use `xkb:layout:<layout>` or `xkb:layout:<layout>:<variant>`; zero-based `xkb:group:<index>` identifiers are available as a positional fallback. Prefer stable layout identifiers because group indexes change when the desktop keyboard-layout order changes.
+
+```json
+{
+  "inputSourceSync": {
+    "linux": {
+      "x11": {
+        "settleMs": 1000,
+        "sources": [
+          {
+            "id": "de",
+            "label": "Deutsch",
+            "inputSourceId": "xkb:layout:de",
+            "baseLayer": 1,
+            "layers": [1, 2, 3, 15]
+          },
+          {
+            "id": "ru",
+            "label": "Русский",
+            "inputSourceId": "xkb:layout:ru",
+            "baseLayer": 8,
+            "layers": [8, 11]
+          },
+          {
+            "id": "en",
+            "label": "English",
+            "inputSourceId": "xkb:layout:us",
+            "baseLayer": 0,
+            "layers": [0]
+          }
+        ],
+        "neutralLayers": [13, 14, 18]
+      }
+    }
+  }
+}
+```
+
+The Language flyout reports the detected zero-based group index, XKB group name, layout, variant, and accepted identifiers. Selection must be confirmed by an XKB state event or read-back within 1000 milliseconds before reconciliation may write a keyboard layer. The adapter follows the XKB group only; it does not observe IBus or Fcitx language state, so do not enable it when an input method is the actual language authority.
+
+On Debian/Ubuntu, Linux development and packaging require `libx11-dev` in addition to the existing Tauri GTK/WebKit/AppIndicator packages. The complete test layout is [`../corney/layout_corney.json`](../corney/layout_corney.json); point a Keyboard Helper external layout entry at that file to exercise its `de → ru → en` cycle. The English XKB group uses the canonical `xkb:layout:us` identifier and maps to Corney's layer 0.

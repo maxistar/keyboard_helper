@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createReadinessGate, initializeSecondaryWindow } from "../src/secondary_window_ready.js";
+import { createReadinessGate, initializeSecondaryWindow, SECONDARY_WINDOWS } from "../src/secondary_window_ready.js";
+
+test("fishing window has a stable readiness identity", () => {
+  assert.deepEqual(SECONDARY_WINDOWS.underwaterTypingFishing, {
+    label: "underwater-typing-fishing",
+    page: "underwater-typing-fishing.html",
+    capability: "underwater-typing-fishing",
+  });
+});
 
 test("matching readiness resolves a gate and a duplicate is ignored", async () => {
   const gate = createReadinessGate({ label: "settings" });

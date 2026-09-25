@@ -13,17 +13,16 @@ async function read(relativePath) {
 test("Android configuration keeps a distinct companion identity and frontend", async () => {
   const desktop = JSON.parse(await read("src-tauri/tauri.conf.json"));
   const android = JSON.parse(await read("src-tauri/tauri.android.conf.json"));
-  const macos = JSON.parse(await read("src-tauri/tauri.macos.conf.json"));
 
   assert.equal(desktop.identifier, "me.maxistar.keyri-app");
-  assert.equal(desktop.app.macOSPrivateApi, false);
-  assert.equal(macos.app.macOSPrivateApi, true);
+  assert.equal(desktop.app.macOSPrivateApi, true);
+  await assert.rejects(access(path.join(root, "src-tauri/tauri.macos.conf.json")));
   assert.equal(android.productName, "Keyboard Helper Companion");
   assert.equal(android.identifier, "me.maxistar.keyboardhelper.companion");
   assert.equal(android.build.frontendDist, "../src-mobile");
   assert.equal(android.bundle.android.minSdkVersion, 24);
   assert.deepEqual(android.app.windows.map(({ label }) => label), ["mobile"]);
-  assert.equal(android.app.macOSPrivateApi, false);
+  assert.equal(Object.hasOwn(android.app, "macOSPrivateApi"), false);
 });
 
 test("mobile surface composes a viewport-first keyboard workspace", async () => {
@@ -118,9 +117,9 @@ test("mobile native entry registers only target-gated companion adapters", async
   assert.match(cargoToml, /cfg\(target_os = "android"\)[\s\S]*tauri-plugin-keyboard-helper-layouts/);
   assert.match(
     cargoToml,
-    /\[dependencies\]\s*tauri = \{ version = "2", features = \[\s*"tray-icon"\] \}/,
+    /\[dependencies\]\s*tauri = \{ version = "2", features = \["macos-private-api", "tray-icon"\] \}/,
   );
-  assert.match(cargoToml, /cfg\(target_os = "macos"\)[\s\S]*macos-private-api/);
+  assert.equal(cargoToml.match(/^tauri = /gm)?.length, 1);
 });
 
 test("Android notification enrollment resets CCC and teardown confirms remote disable", async () => {

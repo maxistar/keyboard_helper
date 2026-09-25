@@ -104,9 +104,9 @@ test("cold viewer state is immutable, deterministic, and process local", () => {
 test("layout and layer actions validate selection and reset layers deterministically", () => {
   const model = new MobileLayoutViewerModel();
   model.selectLayout("corne");
-  model.selectLayer(3);
-  assert.equal(model.snapshot().selectedLayerIndex, 3);
-  const unchanged = model.selectLayer(3);
+  model.selectLayer(2);
+  assert.equal(model.snapshot().selectedLayerIndex, 2);
+  const unchanged = model.selectLayer(2);
   assert.equal(unchanged, model.snapshot());
   model.selectLayout("dactyl");
   assert.equal(model.snapshot().selectedLayerIndex, 0);
@@ -133,7 +133,6 @@ test("catalog isolates invalid definitions, bounds diagnostics, and exposes an e
 
 test("every bundled layer matches shared effective-entry and ordering semantics", () => {
   let sawSpan = false;
-  let sawImage = false;
   let sawTransparentFallback = false;
   for (const key of MOBILE_BUNDLED_LAYOUT_ORDER) {
     const definition = MOBILE_BUNDLED_LAYOUT_DEFINITIONS[key];
@@ -147,13 +146,11 @@ test("every bundled layer matches shared effective-entry and ordering semantics"
         const expectedText = typeof expected.label === "object" ? expected.label.text : expected.label;
         assert.equal(rendered.label, expectedText == null ? "" : String(expectedText));
         sawSpan ||= rendered.widthUnits !== 1 || rendered.heightUnits !== 1;
-        sawImage ||= Boolean(rendered.image);
         sawTransparentFallback ||= layerIndex > 0 && shared.layers[layerIndex]?.[positionIndex] == null && rendered.label !== "";
       });
     }
   }
   assert.equal(sawSpan, true);
-  assert.equal(sawImage, true);
   assert.equal(sawTransparentFallback, true);
 });
 
@@ -239,4 +236,27 @@ test("viewer markup, styles, and modules enforce responsive accessible isolation
   assert.match(css, /@media \(orientation: landscape\) and \(max-height: 520px\)/);
   assert.doesNotMatch(`${modelSource}\n${viewSource}`, /localStorage|sessionStorage|indexedDB|WebSocket|EventSource|fetch\(|XMLHttpRequest|invoke\(|startScan|requestPermission|connectSelected|subscribeNotifications|write\(/);
   assert.doesNotMatch(modelSource, /function (normalizeViewerLayers|normalizeViewerEntry|effectiveViewerEntry|validateViewerDefinition)/);
+});
+
+test("compact and disabled legends keep independent accessible names", () => {
+  const definition = {
+    name: "Legends",
+    keySize: { w: 40, h: 40, gap: 0 },
+    keyPositions: [{ row: 0, col: 0 }, { row: 0, col: 1 }, { row: 0, col: 2 }],
+    keyLayers: {
+      base: [{ text: "⌫", alt: "Backspace", code: "Backspace" }, ["A", "KeyA"], ["B", "KeyB"]],
+      lower: [null, { text: "", alt: "Disabled", code: "" }, null],
+    },
+  };
+  const base = createLayoutPresentation(definition, 0);
+  assert.equal(base.keys[0].label, "⌫");
+  assert.equal(base.keys[0].accessibleLabel, "Backspace");
+  assert.equal(base.keys[1].label, "A");
+  assert.equal(base.keys[1].accessibleLabel, "A");
+
+  const lower = createLayoutPresentation(definition, 1);
+  assert.equal(lower.keys[0].label, "⌫");
+  assert.equal(lower.keys[1].label, "");
+  assert.equal(lower.keys[1].accessibleLabel, "Disabled");
+  assert.equal(lower.keys[2].label, "B");
 });

@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
   detectRuntimePlatform,
+  isValidXkbInputSourceId,
   normalizeInputSourceSync,
 } from "../src/input_source_sync_config.js";
 import { readJsonFixture } from "./fixture_helpers.mjs";
@@ -18,6 +20,8 @@ test("detectRuntimePlatform recognizes supported desktop families", () => {
 test("normalizes valid macOS language families", () => {
   assert.deepEqual(normalizeInputSourceSync(validDefinition, 5, { platform: "macos" }), {
     config: {
+      platform: "macos",
+      adapter: "macos",
       ...validDefinition.inputSourceSync.macos,
       settleMs: 1000,
     },
@@ -47,6 +51,94 @@ test("non-macOS runtimes ignore macOS metadata and validation", () => {
     config: null,
     error: null,
   });
+});
+
+test("ignores malformed non-current platform blocks", () => {
+  const value = structuredClone(validDefinition);
+  value.inputSourceSync.linux = { sources: "bad" };
+  const result = normalizeInputSourceSync(value, 5, { platform: "macos" });
+  assert.equal(result.error, null);
+  assert.equal(result.config.platform, "macos");
+});
+
+test("normalizes nested Linux X11 metadata independently of adapter support", () => {
+  const x11 = structuredClone(validDefinition.inputSourceSync.macos);
+  x11.sources[0].inputSourceId = "xkb:layout:de";
+  x11.sources[1].inputSourceId = "xkb:group:1";
+  const value = { inputSourceSync: { linux: { x11 } } };
+  const result = normalizeInputSourceSync(value, 5, { platform: "linux" });
+  assert.equal(result.error, null);
+  assert.equal(result.config.platform, "linux");
+  assert.equal(result.config.adapter, "x11");
+  assert.deepEqual(result.config.sources, x11.sources);
+});
+
+test("reports malformed current-platform metadata with platform-specific diagnostics", () => {
+  const malformed = { inputSourceSync: { linux: { x11: { sources: "bad" } } } };
+  const result = normalizeInputSourceSync(malformed, 5, { platform: "linux" });
+  assert.equal(result.config, null);
+  assert.match(result.error, /Invalid Linux input-source synchronization metadata/);
+  assert.match(result.error, /linux\.x11\.sources/);
+});
+
+test("ignores non-X11 Linux adapter blocks and the former Linux leaf shape", () => {
+  const future = { inputSourceSync: { linux: { wayland: { sources: "bad" } } } };
+  assert.deepEqual(normalizeInputSourceSync(future, 5, { platform: "linux" }), {
+    config: null,
+    error: null,
+  });
+
+  const formerLeaf = { inputSourceSync: { linux: structuredClone(validDefinition.inputSourceSync.macos) } };
+  assert.deepEqual(normalizeInputSourceSync(formerLeaf, 5, { platform: "linux" }), {
+    config: null,
+    error: null,
+  });
+});
+
+test("validates canonical stable and fallback XKB identifiers", () => {
+  for (const id of ["xkb:layout:de", "xkb:layout:us:dvorak", "xkb:group:0", "xkb:group:3"]) {
+    assert.equal(isValidXkbInputSourceId(id), true, id);
+  }
+  for (const id of ["de", "xkb:layout:", "xkb:layout:us:", "xkb:group:-1", "xkb:group:4", "xkb:group:01"]) {
+    assert.equal(isValidXkbInputSourceId(id), false, id);
+  }
+});
+
+test("rejects malformed XKB identifiers without rejecting the layout", () => {
+  const x11 = structuredClone(validDefinition.inputSourceSync.macos);
+  x11.sources[0].inputSourceId = "de";
+  x11.sources[1].inputSourceId = "xkb:layout:ru";
+  const result = normalizeInputSourceSync({ inputSourceSync: { linux: { x11 } } }, 5, {
+    platform: "linux",
+  });
+  assert.equal(result.config, null);
+  assert.match(result.error, /must use xkb:layout/);
+});
+
+// The Corney layout lives in the sibling monorepo project and is absent from standalone checkouts.
+const corneyLayoutUrl = new URL("../../corney/layout_corney.json", import.meta.url);
+const corneySkip = existsSync(corneyLayoutUrl) ? false : "requires the sibling corney/layout_corney.json";
+
+test("normalizes the external Corney X11 test layout", { skip: corneySkip }, () => {
+  const corney = JSON.parse(readFileSync(corneyLayoutUrl, "utf8"));
+  const layerCount = Object.keys(corney.keyLayers).length;
+  const result = normalizeInputSourceSync(corney, layerCount, { platform: "linux" });
+  assert.equal(result.error, null);
+  assert.equal(result.config.adapter, "x11");
+  assert.deepEqual(result.config.sources.map((source) => source.inputSourceId), [
+    "xkb:layout:de",
+    "xkb:layout:ru",
+    "xkb:layout:us",
+  ]);
+  assert.deepEqual(
+    result.config.sources.map(({ id, baseLayer, layers }) => ({ id, baseLayer, layers })),
+    [
+      { id: "de", baseLayer: 1, layers: [1, 2, 3, 15] },
+      { id: "ru", baseLayer: 8, layers: [8, 11] },
+      { id: "en", baseLayer: 0, layers: [0] },
+    ],
+  );
+  assert.deepEqual(result.config.neutralLayers, [13, 14, 18]);
 });
 
 for (const [name, mutate, fragment] of [

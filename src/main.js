@@ -21,8 +21,8 @@ import {
 import { buildLayout, normalizeKeyEntry, normalizeLayerData } from "./layout_catalog.js";
 import { InlineAssetPresentationOwner } from "./inline_asset_presentation.js";
 import { parseLayoutJson } from "./layout_semantics.js";
-import { normalizeInputSourceSync } from "./input_source_sync_config.js";
-import { createMacosInputSourceController } from "./macos_input_source.js";
+import { detectRuntimePlatform, normalizeInputSourceSync } from "./input_source_sync_config.js";
+import { createPlatformInputSourceAdapter } from "./input_source_sync_adapter.js";
 import { createInputSourceLayerReconciler } from "./input_source_layer_reconciler.js";
 import { calcBounds, calcKeyBounds, renderKeyLabel } from "./keyboard_renderer.js";
 import { createSelfTestOverlayPresentation } from "./self_test/overlay_presentation.js";
@@ -177,7 +177,7 @@ function rebuildLayoutData() {
     layoutLayerKeys[key] = layerKeys;
     layouts[key] = buildLayout(def, layers);
     layoutBleSources[key] = normalizeBleLayerSource(def);
-    const inputSourceSync = normalizeInputSourceSync(def, layers.length);
+    const inputSourceSync = normalizeInputSourceSync(def, layers.length, { platform: runtimePlatform });
     layoutInputSourceSync[key] = inputSourceSync.config;
     if (inputSourceSync.error) {
       layoutLoadErrors.push(`${def.name ?? key}: ${inputSourceSync.error}`);
@@ -208,9 +208,12 @@ let overlayModeController = null;
 let windowModeControls = null;
 let currentLayoutKey = "qwerty";
 let bleLayerSync = null;
-let macosInputSource = null;
+const runtimePlatform = detectRuntimePlatform();
+let inputSourceSyncAdapter = null;
 let sourceLayerReconciler = null;
+let inputSourceDiagnosticsMessage = null;
 let languageMenuState = {
+  languageVisible: false,
   languageAvailable: false,
   languageOptions: [],
   currentInputSourceId: null,
@@ -259,19 +262,52 @@ function configuredLanguageOptions(config, availableIds = new Set()) {
   }));
 }
 
+function formatInputSourceDiagnostics(diagnostics) {
+  if (diagnostics?.platform === "windows") {
+    const installed = diagnostics.installedSourceIds?.join(", ") || "none";
+    const missing = diagnostics.missingSourceIds?.join(", ");
+    const context = diagnostics.contextId ? "Following the foreground window." : "Foreground context unavailable.";
+    return `Windows layouts: ${installed}. ${context}${missing ? ` Missing configured layouts: ${missing}.` : ""}`;
+  }
+  if (!diagnostics || !Array.isArray(diagnostics.groups)) return null;
+  const groups = diagnostics.groups.map((group) => {
+    const identifiers = Array.isArray(group.identifiers) ? group.identifiers.join(", ") : "";
+    return `${group.groupIndex}: ${group.groupName}${identifiers ? ` (${identifiers})` : ""}`;
+  });
+  return groups.length ? `Detected XKB groups: ${groups.join("; ")}` : null;
+}
+
 async function startLanguageSync(layoutKey) {
   sourceLayerReconciler?.dispose();
   sourceLayerReconciler = null;
+  inputSourceDiagnosticsMessage = null;
   const syncConfig = layoutInputSourceSync[layoutKey] ?? null;
-  if (!syncConfig || !macosInputSource || !bleLayerSync) {
-    await macosInputSource?.stop();
+  if (!syncConfig || !inputSourceSyncAdapter || !bleLayerSync) {
+    await inputSourceSyncAdapter?.stop();
     updateLanguageMenu({
+      languageVisible: false,
       languageAvailable: false,
       languageOptions: [],
       currentInputSourceId: null,
       languageStatus: "waiting",
       languageStatusLabel: "Waiting for keyboard",
       languageMessage: null,
+      languagePendingId: null,
+    });
+    return false;
+  }
+
+  if (!inputSourceSyncAdapter.supported) {
+    await inputSourceSyncAdapter.stop();
+    const status = inputSourceSyncAdapter.getStatus();
+    updateLanguageMenu({
+      languageVisible: true,
+      languageAvailable: false,
+      languageOptions: configuredLanguageOptions(syncConfig),
+      currentInputSourceId: null,
+      languageStatus: "error",
+      languageStatusLabel: "Input Source Sync unavailable",
+      languageMessage: status.message,
       languagePendingId: null,
     });
     return false;
@@ -284,10 +320,11 @@ async function startLanguageSync(layoutKey) {
     onStateChange: (syncState) => updateLanguageMenu({
       languageStatus: syncState.status,
       languageStatusLabel: languageStatusLabel(syncState.status),
-      languageMessage: syncState.message,
+      languageMessage: syncState.message ?? inputSourceDiagnosticsMessage,
     }),
   });
   updateLanguageMenu({
+    languageVisible: true,
     languageAvailable: true,
     languageOptions: configuredLanguageOptions(syncConfig),
     currentInputSourceId: null,
@@ -296,22 +333,25 @@ async function startLanguageSync(layoutKey) {
     languageMessage: null,
     languagePendingId: null,
   });
-  const started = await macosInputSource.start(layoutKey, syncConfig);
+  const started = await inputSourceSyncAdapter.start(layoutKey, syncConfig);
   if (!started && currentLayoutKey === layoutKey) {
+    const status = inputSourceSyncAdapter.getStatus();
     updateLanguageMenu({
       languageStatus: "error",
-      languageStatusLabel: "Synchronization error",
+      languageStatusLabel: "Input Source Sync unavailable",
+      languageAvailable: false,
+      languageMessage: status.message ?? "The platform input-source adapter could not start.",
     });
   }
   return started;
 }
 
 async function selectLanguage(inputSourceId) {
-  if (!macosInputSource || languageMenuState.languagePendingId) return false;
+  if (!inputSourceSyncAdapter?.supported || languageMenuState.languagePendingId) return false;
   updateLanguageMenu({ languagePendingId: inputSourceId, languageMessage: null });
   selfTestLayerLease?.invalidate("input-source-selected");
   try {
-    await macosInputSource.select(inputSourceId);
+    await inputSourceSyncAdapter.select(inputSourceId);
     return true;
   } catch (error) {
     updateLanguageMenu({
@@ -744,6 +784,12 @@ async function openFlappyKeyBird() {
   return true;
 }
 
+async function openUnderwaterTypingFishing() {
+  if (!tauriHandle?.core?.invoke) throw new Error("Underwater Typing Fishing requires the desktop application.");
+  await tauriHandle.core.invoke("open_underwater_typing_fishing");
+  return true;
+}
+
 async function openSettingsWindow() {
   if (!tauriHandle?.core?.invoke) {
     throw new Error("Settings require the desktop application.");
@@ -909,33 +955,38 @@ window.addEventListener("DOMContentLoaded", async () => {
     onStatus: publishSelfTestLayerLeaseStatus,
   });
 
-  if (tauri?.core?.invoke && tauri?.event?.listen) {
-    macosInputSource = createMacosInputSourceController({
-      tauri,
-      onSourceChange: (sourceId) => {
-        updateLanguageMenu({ currentInputSourceId: sourceId });
-        sourceLayerReconciler?.setSource(sourceId);
-      },
-      onAvailabilityChange: (availableIds) => {
-        const syncConfig = layoutInputSourceSync[currentLayoutKey];
-        updateLanguageMenu({
-          languageOptions: configuredLanguageOptions(syncConfig, availableIds),
-        });
-      },
-      onError: (error) => updateLanguageMenu({
-        languageStatus: "error",
-        languageStatusLabel: "Synchronization error",
-        languageMessage: error?.message ?? String(error),
-      }),
-    });
-    const refreshLanguageSync = () => {
-      macosInputSource?.refresh().then(() => sourceLayerReconciler?.resume());
-    };
-    window.addEventListener("focus", refreshLanguageSync);
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) refreshLanguageSync();
-    });
-  }
+  inputSourceSyncAdapter = createPlatformInputSourceAdapter({
+    platform: runtimePlatform,
+    tauri,
+    onSourceChange: (sourceId) => {
+      updateLanguageMenu({ currentInputSourceId: sourceId });
+      sourceLayerReconciler?.setSource(sourceId);
+    },
+    onAvailabilityChange: (availableIds) => {
+      const syncConfig = layoutInputSourceSync[currentLayoutKey];
+      updateLanguageMenu({
+        languageOptions: configuredLanguageOptions(syncConfig, availableIds),
+      });
+    },
+    onDiagnosticsChange: (diagnostics) => {
+      inputSourceDiagnosticsMessage = formatInputSourceDiagnostics(diagnostics);
+      if (inputSourceDiagnosticsMessage && languageMenuState.languageStatus !== "error") {
+        updateLanguageMenu({ languageMessage: inputSourceDiagnosticsMessage });
+      }
+    },
+    onError: (error) => updateLanguageMenu({
+      languageStatus: "error",
+      languageStatusLabel: "Synchronization error",
+      languageMessage: error?.message ?? String(error),
+    }),
+  });
+  const refreshLanguageSync = () => {
+    inputSourceSyncAdapter?.refresh().then(() => sourceLayerReconciler?.resume());
+  };
+  window.addEventListener("focus", refreshLanguageSync);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) refreshLanguageSync();
+  });
 
   menuStateController = createAppMenuStateController({
     getCurrentLayoutKey: () => currentLayoutKey,
@@ -948,6 +999,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     openTypingInvaders,
     openKeyboardSnake,
     openFlappyKeyBird,
+    openUnderwaterTypingFishing,
     openKeyboardSelfTest,
     enterMiniMode,
     openSettings: openSettingsWindow,
@@ -964,6 +1016,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     onStartGame: () => menuStateController.launchGame(),
     onStartSnake: () => menuStateController.launchSnake(),
     onStartFlappy: () => menuStateController.launchFlappy(),
+    onStartFishing: () => menuStateController.launchFishing(),
     onSettings: () => menuStateController.settings(),
     onHelp: () => menuStateController.help(),
     onLanguageSelect: selectLanguage,

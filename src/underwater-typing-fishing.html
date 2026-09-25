@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Underwater Typing Fishing</title>
+  <link rel="stylesheet" href="underwater_typing_fishing/game.css" />
+</head>
+<body class="fishing-page" data-game-phase="ready">
+  <main class="fishing-shell" aria-labelledby="fishingTitle">
+    <header class="fishing-header">
+      <div><span class="fishing-kicker">Keyboard Helper Arcade</span><h1 id="fishingTitle">Underwater Typing Fishing</h1></div>
+      <dl class="fishing-hud" aria-label="Current dive">
+        <div><dt>Score</dt><dd id="fishingScore">0</dd></div>
+        <div><dt>Caught</dt><dd><span id="fishingCaught">0</span>/<span id="fishingQuota">12</span></dd></div>
+        <div><dt>Mistakes</dt><dd id="fishingMistakes">0</dd></div>
+        <div><dt>Accuracy</dt><dd id="fishingAccuracy">100%</dd></div>
+        <div><dt>WPM</dt><dd id="fishingWpm">0</dd></div>
+        <div><dt>Streak</dt><dd><span id="fishingStreak">0</span> <span id="fishingMultiplier">×1</span></dd></div>
+        <div><dt>Time</dt><dd id="fishingDuration">0:00</dd></div>
+      </dl>
+    </header>
+
+    <section class="fishing-target-panel" aria-labelledby="fishingTargetLabel">
+      <span id="fishingStatus" class="fishing-state" role="status" aria-live="polite">Ready</span>
+      <span id="fishingTargetLabel">Choose a fish</span>
+      <strong class="fishing-target" aria-live="polite"><span id="fishingTargetCompleted"></span><span id="fishingTargetRemaining">—</span></strong>
+      <span id="fishingFeedback" role="status" aria-live="polite">Type the first letter of any fish to cast your line.</span>
+    </section>
+    <p id="fishingVisibleTargets" class="fishing-visible-targets" aria-live="polite">No visible fish.</p>
+
+    <section id="fishingStage" class="fishing-stage" role="img" aria-label="Underwater fishing scene">
+      <div class="fishing-light-rays" aria-hidden="true"></div>
+      <div class="fishing-bubbles" aria-hidden="true"></div>
+      <div id="fishingFishLayer" class="fishing-fish-layer" aria-hidden="true"></div>
+      <div class="fishing-seabed" aria-hidden="true"><span></span><span></span><span></span></div>
+      <section id="fishingOverlay" class="fishing-overlay visible" aria-live="polite">
+        <div class="fishing-card">
+          <h2 id="fishingOverlayTitle">Underwater Typing Fishing</h2>
+          <p id="fishingOverlayDescription">Choose a fish by typing its first letter, then finish the word to reel it in.</p>
+          <div id="fishingRules" class="fishing-rules">
+            <h3>How to play</h3>
+            <ol>
+              <li>Each fish carries a different word.</li>
+              <li>Type its first letter to hook it, then complete the word.</li>
+              <li>A mistake makes the fish pull away but keeps your correct prefix.</li>
+              <li>Catch the quota at your own pace—fish never escape because time passed.</li>
+              <li>Press <kbd>Esc</kbd> to pause whenever you like.</li>
+            </ol>
+          </div>
+          <dl id="fishingFinalResults" class="fishing-results" hidden>
+            <div><dt>Score</dt><dd id="fishingFinalScore">0</dd></div>
+            <div><dt>Caught</dt><dd id="fishingFinalCaught">0</dd></div>
+            <div><dt>Correct</dt><dd id="fishingFinalCorrect">0</dd></div>
+            <div><dt>Mistakes</dt><dd id="fishingFinalMistakes">0</dd></div>
+            <div><dt>Accuracy</dt><dd id="fishingFinalAccuracy">100%</dd></div>
+            <div><dt>WPM</dt><dd id="fishingFinalWpm">0</dd></div>
+            <div><dt>Best streak</dt><dd id="fishingFinalStreak">0</dd></div>
+            <div><dt>Active time</dt><dd id="fishingFinalDuration">0:00</dd></div>
+          </dl>
+          <button id="fishingPrimaryAction" type="button">Start fishing</button>
+        </div>
+      </section>
+    </section>
+
+    <footer class="fishing-controls">
+      <span>Type a visible word to catch its fish · <kbd>Esc</kbd> pause/resume</span>
+      <div><button id="fishingEnd" type="button" disabled>End dive</button><button id="fishingPause" type="button" disabled>Pause</button></div>
+    </footer>
+  </main>
+  <script type="module" src="underwater_typing_fishing/game.js"></script>
+</body>
+</html>

@@ -8,8 +8,9 @@ import {
   normalizeKeyEntry,
   normalizeLayerData,
 } from "../src/layout_catalog.js";
-import { calcBounds, calcKeyBounds } from "../src/keyboard_renderer.js";
+import { calcBounds, calcKeyBounds, renderKeyLabel } from "../src/keyboard_renderer.js";
 import { descriptorMatches, normalizeHidDescriptor, normalizeModifier } from "../src/hid_descriptor.js";
+import { canonicalLayoutDigestInput } from "../src/layout_semantics.js";
 import { inlineImageLayout } from "./fixtures/inline_layout_assets.mjs";
 
 test("normalizes named layers and keeps stable display order", () => {
@@ -40,6 +41,77 @@ test("effective layer entries fall back only for absent or null entries", () => 
   assert.deepEqual(effectiveLayerEntry(layers, 1, 0), ["A", "KeyA"]);
   assert.deepEqual(effectiveLayerEntry(layers, 1, 1), ["", ""]);
   assert.equal(normalizeKeyEntry(effectiveLayerEntry(layers, 1, 1)).code, "");
+});
+
+test("object entries keep accessible names with and without image legends", () => {
+  assert.deepEqual(normalizeKeyEntry({ text: "", alt: "Disabled", code: "" }), {
+    label: { text: "", alt: "Disabled" },
+    code: "",
+    explicit: true,
+  });
+  assert.deepEqual(normalizeKeyEntry({ text: "⌫", alt: "Backspace", code: "Backspace" }).label, {
+    text: "⌫",
+    alt: "Backspace",
+  });
+  assert.deepEqual(normalizeKeyEntry({ text: "Mac", image: "assets/images/mac.svg", alt: "Mac" }).label, {
+    text: "Mac",
+    image: "assets/images/mac.svg",
+    alt: "Mac",
+  });
+  assert.equal(normalizeKeyEntry({ text: "A", code: "KeyA" }).label, "A");
+  assert.equal(normalizeKeyEntry(["⌫", "Backspace"]).label, "⌫");
+  assert.equal(normalizeKeyEntry("A").label, "A");
+});
+
+test("canonical layout digest input distinguishes accessible names on text entries", () => {
+  const definition = (entry) => ({
+    name: "Test",
+    keySize: { w: 40, h: 40, gap: 0 },
+    keyPositions: [{ row: 0, col: 0 }],
+    keyLayers: { default: [entry] },
+  });
+  const plain = canonicalLayoutDigestInput(definition(["", ""]));
+  const disabled = canonicalLayoutDigestInput(definition({ text: "", alt: "Disabled", code: "" }));
+  assert.notDeepEqual(plain, disabled);
+  assert.deepEqual(disabled.layout.keyLayers[0].entries[0], {
+    label: { text: "", image: null, alt: "Disabled" },
+    code: "",
+    explicit: true,
+  });
+});
+
+class KeyElementStub {
+  constructor() {
+    this.attributes = new Map();
+    this.children = [];
+    this.dataset = {};
+    this.innerHTML = "";
+    this.textContent = "";
+    this.ownerDocument = { createElement: (tagName) => ({ tagName }) };
+  }
+  appendChild(child) { this.children.push(child); }
+  getAttribute(name) { return this.attributes.get(name) ?? null; }
+  removeAttribute(name) { this.attributes.delete(name); }
+  setAttribute(name, value) { this.attributes.set(name, String(value)); }
+}
+
+test("desktop key labels expose accessible names independently of visible text", () => {
+  const element = new KeyElementStub();
+  renderKeyLabel(element, { text: "⌫", alt: "Backspace", code: "Backspace" });
+  assert.equal(element.textContent, "⌫");
+  assert.equal(element.getAttribute("aria-label"), "Backspace");
+  assert.equal(element.getAttribute("role"), "img");
+  assert.equal(element.dataset.key, "Backspace");
+
+  renderKeyLabel(element, { text: "", alt: "Disabled", code: "" });
+  assert.equal(element.textContent, "");
+  assert.equal(element.getAttribute("aria-label"), "Disabled");
+  assert.equal(element.dataset.key, undefined);
+
+  renderKeyLabel(element, ["A", "KeyA"]);
+  assert.equal(element.textContent, "A");
+  assert.equal(element.getAttribute("aria-label"), null);
+  assert.equal(element.getAttribute("role"), null);
 });
 
 test("shared geometry preserves spans and base labels", () => {
