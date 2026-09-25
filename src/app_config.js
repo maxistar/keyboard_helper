@@ -8,6 +8,7 @@ export const BUILTIN_LAYOUTS = Object.freeze({
   corne: Object.freeze({ name: "Corne", file: "layout_corne.json" }),
   dactyl: Object.freeze({ name: "Dactyl", file: "layout_dactyl.json" }),
   lily58: Object.freeze({ name: "Lily58", file: "layout_lily58.json" }),
+  sofle: Object.freeze({ name: "Sofle", file: "layout_sofle.json" }),
   magic: Object.freeze({ name: "Magic", file: "layout_magic.json" }),
   mac: Object.freeze({ name: "Mac", file: "layout_mac.json" }),
 });

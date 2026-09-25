@@ -1,6 +1,6 @@
 # Keyboard Helper
 
-Desktop helper to visualize split/ergonomic keyboard layouts (Corne, QWERTZ, Dactyl, Magic) and highlight pressed keys in real time. Built with vanilla HTML/CSS/JS on top of Tauri.
+Desktop helper to visualize split/ergonomic keyboard layouts (Corne, Lily58, Sofle, Dactyl, QWERTZ, Magic) and highlight pressed keys in real time. Built with vanilla HTML/CSS/JS on top of Tauri.
 
 ## Clone
 
@@ -151,7 +151,7 @@ Advanced users can still edit the compatible JSON configuration directly. The ap
   - `serviceUuid`: custom GATT service UUID
   - `characteristicUuid`: custom active-layer characteristic UUID
   - `format`: currently `int32-le`
-- References: see built-in layouts for structure (`src/layout_corne.json`, `src/layout_qwertz.json`, `src/layout_dactyl.json`, `src/layout_mac.json`, `src/layout_magic.json`). Copy one, edit, and point your config at the new path. Keep a personal config in `~/.keyri.json`.
+- References: see built-in layouts for structure (`src/layout_corne.json`, `src/layout_qwertz.json`, `src/layout_dactyl.json`, `src/layout_lily58.json`, `src/layout_sofle.json`, `src/layout_mac.json`, `src/layout_magic.json`). Copy one, edit, and point your config at the new path. Keep a personal config in `~/.keyri.json`.
 - If no config file is found, the Settings window starts from all built-in layouts with QWERTY selected. A malformed config is never silently replaced: recovery requires confirmation and creates a timestamped backup. Unreadable external layouts produce a visible error while the overlay falls back to an available built-in layout.
 
 ## BLE layer sync
