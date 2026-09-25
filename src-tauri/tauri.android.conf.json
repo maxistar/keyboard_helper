@@ -6,7 +6,6 @@
     "frontendDist": "../src-mobile"
   },
   "app": {
-    "macOSPrivateApi": false,
     "windows": [
       {
         "label": "mobile",

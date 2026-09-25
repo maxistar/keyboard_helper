@@ -86,15 +86,44 @@ test("bundled Dactyl maps QMK behaviors without claiming unsupported HID evidenc
     { label: "w", code: "KeyW", explicit: true },
   );
 
-  assert.deepEqual(definition.keyLayers.numeric[27], ["Disabled", ""]);
+  assert.deepEqual(definition.keyLayers.numeric[27], { text: "", alt: "Disabled", code: "" });
   assert.deepEqual(
     normalizeKeyEntry(effectiveLayerEntry(normalized.layers, 2, 27)),
-    { label: "Disabled", code: "", explicit: true },
+    { label: { text: "", alt: "Disabled" }, code: "", explicit: true },
+  );
+  const disabledCounts = normalized.layerKeys.map((layerKey) => definition.keyLayers[layerKey]
+    .filter((entry) => entry?.alt === "Disabled").length);
+  assert.deepEqual(disabledCounts, [0, 0, 5, 15, 15, 33, 27]);
+  normalized.layers.forEach((layer, layerIndex) => {
+    layer.forEach((entry, position) => {
+      if (entry?.alt !== "Disabled") return;
+      assert.deepEqual(entry, { text: "", alt: "Disabled", code: "" });
+      assert.equal(effectiveLayerEntry(normalized.layers, layerIndex, position), entry);
+    });
+  });
+  assert.equal(
+    normalized.layers.flat().some((entry) => Array.isArray(entry) && entry[0] === "" && entry[1] === ""),
+    false,
   );
 
   assert.deepEqual(definition.keyLayers.qwerty[24], ["Esc / Ctrl", "Escape"]);
   assert.deepEqual(definition.keyLayers.qwerty[51], ["Space / Mouse", "Space"]);
-  assert.deepEqual(definition.keyLayers.qwerty[50], ["Numeric", ""]);
+  assert.deepEqual(definition.keyLayers.qwerty[50], { text: "Num", alt: "Numeric", code: "" });
+  assert.deepEqual(definition.keyLayers.qwerty[52], {
+    text: "⌦ / Nav", alt: "Delete / Navigation", code: "Delete",
+  });
+  assert.deepEqual(definition.keyLayers.qwerty[53], {
+    text: "⏎ / Nav", alt: "Enter / Navigation", code: "Return",
+  });
+  assert.deepEqual(definition.keyLayers.qwerty[55], {
+    text: "⌫ / Num", alt: "Backspace / Numeric", code: "Backspace",
+  });
+  assert.deepEqual(definition.keyLayers.qwerty[36], { text: "( / ⇧", alt: "( / Shift", code: "" });
+  assert.deepEqual(definition.keyLayers.navigation[22], { text: "⇧+Insert", alt: "Shift+Insert", code: "" });
+  for (const layerKey of ["numeric", "function", "navigation", "media", "mouse"]) {
+    assert.deepEqual(definition.keyLayers[layerKey][52], { text: "⌦", alt: "Delete", code: "Delete" });
+    assert.deepEqual(definition.keyLayers[layerKey][55], { text: "⌫", alt: "Backspace", code: "Backspace" });
+  }
   assert.deepEqual(definition.keyLayers.navigation[14], ["Ctrl+W", ""]);
   assert.deepEqual(definition.keyLayers.media[14], ["Play / Pause", ""]);
   assert.deepEqual(definition.keyLayers.mouse[18], ["Wheel Up", ""]);

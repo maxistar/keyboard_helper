@@ -19,6 +19,8 @@ export function calcKeyBounds(key, keySize) {
 export function renderKeyLabel(element, entry) {
   const { label, code } = normalizeKeyEntry(entry);
   element.innerHTML = "";
+  element.removeAttribute("role");
+  element.removeAttribute("aria-label");
   if (code) element.dataset.key = code;
   else delete element.dataset.key;
   if (!label) return;
@@ -30,6 +32,10 @@ export function renderKeyLabel(element, entry) {
     element.appendChild(image);
   } else {
     element.textContent = typeof label === "object" ? (label.text ?? "") : label;
+    if (typeof label === "object" && label.alt) {
+      element.setAttribute("role", "img");
+      element.setAttribute("aria-label", label.alt);
+    }
   }
 }
 

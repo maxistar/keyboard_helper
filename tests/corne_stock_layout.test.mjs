@@ -51,8 +51,17 @@ test("bundled Corne exposes the three stock ZMK layers in firmware order", () =>
 
   assert.deepEqual(definition.keyLayers.default.slice(36), [
     ["GUI", "MetaLeft"], ["Lower", ""], ["Space", "Space"],
-    ["Enter", "Return"], ["Raise", ""], ["Alt", "AltGr"],
+    { text: "⏎", alt: "Enter", code: "Return" }, ["Raise", ""], ["Alt", "AltGr"],
   ]);
+  for (const layer of normalized.layers) {
+    assert.deepEqual(normalizeKeyEntry(layer[11]), {
+      label: { text: "⌫", alt: "Backspace" }, code: "Backspace", explicit: true,
+    });
+    assert.deepEqual(normalizeKeyEntry(layer[24]), {
+      label: { text: "⇧", alt: "Shift" }, code: "ShiftLeft", explicit: true,
+    });
+    assert.equal(normalizeKeyEntry(layer[39]).code, "Return");
+  }
   assert.deepEqual(definition.keyLayers.lower.slice(12, 22).map(normalizeKeyEntry), [
     { label: "BT CLR", code: "", explicit: true },
     { label: "BT 1", code: "", explicit: true },

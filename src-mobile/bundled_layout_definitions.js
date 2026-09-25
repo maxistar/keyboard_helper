@@ -5419,10 +5419,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "p",
           "KeyP"
         ],
-        [
-          "Backspace",
-          "Backspace"
-        ],
+        {
+          "text": "⌫",
+          "alt": "Backspace",
+          "code": "Backspace"
+        },
         [
           "Ctrl",
           "ControlLeft"
@@ -5471,10 +5472,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "'",
           "Quote"
         ],
-        [
-          "Shift",
-          "ShiftLeft"
-        ],
+        {
+          "text": "⇧",
+          "alt": "Shift",
+          "code": "ShiftLeft"
+        },
         [
           "z",
           "KeyZ"
@@ -5531,10 +5533,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Space",
           "Space"
         ],
-        [
-          "Enter",
-          "Return"
-        ],
+        {
+          "text": "⏎",
+          "alt": "Enter",
+          "code": "Return"
+        },
         [
           "Raise",
           ""
@@ -5589,10 +5592,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "0",
           "Num0"
         ],
-        [
-          "Backspace",
-          "Backspace"
-        ],
+        {
+          "text": "⌫",
+          "alt": "Backspace",
+          "code": "Backspace"
+        },
         [
           "BT CLR",
           ""
@@ -5635,10 +5639,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
         ],
         null,
         null,
-        [
-          "Shift",
-          "ShiftLeft"
-        ],
+        {
+          "text": "⇧",
+          "alt": "Shift",
+          "code": "ShiftLeft"
+        },
         null,
         null,
         null,
@@ -5659,10 +5664,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Space",
           "Space"
         ],
-        [
-          "Enter",
-          "Return"
-        ],
+        {
+          "text": "⏎",
+          "alt": "Enter",
+          "code": "Return"
+        },
         null,
         [
           "Alt",
@@ -5714,10 +5720,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           ")",
           "Shift+Num0"
         ],
-        [
-          "Backspace",
-          "Backspace"
-        ],
+        {
+          "text": "⌫",
+          "alt": "Backspace",
+          "code": "Backspace"
+        },
         [
           "Ctrl",
           "ControlLeft"
@@ -5751,10 +5758,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "`",
           "BackQuote"
         ],
-        [
-          "Shift",
-          "ShiftLeft"
-        ],
+        {
+          "text": "⇧",
+          "alt": "Shift",
+          "code": "ShiftLeft"
+        },
         null,
         null,
         null,
@@ -5793,10 +5801,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Space",
           "Space"
         ],
-        [
-          "Enter",
-          "Return"
-        ],
+        {
+          "text": "⏎",
+          "alt": "Enter",
+          "code": "Return"
+        },
         null,
         [
           "Alt",
@@ -6210,10 +6219,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "'",
           "Quote"
         ],
-        [
-          "( / Shift",
-          ""
-        ],
+        {
+          "text": "( / ⇧",
+          "alt": "( / Shift",
+          "code": ""
+        },
         [
           "z",
           "KeyZ"
@@ -6254,10 +6264,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "/",
           "Slash"
         ],
-        [
-          ") / Shift",
-          ""
-        ],
+        {
+          "text": ") / ⇧",
+          "alt": ") / Shift",
+          "code": ""
+        },
         [
           "GUI",
           "MetaLeft"
@@ -6266,30 +6277,34 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Alt",
           "AltLeft"
         ],
-        [
-          "Numeric",
-          ""
-        ],
+        {
+          "text": "Num",
+          "alt": "Numeric",
+          "code": ""
+        },
         [
           "Space / Mouse",
           "Space"
         ],
-        [
-          "Delete / Navigation",
-          "Delete"
-        ],
-        [
-          "Enter / Navigation",
-          "Return"
-        ],
+        {
+          "text": "⌦ / Nav",
+          "alt": "Delete / Navigation",
+          "code": "Delete"
+        },
+        {
+          "text": "⏎ / Nav",
+          "alt": "Enter / Navigation",
+          "code": "Return"
+        },
         [
           "Space",
           "Space"
         ],
-        [
-          "Backspace / Numeric",
-          "Backspace"
-        ],
+        {
+          "text": "⌫ / Num",
+          "alt": "Backspace / Numeric",
+          "code": "Backspace"
+        },
         [
           "AltGr / Alt",
           "AltGr"
@@ -6306,10 +6321,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "[ / Ctrl",
           "LeftBracket"
         ],
-        [
-          "Enter / Navigation",
-          "Return"
-        ],
+        {
+          "text": "⏎ / Nav",
+          "alt": "Enter / Navigation",
+          "code": "Return"
+        },
         [
           "] / Ctrl",
           "RightBracket"
@@ -6460,10 +6476,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "'",
           "Quote"
         ],
-        [
-          "( / Shift",
-          ""
-        ],
+        {
+          "text": "( / ⇧",
+          "alt": "( / Shift",
+          "code": ""
+        },
         [
           "z",
           "KeyZ"
@@ -6504,10 +6521,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "/",
           "Slash"
         ],
-        [
-          ") / Shift",
-          ""
-        ],
+        {
+          "text": ") / ⇧",
+          "alt": ") / Shift",
+          "code": ""
+        },
         [
           "GUI",
           "MetaLeft"
@@ -6516,30 +6534,34 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Alt",
           "AltLeft"
         ],
-        [
-          "Numeric",
-          ""
-        ],
+        {
+          "text": "Num",
+          "alt": "Numeric",
+          "code": ""
+        },
         [
           "Space / Mouse",
           "Space"
         ],
-        [
-          "Delete / Navigation",
-          "Delete"
-        ],
-        [
-          "Enter / Navigation",
-          "Return"
-        ],
+        {
+          "text": "⌦ / Nav",
+          "alt": "Delete / Navigation",
+          "code": "Delete"
+        },
+        {
+          "text": "⏎ / Nav",
+          "alt": "Enter / Navigation",
+          "code": "Return"
+        },
         [
           "Space",
           "Space"
         ],
-        [
-          "Backspace / Numeric",
-          "Backspace"
-        ],
+        {
+          "text": "⌫ / Num",
+          "alt": "Backspace / Numeric",
+          "code": "Backspace"
+        },
         [
           "AltGr / Alt",
           "AltGr"
@@ -6556,10 +6578,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "[ / Ctrl",
           "LeftBracket"
         ],
-        [
-          "Enter / Navigation",
-          "Return"
-        ],
+        {
+          "text": "⏎ / Nav",
+          "alt": "Enter / Navigation",
+          "code": "Return"
+        },
         [
           "] / Ctrl",
           "RightBracket"
@@ -6626,10 +6649,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Colemak",
           ""
         ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         [
           "Function",
           ""
@@ -6667,22 +6691,26 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Media",
           ""
         ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         [
           "1",
           "Num1"
@@ -6711,22 +6739,25 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Space",
           "Space"
         ],
-        [
-          "Delete",
-          "Delete"
-        ],
-        [
-          "Enter",
-          "Return"
-        ],
+        {
+          "text": "⌦",
+          "alt": "Delete",
+          "code": "Delete"
+        },
+        {
+          "text": "⏎",
+          "alt": "Enter",
+          "code": "Return"
+        },
         [
           "0",
           "Num0"
         ],
-        [
-          "Backspace",
-          "Backspace"
-        ],
+        {
+          "text": "⌫",
+          "alt": "Backspace",
+          "code": "Backspace"
+        },
         null,
         null,
         [
@@ -6734,10 +6765,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           ""
         ],
         null,
-        [
-          "Enter",
-          "Return"
-        ],
+        {
+          "text": "⏎",
+          "alt": "Enter",
+          "code": "Return"
+        },
         null
       ],
       "function": [
@@ -6787,26 +6819,31 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "F11"
         ],
         null,
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         [
           "F7",
           "F7"
@@ -6827,23 +6864,27 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "F10",
           "F10"
         ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         null,
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         [
           "Function",
           ""
@@ -6872,31 +6913,37 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "F11",
           "F11"
         ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         null,
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         [
           "F1",
           "F1"
@@ -6925,22 +6972,25 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Space",
           "Space"
         ],
-        [
-          "Delete",
-          "Delete"
-        ],
-        [
-          "Enter",
-          "Return"
-        ],
+        {
+          "text": "⌦",
+          "alt": "Delete",
+          "code": "Delete"
+        },
+        {
+          "text": "⏎",
+          "alt": "Enter",
+          "code": "Return"
+        },
         [
           "Space",
           "Space"
         ],
-        [
-          "Backspace",
-          "Backspace"
-        ],
+        {
+          "text": "⌫",
+          "alt": "Backspace",
+          "code": "Backspace"
+        },
         null,
         null,
         [
@@ -6948,10 +6998,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           ""
         ],
         null,
-        [
-          "Enter",
-          "Return"
-        ],
+        {
+          "text": "⏎",
+          "alt": "Enter",
+          "code": "Return"
+        },
         null
       ],
       "navigation": [
@@ -6959,50 +7010,61 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Esc",
           "Escape"
         ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         [
           "Esc",
           "Escape"
@@ -7043,10 +7105,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Insert",
           "Insert"
         ],
-        [
-          "Shift+Insert",
-          ""
-        ],
+        {
+          "text": "⇧+Insert",
+          "alt": "Shift+Insert",
+          "code": ""
+        },
         [
           "Esc",
           "Escape"
@@ -7097,18 +7160,21 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "PrintScreen"
         ],
         null,
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         [
           "Ctrl+Page Up",
           ""
@@ -7126,10 +7192,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Down",
           "DownArrow"
         ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         [
           "Menu",
           "Menu"
@@ -7142,22 +7209,25 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Space",
           "Space"
         ],
-        [
-          "Delete",
-          "Delete"
-        ],
-        [
-          "Enter",
-          "Return"
-        ],
+        {
+          "text": "⌦",
+          "alt": "Delete",
+          "code": "Delete"
+        },
+        {
+          "text": "⏎",
+          "alt": "Enter",
+          "code": "Return"
+        },
         [
           "Space",
           "Space"
         ],
-        [
-          "Backspace",
-          "Backspace"
-        ],
+        {
+          "text": "⌫",
+          "alt": "Backspace",
+          "code": "Backspace"
+        },
         null,
         null,
         [
@@ -7165,66 +7235,80 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           ""
         ],
         null,
-        [
-          "Enter",
-          "Return"
-        ],
+        {
+          "text": "⏎",
+          "alt": "Enter",
+          "code": "Return"
+        },
         null
       ],
       "media": [
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         null,
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         [
           "Play / Pause",
           ""
@@ -7237,26 +7321,31 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Volume Up",
           ""
         ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         [
           "Boot",
           ""
@@ -7266,10 +7355,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           ""
         ],
         null,
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         [
           "Previous",
           ""
@@ -7282,30 +7372,36 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Next",
           ""
         ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         [
           "Sleep",
           ""
@@ -7315,46 +7411,54 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Media",
           ""
         ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         [
-          "Disabled",
+          "Volume Down",
           ""
         ],
         [
           "Volume Down",
           ""
         ],
-        [
-          "Volume Down",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         null,
         null,
         null,
@@ -7362,22 +7466,25 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Space",
           "Space"
         ],
-        [
-          "Delete",
-          "Delete"
-        ],
-        [
-          "Enter",
-          "Return"
-        ],
+        {
+          "text": "⌦",
+          "alt": "Delete",
+          "code": "Delete"
+        },
+        {
+          "text": "⏎",
+          "alt": "Enter",
+          "code": "Return"
+        },
         [
           "Space",
           "Space"
         ],
-        [
-          "Backspace",
-          "Backspace"
-        ],
+        {
+          "text": "⌫",
+          "alt": "Backspace",
+          "code": "Backspace"
+        },
         null,
         null,
         [
@@ -7388,82 +7495,99 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Media Lock",
           ""
         ],
-        [
-          "Enter",
-          "Return"
-        ],
+        {
+          "text": "⏎",
+          "alt": "Enter",
+          "code": "Return"
+        },
         null
       ],
       "mouse": [
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         null,
         [
           "Mouse Accel 1",
           ""
         ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         [
           "Wheel Up",
           ""
@@ -7480,14 +7604,16 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Wheel Right",
           ""
         ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         null,
         [
           "Mouse Accel 2",
@@ -7525,55 +7651,64 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Mouse Right",
           ""
         ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         null,
         [
           "Mouse Accel 0",
           ""
         ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         [
           "Wheel Down",
           ""
         ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         [
           "Mouse Down",
           ""
         ],
-        [
-          "Disabled",
-          ""
-        ],
-        [
-          "Disabled",
-          ""
-        ],
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
+        {
+          "text": "",
+          "alt": "Disabled",
+          "code": ""
+        },
         null,
         null,
         null,
@@ -7582,22 +7717,25 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           "Space",
           "Space"
         ],
-        [
-          "Delete",
-          "Delete"
-        ],
-        [
-          "Enter",
-          "Return"
-        ],
+        {
+          "text": "⌦",
+          "alt": "Delete",
+          "code": "Delete"
+        },
+        {
+          "text": "⏎",
+          "alt": "Enter",
+          "code": "Return"
+        },
         [
           "Space",
           "Space"
         ],
-        [
-          "Backspace",
-          "Backspace"
-        ],
+        {
+          "text": "⌫",
+          "alt": "Backspace",
+          "code": "Backspace"
+        },
         null,
         null,
         [
@@ -7605,10 +7743,11 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
           ""
         ],
         null,
-        [
-          "Enter",
-          "Return"
-        ],
+        {
+          "text": "⏎",
+          "alt": "Enter",
+          "code": "Return"
+        },
         null
       ]
     }

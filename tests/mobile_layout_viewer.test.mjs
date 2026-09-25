@@ -237,3 +237,26 @@ test("viewer markup, styles, and modules enforce responsive accessible isolation
   assert.doesNotMatch(`${modelSource}\n${viewSource}`, /localStorage|sessionStorage|indexedDB|WebSocket|EventSource|fetch\(|XMLHttpRequest|invoke\(|startScan|requestPermission|connectSelected|subscribeNotifications|write\(/);
   assert.doesNotMatch(modelSource, /function (normalizeViewerLayers|normalizeViewerEntry|effectiveViewerEntry|validateViewerDefinition)/);
 });
+
+test("compact and disabled legends keep independent accessible names", () => {
+  const definition = {
+    name: "Legends",
+    keySize: { w: 40, h: 40, gap: 0 },
+    keyPositions: [{ row: 0, col: 0 }, { row: 0, col: 1 }, { row: 0, col: 2 }],
+    keyLayers: {
+      base: [{ text: "⌫", alt: "Backspace", code: "Backspace" }, ["A", "KeyA"], ["B", "KeyB"]],
+      lower: [null, { text: "", alt: "Disabled", code: "" }, null],
+    },
+  };
+  const base = createLayoutPresentation(definition, 0);
+  assert.equal(base.keys[0].label, "⌫");
+  assert.equal(base.keys[0].accessibleLabel, "Backspace");
+  assert.equal(base.keys[1].label, "A");
+  assert.equal(base.keys[1].accessibleLabel, "A");
+
+  const lower = createLayoutPresentation(definition, 1);
+  assert.equal(lower.keys[0].label, "⌫");
+  assert.equal(lower.keys[1].label, "");
+  assert.equal(lower.keys[1].accessibleLabel, "Disabled");
+  assert.equal(lower.keys[2].label, "B");
+});
