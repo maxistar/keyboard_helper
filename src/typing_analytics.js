@@ -239,3 +239,34 @@ export function buildAnalyticsReport({ settings, rows = [], from = null, to = nu
     }),
   };
 }
+
+function* daysBetween(from, to) {
+  const cursor = new Date(`${from}T12:00:00`);
+  const end = new Date(`${to}T12:00:00`);
+  for (let guard = 0; cursor <= end && guard < 400; guard += 1) {
+    yield localDayKey(cursor);
+    cursor.setDate(cursor.getDate() + 1);
+  }
+}
+
+// Daily exercise trend points; days without sessions inside [from, to] are returned with null metrics.
+export function buildDailyExerciseSeries({ rows = [], from = null, to = null, filters = {} } = {}) {
+  const byDay = new Map();
+  for (const row of rows) {
+    if (row.type !== "session" || !row.day) continue;
+    if (filters.layout && row.layout !== filters.layout) continue;
+    if (filters.language && row.language !== filters.language) continue;
+    if (filters.collectionType && row.collectionType !== filters.collectionType) continue;
+    byDay.set(row.day, mergeExercise(byDay.get(row.day), row.exercise));
+  }
+  const days = from && to ? [...daysBetween(from, to)] : [...byDay.keys()].sort();
+  return days.map((day) => {
+    const exercise = exerciseSummary(byDay.get(day));
+    return {
+      day,
+      sessionCount: exercise?.sessionCount ?? 0,
+      wpm: exercise?.wpm ?? null,
+      accuracy: exercise?.accuracy ?? null,
+    };
+  });
+}

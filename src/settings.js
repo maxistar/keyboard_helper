@@ -10,7 +10,6 @@ import {
 } from "./settings_actions.js";
 import { parseExternalLayout } from "./app_config.js";
 import { initializeSecondaryWindow, SECONDARY_WINDOWS } from "./secondary_window_ready.js";
-import { buildAnalyticsReport } from "./typing_analytics.js";
 
 const elements = {
   form: document.getElementById("settingsForm"),
@@ -38,9 +37,8 @@ const elements = {
   save: document.getElementById("saveButton"),
   exerciseAnalytics: document.getElementById("exerciseAnalytics"),
   backgroundAnalytics: document.getElementById("backgroundAnalytics"),
-  previewAnalytics: document.getElementById("previewAnalyticsButton"),
+  openInsights: document.getElementById("openInsightsButton"),
   deleteAnalytics: document.getElementById("deleteAnalyticsButton"),
-  analyticsPreview: document.getElementById("analyticsPreview"),
   analyticsStatus: document.getElementById("analyticsStatus"),
 };
 
@@ -180,7 +178,7 @@ function render() {
   elements.backgroundAnalytics.checked = snapshot.draft.typingAnalytics?.background === true;
   elements.exerciseAnalytics.disabled = loading || saving;
   elements.backgroundAnalytics.disabled = loading || saving;
-  elements.previewAnalytics.disabled = loading || saving || !tauri?.core?.invoke;
+  elements.openInsights.disabled = !tauri?.core?.invoke;
   elements.deleteAnalytics.disabled = loading || saving || !tauri?.core?.invoke;
   elements.recovery.hidden = snapshot.status !== "invalid";
   if (snapshot.status === "invalid") {
@@ -327,15 +325,11 @@ elements.backgroundAnalytics.addEventListener("change", () => {
   state.setAnalyticsEnabled("background", elements.backgroundAnalytics.checked);
   render();
 });
-elements.previewAnalytics.addEventListener("click", async () => {
+elements.openInsights.addEventListener("click", async () => {
   try {
-    const rows = await tauri.core.invoke("read_typing_analytics", { from: null, to: null });
-    const report = buildAnalyticsReport({ settings: state.snapshot().draft.typingAnalytics, rows });
-    elements.analyticsPreview.textContent = JSON.stringify(report, null, 2);
-    elements.analyticsPreview.hidden = false;
-    elements.analyticsStatus.textContent = `${rows.length} aggregate rows. No data was shared.`;
+    await tauri.core.invoke("open_typing_insights");
   } catch (error) {
-    elements.analyticsStatus.textContent = displayError(error, "Could not read local analytics.");
+    elements.analyticsStatus.textContent = displayError(error, "Could not open Typing Insights.");
   }
 });
 elements.deleteAnalytics.addEventListener("click", async () => {
@@ -346,7 +340,6 @@ elements.deleteAnalytics.addEventListener("click", async () => {
   try {
     await tauri.core.invoke("delete_typing_analytics");
     await tauri.event?.emit?.("typing-analytics-deleted");
-    elements.analyticsPreview.hidden = true;
     elements.analyticsStatus.textContent = "All local typing statistics were deleted.";
   } catch (error) {
     elements.analyticsStatus.textContent = displayError(error, "Could not delete local analytics.");

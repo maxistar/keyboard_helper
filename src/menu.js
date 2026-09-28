@@ -23,6 +23,7 @@ export function createMenu({
   onStartSnake = async () => false,
   onStartFlappy = async () => false,
   onStartFishing = async () => false,
+  onInsights = async () => false,
   onSettings,
   onHelp,
   onLanguageSelect = async () => false,
@@ -98,6 +99,7 @@ export function createMenu({
   let gamesButton;
   let gamesFlyout;
   let miniButton;
+  let insightsButton;
   let settingsButton;
   let rootFeedback;
   let keyboardFeedback;
@@ -473,6 +475,14 @@ export function createMenu({
       if (opened !== false) closeMenu();
     });
 
+    insightsButton = createRootItem("Typing Insights", "menu-action-insights");
+    insightsButton.addEventListener("click", async () => {
+      feedbackContext = "root";
+      const opened = await onInsights();
+      if (opened !== false) closeMenu();
+    });
+    attachItemKeyboard(insightsButton, rootItems);
+
     settingsButton = createRootItem("Settings", "menu-action-settings");
     settingsButton.addEventListener("click", async () => {
       feedbackContext = "root";
@@ -496,6 +506,7 @@ export function createMenu({
       connectionButton,
       miniButton,
       gamesButton,
+      insightsButton,
       settingsButton,
       helpButton,
       rootFeedback,
@@ -767,6 +778,12 @@ export function createMenu({
     fishingButton.textContent = state.fishingPending ? "Launching…" : "Underwater Typing Fishing";
     fishingButton.title = state.fishingAvailable
       ? "Open Underwater Typing Fishing in a separate window"
+      : "Available in the desktop application";
+
+    insightsButton.disabled = !state.insightsAvailable || state.insightsPending;
+    insightsButton.textContent = state.insightsPending ? "Opening Typing Insights…" : "Typing Insights";
+    insightsButton.title = state.insightsAvailable
+      ? "Open local typing statistics in a separate window"
       : "Available in the desktop application";
 
     settingsButton.disabled = !state.settingsAvailable || state.settingsPending;

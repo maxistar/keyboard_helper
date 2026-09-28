@@ -792,6 +792,12 @@ async function openUnderwaterTypingFishing() {
   return true;
 }
 
+async function openTypingInsightsWindow() {
+  if (!tauriHandle?.core?.invoke) throw new Error("Typing Insights requires the desktop application.");
+  await tauriHandle.core.invoke("open_typing_insights");
+  return true;
+}
+
 async function openSettingsWindow() {
   if (!tauriHandle?.core?.invoke) {
     throw new Error("Settings require the desktop application.");
@@ -1014,6 +1020,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     openUnderwaterTypingFishing,
     openKeyboardSelfTest,
     enterMiniMode,
+    openTypingInsights: openTypingInsightsWindow,
     openSettings: openSettingsWindow,
     openHelp: openHelpPage,
     onChange: (state) => menuControls?.update(state),
@@ -1029,6 +1036,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     onStartSnake: () => menuStateController.launchSnake(),
     onStartFlappy: () => menuStateController.launchFlappy(),
     onStartFishing: () => menuStateController.launchFishing(),
+    onInsights: () => menuStateController.insights(),
     onSettings: () => menuStateController.settings(),
     onHelp: () => menuStateController.help(),
     onLanguageSelect: selectLanguage,

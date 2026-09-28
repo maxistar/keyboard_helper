@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Typing Insights</title>
+  <link rel="stylesheet" href="typing_insights/typing_insights.css" />
+</head>
+<body>
+  <main class="insights-shell" aria-labelledby="insightsTitle">
+    <header class="insights-header">
+      <div>
+        <span class="eyebrow">Keyboard Helper</span>
+        <h1 id="insightsTitle">Typing Insights</h1>
+        <p>Local statistics from this device. Nothing is shared.</p>
+      </div>
+      <button id="refreshButton" class="button secondary" type="button">Refresh</button>
+    </header>
+
+    <form id="insightsFilters" class="insights-filters" aria-label="Insights filters">
+      <label>From<input id="filterFrom" type="date" /></label>
+      <label>To<input id="filterTo" type="date" /></label>
+      <label>Layout<select id="filterLayout"></select></label>
+      <label>Language<select id="filterLanguage"></select></label>
+      <label>Source<select id="filterSource">
+        <option value="">All sources</option>
+        <option value="background">Background typing</option>
+        <option value="exercise">Exercises</option>
+      </select></label>
+      <label>Min. samples<input id="filterMinSamples" type="number" min="0" step="1" value="0" /></label>
+    </form>
+
+    <p id="insightsStatus" class="insights-status" role="status" aria-live="polite">Loading statistics…</p>
+    <div id="insightsContent"></div>
+  </main>
+  <script type="module" src="typing_insights/main.js"></script>
+</body>
+</html>

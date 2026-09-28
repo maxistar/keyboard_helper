@@ -5,6 +5,7 @@ export const SECONDARY_WINDOWS = Object.freeze({
   flappyKeyBird: Object.freeze({ label: "flappy-key-bird", page: "flappy-key-bird.html", capability: "flappy-key-bird" }),
   underwaterTypingFishing: Object.freeze({ label: "underwater-typing-fishing", page: "underwater-typing-fishing.html", capability: "underwater-typing-fishing" }),
   selfTest: Object.freeze({ label: "keyboard-self-test", page: "self-test.html", capability: "self-test" }),
+  typingInsights: Object.freeze({ label: "typing-insights", page: "typing-insights.html", capability: "typing-insights" }),
 });
 
 function errorMessage(error) {

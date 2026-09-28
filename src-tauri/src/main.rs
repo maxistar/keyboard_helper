@@ -201,6 +201,7 @@ const FLAPPY_KEY_BIRD_WINDOW_LABEL: &str = "flappy-key-bird";
 const UNDERWATER_TYPING_FISHING_WINDOW_LABEL: &str = "underwater-typing-fishing";
 const SETTINGS_WINDOW_LABEL: &str = "settings";
 const KEYBOARD_SELF_TEST_WINDOW_LABEL: &str = "keyboard-self-test";
+const TYPING_INSIGHTS_WINDOW_LABEL: &str = "typing-insights";
 const APP_NAME: &str = "Keyboard Helper";
 const HELP_URL: &str = "https://projects.maxistar.me/keyboard_helper/setup/";
 const SETTINGS_MENU_ID: &str = "app.settings";
@@ -210,6 +211,7 @@ const TYPING_INVADERS_MENU_ID: &str = "view.typing-invaders";
 const KEYBOARD_SNAKE_MENU_ID: &str = "view.keyboard-snake";
 const FLAPPY_KEY_BIRD_MENU_ID: &str = "view.flappy-key-bird";
 const UNDERWATER_TYPING_FISHING_MENU_ID: &str = "view.underwater-typing-fishing";
+const TYPING_INSIGHTS_MENU_ID: &str = "view.typing-insights";
 const HELP_MENU_ID: &str = "help.keyboard-helper";
 
 fn settings_window_creation_error(error: &str) -> String {
@@ -237,6 +239,7 @@ enum AppMenuAction {
     OpenKeyboardSnake,
     OpenFlappyKeyBird,
     OpenUnderwaterTypingFishing,
+    OpenTypingInsights,
     OpenHelp,
 }
 
@@ -250,6 +253,7 @@ impl AppMenuAction {
             KEYBOARD_SNAKE_MENU_ID => Some(Self::OpenKeyboardSnake),
             FLAPPY_KEY_BIRD_MENU_ID => Some(Self::OpenFlappyKeyBird),
             UNDERWATER_TYPING_FISHING_MENU_ID => Some(Self::OpenUnderwaterTypingFishing),
+            TYPING_INSIGHTS_MENU_ID => Some(Self::OpenTypingInsights),
             HELP_MENU_ID => Some(Self::OpenHelp),
             _ => None,
         }
@@ -264,6 +268,7 @@ impl AppMenuAction {
             Self::OpenKeyboardSnake => "Keyboard Snake",
             Self::OpenFlappyKeyBird => "Flappy Key-Bird",
             Self::OpenUnderwaterTypingFishing => "Underwater Typing Fishing",
+            Self::OpenTypingInsights => "Typing Insights",
             Self::OpenHelp => "Keyboard Helper Help",
         }
     }
@@ -277,6 +282,7 @@ trait AppMenuActionHandler {
     fn open_keyboard_snake(&mut self) -> Result<(), String>;
     fn open_flappy_key_bird(&mut self) -> Result<(), String>;
     fn open_underwater_typing_fishing(&mut self) -> Result<(), String>;
+    fn open_typing_insights(&mut self) -> Result<(), String>;
     fn open_help(&mut self) -> Result<(), String>;
 }
 
@@ -293,6 +299,7 @@ fn dispatch_app_menu_action(menu_id: &str, handler: &mut impl AppMenuActionHandl
         AppMenuAction::OpenKeyboardSnake => handler.open_keyboard_snake(),
         AppMenuAction::OpenFlappyKeyBird => handler.open_flappy_key_bird(),
         AppMenuAction::OpenUnderwaterTypingFishing => handler.open_underwater_typing_fishing(),
+        AppMenuAction::OpenTypingInsights => handler.open_typing_insights(),
         AppMenuAction::OpenHelp => handler.open_help(),
     };
 
@@ -336,6 +343,10 @@ impl AppMenuActionHandler for NativeAppMenuActionHandler<'_> {
 
     fn open_underwater_typing_fishing(&mut self) -> Result<(), String> {
         open_underwater_typing_fishing_window(self.app_handle)
+    }
+
+    fn open_typing_insights(&mut self) -> Result<(), String> {
+        open_typing_insights_window(self.app_handle)
     }
 
     fn open_help(&mut self) -> Result<(), String> {
@@ -727,6 +738,43 @@ async fn open_underwater_typing_fishing(app_handle: tauri::AppHandle) -> Result<
     open_underwater_typing_fishing_window(&app_handle)
 }
 
+#[tauri::command]
+async fn open_typing_insights(app_handle: tauri::AppHandle) -> Result<(), String> {
+    open_typing_insights_window(&app_handle)
+}
+
+fn open_typing_insights_window(app_handle: &tauri::AppHandle) -> Result<(), String> {
+    let existing = app_handle.get_webview_window(TYPING_INSIGHTS_WINDOW_LABEL);
+    match secondary_window_action(existing.is_some()) {
+        SecondaryWindowAction::FocusExisting => {
+            let window = existing.expect("existing insights window checked above");
+            window.show().map_err(|error| error.to_string())?;
+            if window.is_minimized().map_err(|error| error.to_string())? {
+                window.unminimize().map_err(|error| error.to_string())?;
+            }
+            window.set_focus().map_err(|error| error.to_string())
+        }
+        SecondaryWindowAction::Create => {
+            let window = WebviewWindowBuilder::new(
+                app_handle,
+                TYPING_INSIGHTS_WINDOW_LABEL,
+                WebviewUrl::App("typing-insights.html".into()),
+            )
+            .title("Typing Insights")
+            .inner_size(1120.0, 820.0)
+            .min_inner_size(680.0, 520.0)
+            .resizable(true)
+            .decorations(true)
+            .transparent(false)
+            .always_on_top(false)
+            .center()
+            .build()
+            .map_err(|error| format!("failed to create Typing Insights window: {error}"))?;
+            window.set_focus().map_err(|error| error.to_string())
+        }
+    }
+}
+
 fn open_keyboard_snake_window(app_handle: &tauri::AppHandle) -> Result<(), String> {
     let existing = app_handle.get_webview_window(KEYBOARD_SNAKE_WINDOW_LABEL);
     match secondary_window_action(existing.is_some()) {
@@ -1025,6 +1073,7 @@ async fn smoke_secondary_window(
         UNDERWATER_TYPING_FISHING_WINDOW_LABEL => {
             open_underwater_typing_fishing(app_handle.clone()).await
         }
+        TYPING_INSIGHTS_WINDOW_LABEL => open_typing_insights(app_handle.clone()).await,
         KEYBOARD_SELF_TEST_WINDOW_LABEL => {
             open_keyboard_self_test(app_handle.clone(), "qwerty".to_string()).await
         }
@@ -1070,6 +1119,7 @@ async fn smoke_secondary_window(
         UNDERWATER_TYPING_FISHING_WINDOW_LABEL => {
             open_underwater_typing_fishing(app_handle.clone()).await
         }
+        TYPING_INSIGHTS_WINDOW_LABEL => open_typing_insights(app_handle.clone()).await,
         KEYBOARD_SELF_TEST_WINDOW_LABEL => {
             open_keyboard_self_test(app_handle.clone(), "qwerty".to_string()).await
         }
@@ -1100,6 +1150,7 @@ async fn smoke_secondary_window(
         UNDERWATER_TYPING_FISHING_WINDOW_LABEL => {
             open_underwater_typing_fishing(app_handle.clone()).await
         }
+        TYPING_INSIGHTS_WINDOW_LABEL => open_typing_insights(app_handle.clone()).await,
         KEYBOARD_SELF_TEST_WINDOW_LABEL => {
             open_keyboard_self_test(app_handle.clone(), "qwerty".to_string()).await
         }
@@ -1156,6 +1207,7 @@ async fn run_secondary_window_smoke(
         FLAPPY_KEY_BIRD_WINDOW_LABEL,
         UNDERWATER_TYPING_FISHING_WINDOW_LABEL,
         KEYBOARD_SELF_TEST_WINDOW_LABEL,
+        TYPING_INSIGHTS_WINDOW_LABEL,
     ] {
         windows.push(smoke_secondary_window(&app_handle, &mut receiver, label).await);
     }
@@ -1502,6 +1554,13 @@ fn install_macos_application_menu(app: &mut tauri::App) -> tauri::Result<()> {
         true,
         None::<&str>,
     )?;
+    let typing_insights = MenuItem::with_id(
+        app,
+        TYPING_INSIGHTS_MENU_ID,
+        "Typing Insights",
+        true,
+        None::<&str>,
+    )?;
     let help = MenuItem::with_id(
         app,
         HELP_MENU_ID,
@@ -1545,6 +1604,8 @@ fn install_macos_application_menu(app: &mut tauri::App) -> tauri::Result<()> {
             &keyboard_snake,
             &flappy_key_bird,
             &underwater_typing_fishing,
+            &PredefinedMenuItem::separator(app)?,
+            &typing_insights,
         ],
     )?;
     let window_menu = Submenu::with_items(
@@ -1651,6 +1712,7 @@ fn main() {
             open_keyboard_snake,
             open_flappy_key_bird,
             open_underwater_typing_fishing,
+            open_typing_insights,
             open_settings,
             open_keyboard_self_test,
             secondary_window_ready,
@@ -1676,8 +1738,8 @@ mod tests {
         settings_window_creation_error, AppMenuAction, AppMenuActionHandler, GeometryRect,
         OverlayGeometryState, OverlayVisibilityAction, OverlayWindowSnapshot,
         SecondaryWindowAction, ENTER_MINI_MODE_MENU_ID, FLAPPY_KEY_BIRD_MENU_ID, HELP_MENU_ID,
-        KEYBOARD_SNAKE_MENU_ID, SETTINGS_MENU_ID, TOGGLE_OVERLAY_MENU_ID, TYPING_INVADERS_MENU_ID,
-        UNDERWATER_TYPING_FISHING_MENU_ID,
+        KEYBOARD_SNAKE_MENU_ID, SETTINGS_MENU_ID, TOGGLE_OVERLAY_MENU_ID, TYPING_INSIGHTS_MENU_ID,
+        TYPING_INVADERS_MENU_ID, UNDERWATER_TYPING_FISHING_MENU_ID,
     };
     use std::io::Cursor;
     use tauri::{PhysicalPosition, PhysicalSize};
@@ -1732,6 +1794,10 @@ mod tests {
 
         fn open_underwater_typing_fishing(&mut self) -> Result<(), String> {
             self.record(AppMenuAction::OpenUnderwaterTypingFishing)
+        }
+
+        fn open_typing_insights(&mut self) -> Result<(), String> {
+            self.record(AppMenuAction::OpenTypingInsights)
         }
 
         fn open_help(&mut self) -> Result<(), String> {
@@ -1893,6 +1959,10 @@ mod tests {
             UNDERWATER_TYPING_FISHING_MENU_ID,
             &mut handler
         ));
+        assert!(dispatch_app_menu_action(
+            TYPING_INSIGHTS_MENU_ID,
+            &mut handler
+        ));
         assert!(dispatch_app_menu_action(HELP_MENU_ID, &mut handler));
         assert!(!dispatch_app_menu_action("unknown", &mut handler));
 
@@ -1906,6 +1976,7 @@ mod tests {
                 AppMenuAction::OpenKeyboardSnake,
                 AppMenuAction::OpenFlappyKeyBird,
                 AppMenuAction::OpenUnderwaterTypingFishing,
+                AppMenuAction::OpenTypingInsights,
                 AppMenuAction::OpenHelp,
             ]
         );

@@ -24,6 +24,7 @@ export function createAppMenuStateController({
   openUnderwaterTypingFishing = async () => false,
   openKeyboardSelfTest = async () => false,
   enterMiniMode = async () => false,
+  openTypingInsights = async () => false,
   openSettings,
   openHelp,
   onChange = () => {},
@@ -38,6 +39,7 @@ export function createAppMenuStateController({
   let fishingPending = false;
   let selfTestPending = false;
   let miniPending = false;
+  let insightsPending = false;
   let settingsPending = false;
   let feedback = null;
   let activeRevision = 0;
@@ -75,6 +77,8 @@ export function createAppMenuStateController({
       selfTestPending,
       miniAvailable: hasNativeBridge(),
       miniPending,
+      insightsAvailable: hasNativeBridge(),
+      insightsPending,
       settingsAvailable: hasNativeBridge(),
       settingsPending,
       feedback,
@@ -302,6 +306,27 @@ export function createAppMenuStateController({
     }
   }
 
+  async function insights() {
+    if (insightsPending || !hasNativeBridge()) return false;
+    insightsPending = true;
+    feedback = null;
+    notify();
+    try {
+      const result = await openTypingInsights();
+      if (result === false) throw new Error("Typing Insights could not be opened.");
+      return true;
+    } catch (error) {
+      feedback = {
+        kind: "error",
+        message: errorMessage(error, "Failed to open Typing Insights."),
+      };
+      return false;
+    } finally {
+      insightsPending = false;
+      notify();
+    }
+  }
+
   async function settings() {
     if (settingsPending || !hasNativeBridge()) return false;
     settingsPending = true;
@@ -337,6 +362,7 @@ export function createAppMenuStateController({
     launchFishing,
     selfTest,
     mini,
+    insights,
     settings,
     help,
   };

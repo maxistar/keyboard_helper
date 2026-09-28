@@ -231,7 +231,7 @@ function createEnvironment(callbacks = {}) {
   globalThis.document = document;
   globalThis.window = window;
   let controls;
-  const calls = { layout: [], language: [], reload: 0, selfTest: 0, reconnect: 0, mini: 0, game: 0, snake: 0, flappy: 0, fishing: 0, settings: 0, help: 0 };
+  const calls = { layout: [], language: [], reload: 0, selfTest: 0, reconnect: 0, mini: 0, game: 0, snake: 0, flappy: 0, fishing: 0, insights: 0, settings: 0, help: 0 };
   const layoutOptions = [
     { key: "alpha", label: "Alpha" },
     { key: "beta", label: "Beta" },
@@ -274,6 +274,10 @@ function createEnvironment(callbacks = {}) {
     }),
     onStartFishing: callbacks.onStartFishing ?? (async () => {
       calls.fishing += 1;
+      return true;
+    }),
+    onInsights: callbacks.onInsights ?? (async () => {
+      calls.insights += 1;
       return true;
     }),
     onSettings: callbacks.onSettings ?? (async () => {
@@ -327,7 +331,7 @@ test("menu renders the root hierarchy, synchronized summaries, and contextual co
     const root = env.document.querySelector(".menu-root");
     const rootItems = root.querySelectorAll('[role="menuitem"]');
     assert.equal(root.getAttribute("role"), "menu");
-    assert.equal(rootItems.length, 7);
+    assert.equal(rootItems.length, 8);
     assert.equal(env.document.querySelector(".menu-parent-keyboard").getAttribute("aria-haspopup"), "menu");
     assert.equal(env.document.querySelector(".menu-parent-connection").getAttribute("aria-haspopup"), "menu");
     assert.equal(env.document.querySelector(".menu-parent-keyboard").querySelector(".menu-root-summary").textContent, "Beta board");
@@ -418,12 +422,12 @@ test("stable root menu order is preserved with and without conditional Language"
 
     env.controls.update({ languageAvailable: false });
     assert.deepEqual(visibleLabels(), [
-      "Keyboard", "Connection", "Mini Mode", "Games", "Settings", "Help",
+      "Keyboard", "Connection", "Mini Mode", "Games", "Typing Insights", "Settings", "Help",
     ]);
 
     env.controls.update({ languageAvailable: true });
     assert.deepEqual(visibleLabels(), [
-      "Keyboard", "Language", "Connection", "Mini Mode", "Games", "Settings", "Help",
+      "Keyboard", "Language", "Connection", "Mini Mode", "Games", "Typing Insights", "Settings", "Help",
     ]);
   } finally {
     env.restore();
@@ -537,6 +541,12 @@ test("contextual flyouts switch exclusively and actions preserve their close beh
 
     await env.document.querySelector(".menu-action-game").click();
     assert.equal(env.calls.game, 1);
+    assert.equal(root.classList.contains("open"), false);
+
+    await toggle.click();
+    env.controls.update({ insightsAvailable: true });
+    await env.document.querySelector(".menu-action-insights").click();
+    assert.equal(env.calls.insights, 1);
     assert.equal(root.classList.contains("open"), false);
 
     await toggle.click();
