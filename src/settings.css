@@ -70,6 +70,8 @@ select { width: 100%; min-height: 42px; border: 1px solid var(--border); border-
 .field-error, .form-error { min-height: 1.2em; color: var(--danger); font-size: .83rem; }
 .field-warning { min-height: 1.2em; color: var(--warning); font-size: .83rem; }
 .field-help { font-size: .82rem; }
+.analytics-option { display: flex !important; gap: .65rem; align-items: center; margin: .7rem 0 !important; }
+.analytics-preview { max-height: 18rem; overflow: auto; white-space: pre-wrap; background: #10131a; color: #dce8ff; padding: .8rem; border-radius: .5rem; }
 
 .settings-actions { position: fixed; z-index: 5; left: 0; right: 0; bottom: 0; display: flex; justify-content: flex-end; gap: 10px; padding: 16px 38px; border-top: 1px solid var(--border); background: rgba(16, 20, 27, .96); backdrop-filter: blur(12px); }
 

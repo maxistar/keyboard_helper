@@ -62,6 +62,19 @@
         <p id="hotkeyWarning" class="field-warning"></p>
       </section>
 
+      <section class="settings-section" aria-labelledby="analyticsHeading">
+        <h2 id="analyticsHeading">Typing analytics</h2>
+        <p>Statistics stay on this device. Background analytics stores key-code aggregates, never typed text or application names.</p>
+        <label class="analytics-option"><input id="exerciseAnalytics" type="checkbox" disabled> Collect focused exercise statistics</label>
+        <label class="analytics-option"><input id="backgroundAnalytics" type="checkbox" disabled> Collect background timing and possible-correction statistics</label>
+        <div class="hotkey-row">
+          <button id="previewAnalyticsButton" class="button secondary" type="button" disabled>Preview local report</button>
+          <button id="deleteAnalyticsButton" class="button danger" type="button" disabled>Delete all statistics</button>
+        </div>
+        <pre id="analyticsPreview" class="analytics-preview" hidden></pre>
+        <p id="analyticsStatus" class="field-help" aria-live="polite"></p>
+      </section>
+
       <div id="settingsStatus" class="status settings-status" role="status" aria-live="polite" aria-atomic="true">Loading settings…</div>
       <button id="reloadSettingsButton" class="button secondary reload-settings" type="button" hidden>Reload current settings</button>
       <p id="formError" class="form-error" role="alert"></p>

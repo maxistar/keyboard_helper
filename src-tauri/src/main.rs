@@ -15,6 +15,7 @@ mod input_source_macos;
 mod input_source_windows;
 #[cfg(target_os = "linux")]
 mod input_source_x11;
+mod typing_analytics;
 use rdev::{listen, Event, EventType, Key};
 use serde::{Deserialize, Serialize};
 #[cfg(target_os = "macos")]
@@ -1592,7 +1593,12 @@ fn main() {
         .manage(WindowsInputSourceTauriState::default())
         .manage(OverlayGeometryState::default())
         .manage(SecondaryWindowReadinessState::default())
+        .manage(typing_analytics::TypingAnalyticsState::default())
         .setup(|app| {
+            typing_analytics::initialize_app(
+                app.handle(),
+                &app.state::<typing_analytics::TypingAnalyticsState>(),
+            )?;
             build_tray(app.handle())?;
             #[cfg(target_os = "macos")]
             install_macos_application_menu(app)?;
@@ -1648,6 +1654,10 @@ fn main() {
             open_settings,
             open_keyboard_self_test,
             secondary_window_ready,
+            typing_analytics::record_typing_analytics,
+            typing_analytics::read_typing_analytics,
+            typing_analytics::delete_typing_analytics,
+            typing_analytics::typing_analytics_storage_info,
             quality_smoke_requested,
             run_secondary_window_smoke,
             read_config_state,

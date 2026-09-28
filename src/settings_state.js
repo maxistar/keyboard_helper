@@ -69,6 +69,14 @@ export function createSettingsState(readResult) {
     return setDraft({ ...draft, toggleHotkey: value || null });
   }
 
+  function setAnalyticsEnabled(kind, enabled) {
+    if (!["exercise", "background"].includes(kind)) return snapshot();
+    return setDraft({
+      ...draft,
+      typingAnalytics: { ...draft.typingAnalytics, [kind]: enabled === true },
+    });
+  }
+
   function addExternal(path, definition) {
     const result = createExternalLayoutEntry({ path, definition, layouts: draft.layouts });
     if (result.duplicateKey) return { ...snapshot(), duplicateKey: result.duplicateKey };
@@ -109,6 +117,7 @@ export function createSettingsState(readResult) {
     setLayoutEnabled,
     setDefaultLayout,
     setHotkey,
+    setAnalyticsEnabled,
     addExternal,
     removeLayout,
     setExternalMetadata,

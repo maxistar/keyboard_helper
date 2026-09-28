@@ -14,9 +14,18 @@ test("missing configuration starts with a clean built-in draft", () => {
   const state = createSettingsState({ status: "missing", path: "/home/me/.keyri.json", revision: "missing" });
   const snapshot = state.snapshot();
   assert.equal(snapshot.draft.defaultLayout, "qwerty");
+  assert.deepEqual(snapshot.draft.typingAnalytics, { exercise: false, background: false });
   assert.equal(Object.hasOwn(snapshot.draft, "highlightingSource"), false);
   assert.equal(snapshot.dirty, false);
   assert.equal(snapshot.canSave, false);
+});
+
+test("exercise and background analytics settings are edited independently", () => {
+  const state = createSettingsState({ status: "missing", revision: "missing" });
+  state.setAnalyticsEnabled("exercise", true);
+  assert.deepEqual(state.snapshot().draft.typingAnalytics, { exercise: true, background: false });
+  state.setAnalyticsEnabled("background", true);
+  assert.deepEqual(state.serializedConfig().typingAnalytics, { exercise: true, background: true });
 });
 
 test("valid edits remain draft-only and preserve unknown fields", () => {

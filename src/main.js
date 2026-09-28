@@ -14,6 +14,7 @@ import { routeSystemKeyEvent } from "./system_key_event_router.js";
 import { formatBleKeyboardStatus } from "./ble_status.js";
 import { BUILTIN_LAYOUT_FILES, normalizeConfig, parseExternalLayout, pickAvailableLayout } from "./app_config.js";
 import { reloadOverlayAfterSettingsSave } from "./settings_runtime.js";
+import { createBackgroundAnalytics } from "./typing_analytics.js";
 import {
   createOverlayModeController,
   createOverlayModeView,
@@ -231,6 +232,7 @@ let bleHighlightController = null;
 let highlightingStatus = null;
 let bleKeyboardStatus = null;
 let bleBatteryLevel = null;
+let backgroundAnalytics = null;
 const pressedKeyTracker = createPressedKeyTracker();
 
 function languageStatusLabel(status) {
@@ -880,6 +882,16 @@ window.addEventListener("DOMContentLoaded", async () => {
       .catch((err) => console.error("Failed to listen enter-mini-mode-requested:", err));
   }
   const config = await loadConfig();
+  backgroundAnalytics = createBackgroundAnalytics({
+    settings: config?.typingAnalytics,
+    context: () => ({
+      layout: currentLayoutKey || "unknown",
+      language: languageMenuState.currentInputSourceId || "unknown",
+    }),
+    write: (record) => tauriHandle?.core?.invoke("record_typing_analytics", { record }).catch((error) => {
+      console.error("Failed to persist typing analytics:", error);
+    }),
+  });
   globalOverlayHotkey = createGlobalOverlayHotkey({
     hotkey: config?.toggleHotkey ?? null,
     onToggle: () => tauriHandle?.core?.invoke("toggle_window").catch(console.error),
@@ -1033,6 +1045,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       .listen("key_event", (e) => {
         const event = normalizeSystemKeyEvent(e.payload);
         if (event) {
+          backgroundAnalytics?.handle(event);
           routeSystemKeyEvent(event, {
             hotkeyController: globalOverlayHotkey,
             inputSourceController,
@@ -1040,6 +1053,15 @@ window.addEventListener("DOMContentLoaded", async () => {
         }
       })
       .catch((err) => console.error("Failed to listen key_event:", err));
+
+    tauri.event
+      .listen("typing-exercise-ownership", (event) => {
+        backgroundAnalytics?.setSuspended(event.payload?.active === true);
+      })
+      .catch((err) => console.error("Failed to listen typing exercise ownership:", err));
+    tauri.event
+      .listen("typing-analytics-deleted", () => backgroundAnalytics?.resetTransient())
+      .catch((err) => console.error("Failed to listen typing analytics deletion:", err));
 
     tauri.event
       .listen("ble_keyboard_status", (event) => {

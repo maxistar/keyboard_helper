@@ -41,6 +41,7 @@ export function createDefaultConfig() {
     defaultLayout: "qwerty",
     toggleHotkey: null,
     layouts: Object.fromEntries(Object.keys(BUILTIN_LAYOUTS).map((key) => [key, true])),
+    typingAnalytics: { exercise: false, background: false },
   };
 }
 
@@ -107,6 +108,10 @@ export function normalizeConfig(value) {
     defaultLayout,
     toggleHotkey: normalizeHotkey(value.toggleHotkey),
     layouts,
+    typingAnalytics: {
+      exercise: value.typingAnalytics?.exercise === true,
+      background: value.typingAnalytics?.background === true,
+    },
   };
 }
 
@@ -118,6 +123,10 @@ export function serializeConfig(original, draft) {
     defaultLayout: draft.defaultLayout,
     toggleHotkey: normalizeHotkey(draft.toggleHotkey),
     layouts: { ...draft.layouts },
+    typingAnalytics: {
+      exercise: draft.typingAnalytics?.exercise === true,
+      background: draft.typingAnalytics?.background === true,
+    },
   };
 }
 

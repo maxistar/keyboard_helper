@@ -52,6 +52,7 @@ test("serialization preserves unknown top-level fields", () => {
     defaultLayout: "corne",
     toggleHotkey: "Ctrl+KeyK",
     layouts: { corne: true },
+    typingAnalytics: { exercise: false, background: false },
   });
 });
 

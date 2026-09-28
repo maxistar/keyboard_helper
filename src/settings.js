@@ -10,6 +10,7 @@ import {
 } from "./settings_actions.js";
 import { parseExternalLayout } from "./app_config.js";
 import { initializeSecondaryWindow, SECONDARY_WINDOWS } from "./secondary_window_ready.js";
+import { buildAnalyticsReport } from "./typing_analytics.js";
 
 const elements = {
   form: document.getElementById("settingsForm"),
@@ -35,6 +36,12 @@ const elements = {
   formError: document.getElementById("formError"),
   cancel: document.getElementById("cancelButton"),
   save: document.getElementById("saveButton"),
+  exerciseAnalytics: document.getElementById("exerciseAnalytics"),
+  backgroundAnalytics: document.getElementById("backgroundAnalytics"),
+  previewAnalytics: document.getElementById("previewAnalyticsButton"),
+  deleteAnalytics: document.getElementById("deleteAnalyticsButton"),
+  analyticsPreview: document.getElementById("analyticsPreview"),
+  analyticsStatus: document.getElementById("analyticsStatus"),
 };
 
 const tauri = window.__TAURI__;
@@ -169,6 +176,12 @@ function render() {
   elements.hotkeyValue.classList.toggle("recording", recording);
   elements.hotkeyError.textContent = snapshot.validation.errors.toggleHotkey ?? "";
   elements.hotkeyWarning.textContent = snapshot.validation.warnings.toggleHotkey ?? "";
+  elements.exerciseAnalytics.checked = snapshot.draft.typingAnalytics?.exercise === true;
+  elements.backgroundAnalytics.checked = snapshot.draft.typingAnalytics?.background === true;
+  elements.exerciseAnalytics.disabled = loading || saving;
+  elements.backgroundAnalytics.disabled = loading || saving;
+  elements.previewAnalytics.disabled = loading || saving || !tauri?.core?.invoke;
+  elements.deleteAnalytics.disabled = loading || saving || !tauri?.core?.invoke;
   elements.recovery.hidden = snapshot.status !== "invalid";
   if (snapshot.status === "invalid") {
     elements.recoveryMessage.textContent = `${snapshot.error ?? "The file is malformed."} (${snapshot.path})`;
@@ -305,6 +318,39 @@ elements.clearHotkey.addEventListener("click", () => {
   if (recording) finishRecording();
   state.setHotkey(null);
   render();
+});
+elements.exerciseAnalytics.addEventListener("change", () => {
+  state.setAnalyticsEnabled("exercise", elements.exerciseAnalytics.checked);
+  render();
+});
+elements.backgroundAnalytics.addEventListener("change", () => {
+  state.setAnalyticsEnabled("background", elements.backgroundAnalytics.checked);
+  render();
+});
+elements.previewAnalytics.addEventListener("click", async () => {
+  try {
+    const rows = await tauri.core.invoke("read_typing_analytics", { from: null, to: null });
+    const report = buildAnalyticsReport({ settings: state.snapshot().draft.typingAnalytics, rows });
+    elements.analyticsPreview.textContent = JSON.stringify(report, null, 2);
+    elements.analyticsPreview.hidden = false;
+    elements.analyticsStatus.textContent = `${rows.length} aggregate rows. No data was shared.`;
+  } catch (error) {
+    elements.analyticsStatus.textContent = displayError(error, "Could not read local analytics.");
+  }
+});
+elements.deleteAnalytics.addEventListener("click", async () => {
+  const confirmed = typeof tauri?.dialog?.confirm === "function"
+    ? await tauri.dialog.confirm("Delete all local typing statistics?", { title: "Delete typing statistics", kind: "warning" })
+    : globalThis.confirm?.("Delete all local typing statistics?");
+  if (!confirmed) return;
+  try {
+    await tauri.core.invoke("delete_typing_analytics");
+    await tauri.event?.emit?.("typing-analytics-deleted");
+    elements.analyticsPreview.hidden = true;
+    elements.analyticsStatus.textContent = "All local typing statistics were deleted.";
+  } catch (error) {
+    elements.analyticsStatus.textContent = displayError(error, "Could not delete local analytics.");
+  }
 });
 elements.replaceInvalid.addEventListener("click", () => {
   state.authorizeReplacement();
