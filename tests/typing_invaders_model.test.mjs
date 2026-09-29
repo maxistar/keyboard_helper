@@ -163,3 +163,26 @@ test("accuracy and WPM use correct character attempts and active elapsed time", 
   assert.equal(game.getSnapshot().accuracy, 50);
   assert.ok(game.getSnapshot().wpm > 0);
 });
+
+test("lesson provider supplies compatible word targets without changing arcade fallback", () => {
+  const provider = { next: () => ({ word: "lesson", lessonId: "writing", targetId: "lesson-word", targetType: "word", analyticsTags: { domain: "writer" } }) };
+  const game = createTypingInvadersGame({ targetProvider: provider, resolveWave: () => testWave() });
+  game.start();
+  const target = game.spawnTarget();
+  assert.equal(target.word, "lesson");
+  assert.equal(target.lessonId, "writing");
+  assert.equal(target.targetId, "lesson-word");
+  game.setTargetProvider(null);
+  game.typeCharacter("l"); game.typeCharacter("e"); game.typeCharacter("s"); game.typeCharacter("s"); game.typeCharacter("o"); game.typeCharacter("n");
+  assert.equal(game.getSnapshot().destroyedTargets, 1);
+});
+
+test("selected lessons never mix in arcade words when their targets are temporarily exhausted", () => {
+  let calls = 0;
+  const provider = { next: () => (++calls === 1 ? { word: "lesson", lessonId: "writing", targetId: "lesson-word", targetType: "word" } : null) };
+  const game = createTypingInvadersGame({ targetProvider: provider, resolveWave: () => testWave() });
+  game.start();
+  assert.equal(game.spawnTarget().word, "lesson");
+  assert.equal(game.spawnTarget(), null);
+  assert.equal(game.getSnapshot().targets.length, 1);
+});

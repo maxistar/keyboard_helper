@@ -28,6 +28,17 @@ test("exercise and background analytics settings are edited independently", () =
   assert.deepEqual(state.serializedConfig().typingAnalytics, { exercise: true, background: true });
 });
 
+test("imported typing lessons remain local configuration data", () => {
+  const state = createSettingsState({ status: "missing", revision: "missing" });
+  const lesson = { id: "home-row", name: "Home row", targets: [{ id: "asdf", type: "word", value: "asdf" }] };
+  state.addLesson(lesson);
+  assert.equal(state.snapshot().draft.typingLessons[0].id, "home-row");
+  assert.equal(state.addLesson(lesson).duplicateLessonId, "home-row");
+  assert.equal(state.serializedConfig().typingLessons[0].targets[0].value, "asdf");
+  state.removeLesson("home-row");
+  assert.deepEqual(state.snapshot().draft.typingLessons, []);
+});
+
 test("valid edits remain draft-only and preserve unknown fields", () => {
   const state = createSettingsState({
     status: "valid",

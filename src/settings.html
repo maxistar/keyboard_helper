@@ -74,6 +74,18 @@
         <p id="analyticsStatus" class="field-help" aria-live="polite"></p>
       </section>
 
+      <section class="settings-section" aria-labelledby="lessonsHeading">
+        <div class="section-heading-row">
+          <div>
+            <h2 id="lessonsHeading">Typing lessons</h2>
+            <p>Import JSON lessons for focused practice. Their text stays in your local settings; analytics records only lesson IDs and allowed tags.</p>
+          </div>
+          <button id="addLessonButton" class="button secondary" type="button" disabled>Import lesson…</button>
+        </div>
+        <ul id="typingLessons" class="external-layouts"></ul>
+        <p id="lessonsError" class="field-error" aria-live="polite"></p>
+      </section>
+
       <div id="settingsStatus" class="status settings-status" role="status" aria-live="polite" aria-atomic="true">Loading settings…</div>
       <button id="reloadSettingsButton" class="button secondary reload-settings" type="button" hidden>Reload current settings</button>
       <p id="formError" class="form-error" role="alert"></p>

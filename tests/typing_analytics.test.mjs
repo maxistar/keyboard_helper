@@ -215,3 +215,18 @@ test("exercise sessions record aggregate and per-target metrics only when enable
     ["star", null, { mistakes: 0, completed: false }],
   ]);
 });
+
+test("lesson-backed exercise records use stable metadata without target text", async () => {
+  const h = exerciseHarness({ enabled: true });
+  h.analytics.onSnapshot(playing(), [{ type: "session-started" }, {
+    type: "target-spawned", target: {
+      id: 1, word: "secret", lessonId: "home-row", targetId: "alpha", targetType: "word", analyticsTags: { focus: "weak-spot" },
+    },
+  }]);
+  const writes = h.analytics.onSnapshot({ ...playing({ elapsedMs: 100, score: 1, destroyedTargets: 1, correctChars: 6 }), phase: "game-over" }, [{ type: "game-over" }]);
+  await Promise.all(writes);
+  const target = h.records.find((record) => record.type === "exerciseTarget");
+  assert.equal(target.code, "lesson:home-row:alpha");
+  assert.deepEqual(target.exercise.lesson, { lessonId: "home-row", targetId: "alpha", targetType: "word", tags: { focus: "weak-spot" } });
+  assert.equal(JSON.stringify(target.exercise.lesson).includes("secret"), false);
+});

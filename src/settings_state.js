@@ -77,6 +77,15 @@ export function createSettingsState(readResult) {
     });
   }
 
+  function addLesson(lesson) {
+    if (draft.typingLessons.some((entry) => entry.id === lesson.id)) return { ...snapshot(), duplicateLessonId: lesson.id };
+    return setDraft({ ...draft, typingLessons: [...draft.typingLessons, lesson] });
+  }
+
+  function removeLesson(id) {
+    return setDraft({ ...draft, typingLessons: draft.typingLessons.filter((lesson) => lesson.id !== id) });
+  }
+
   function addExternal(path, definition) {
     const result = createExternalLayoutEntry({ path, definition, layouts: draft.layouts });
     if (result.duplicateKey) return { ...snapshot(), duplicateKey: result.duplicateKey };
@@ -118,6 +127,8 @@ export function createSettingsState(readResult) {
     setDefaultLayout,
     setHotkey,
     setAnalyticsEnabled,
+    addLesson,
+    removeLesson,
     addExternal,
     removeLayout,
     setExternalMetadata,

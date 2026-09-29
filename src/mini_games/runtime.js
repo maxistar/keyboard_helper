@@ -1,3 +1,5 @@
+import { cloneNormalizedTarget } from "./targets.js";
+
 export const SESSION_PHASES = Object.freeze(["ready", "playing", "paused", "game-over", "finished"]);
 
 export function createMiniGameSession({ now = () => Date.now(), onChange = () => {} } = {}) {
@@ -102,7 +104,7 @@ export function createMiniGameRuntime({
           throw new Error("No compatible mini-game targets are available.");
         }
         const prepared = await prepareSession(targets.map((target) => (
-          Array.isArray(target) ? [...target] : target
+          Array.isArray(target) ? cloneNormalizedTarget(target) : target
         )));
         if (generation !== requestGeneration) {
           return { ok: false, stale: true };

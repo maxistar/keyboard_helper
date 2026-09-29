@@ -1,4 +1,5 @@
 import { ANALYTICS_SCHEMA_VERSION, localDayKey } from "../typing_analytics.js";
+import { lessonAnalyticsMetadata } from "../typing_lessons.js";
 
 export const TYPING_INVADERS_ANALYTICS_GAME = "typing-invaders";
 
@@ -39,7 +40,12 @@ export function createExerciseAnalytics({
     if (events.some((event) => event.type === "session-started")) targetMetrics.clear();
     for (const event of events) {
       if (event.type === "target-spawned") {
-        targetMetrics.set(event.target.id, { word: event.target.word, startedAtMs: snapshot.elapsedMs, mistakes: 0 });
+        targetMetrics.set(event.target.id, {
+          word: event.target.word,
+          lesson: lessonAnalyticsMetadata(event.target),
+          startedAtMs: snapshot.elapsedMs,
+          mistakes: 0,
+        });
       }
       if (event.type === "mistake" && event.targetId && targetMetrics.has(event.targetId)) {
         targetMetrics.get(event.targetId).mistakes += 1;
@@ -61,11 +67,12 @@ export function createExerciseAnalytics({
       },
     })];
     for (const metric of targetMetrics.values()) {
+      const lesson = metric.lesson;
       writes.push(persist({
         type: "exerciseTarget",
-        code: metric.word,
+        code: lesson ? `lesson:${lesson.lessonId}:${lesson.targetId}` : metric.word,
         latencyMs: metric.completedAtMs == null ? null : Math.max(0, Math.round(metric.completedAtMs - metric.startedAtMs)),
-        exercise: { mistakes: metric.mistakes, completed: metric.completedAtMs != null },
+        exercise: { mistakes: metric.mistakes, completed: metric.completedAtMs != null, ...(lesson ? { lesson } : {}) },
       }));
     }
     return writes;

@@ -1,4 +1,5 @@
 import { collectLayoutImageReferences, parseLayoutJson, validateLayoutDefinition } from "./layout_semantics.js";
+import { validateLesson } from "./typing_lessons.js";
 
 export { validateLayoutDefinition } from "./layout_semantics.js";
 
@@ -42,6 +43,7 @@ export function createDefaultConfig() {
     toggleHotkey: null,
     layouts: Object.fromEntries(Object.keys(BUILTIN_LAYOUTS).map((key) => [key, true])),
     typingAnalytics: { exercise: false, background: false },
+    typingLessons: [],
   };
 }
 
@@ -103,6 +105,10 @@ export function normalizeConfig(value) {
     : Object.keys(layouts)[0] ?? defaults.defaultLayout;
   const normalized = { ...value };
   delete normalized.highlightingSource;
+  const typingLessons = (Array.isArray(value.typingLessons) ? value.typingLessons : [])
+    .map((lesson) => validateLesson(lesson))
+    .filter((result) => result.valid)
+    .map((result) => result.lesson);
   return {
     ...normalized,
     defaultLayout,
@@ -112,13 +118,18 @@ export function normalizeConfig(value) {
       exercise: value.typingAnalytics?.exercise === true,
       background: value.typingAnalytics?.background === true,
     },
+    typingLessons,
   };
 }
 
 export function serializeConfig(original, draft) {
   const base = isPlainObject(original) ? { ...original } : {};
   delete base.highlightingSource;
-  return {
+  const typingLessons = (Array.isArray(draft.typingLessons) ? draft.typingLessons : [])
+    .map((lesson) => validateLesson(lesson))
+    .filter((result) => result.valid)
+    .map((result) => result.lesson);
+  const serialized = {
     ...base,
     defaultLayout: draft.defaultLayout,
     toggleHotkey: normalizeHotkey(draft.toggleHotkey),
@@ -128,6 +139,8 @@ export function serializeConfig(original, draft) {
       background: draft.typingAnalytics?.background === true,
     },
   };
+  if (typingLessons.length || Object.hasOwn(base, "typingLessons")) serialized.typingLessons = typingLessons;
+  return serialized;
 }
 
 export function validateConfigDraft(draft) {

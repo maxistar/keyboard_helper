@@ -29,6 +29,9 @@ body {
 
 button { font: inherit; }
 
+.lesson-picker { display: grid; gap: 4px; color: #8e98bd; font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.lesson-picker select { min-width: 180px; border: 1px solid rgba(110, 247, 232, .28); border-radius: 8px; padding: 7px 9px; color: var(--mint); background: rgba(7, 11, 28, .85); font: inherit; letter-spacing: normal; text-transform: none; }
+
 .game-shell {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;

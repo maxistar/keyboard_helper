@@ -1,5 +1,5 @@
 import { createMiniGameRuntime, createMiniGameSession } from "../mini_games/runtime.js";
-import { filterCompatibleTargets } from "../mini_games/targets.js";
+import { cloneNormalizedTarget, filterCompatibleTargets, targetMetadata } from "../mini_games/targets.js";
 import { FISHING_CONFIG, normalizeFishingConfig } from "./config.js";
 
 export function filterFishingTargets(targets, { maximumTargetTokens = FISHING_CONFIG.maximumTargetTokens } = {}) {
@@ -97,7 +97,8 @@ export function createFishingGame({
         .find((candidate) => !occupiedLanes.has(candidate)) ?? 0;
       fish.push({
         id: nextFishId,
-        target: [...selection.target],
+        target: cloneNormalizedTarget(selection.target),
+        targetMetadata: targetMetadata(selection.target),
         progress: 0,
         lane,
       });
@@ -185,7 +186,7 @@ export function createFishingGame({
       feedback = "Hooked! Keep typing to reel it in.";
       emitEvent(newlyHooked ? "hook" : "reel", entry.id);
     }
-    return { matched: true, complete, progress: entry.progress };
+    return { matched: true, complete, progress: entry.progress, targetMetadata: entry.targetMetadata };
   }
 
   function input(token) {

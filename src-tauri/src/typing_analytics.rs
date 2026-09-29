@@ -251,14 +251,48 @@ fn apply_record(
                 .and_then(|value| value.get("completed"))
                 .and_then(Value::as_bool)
                 .unwrap_or(false);
+            let lesson = record
+                .exercise
+                .as_ref()
+                .and_then(|value| value.get("lesson"))
+                .and_then(Value::as_object)
+                .map(|value| {
+                    let tags = value
+                        .get("tags")
+                        .and_then(Value::as_object)
+                        .map(|tags| {
+                            let mut allowed = serde_json::Map::new();
+                            for key in ["domain", "focus", "difficulty"] {
+                                if let Some(tag) = tags
+                                    .get(key)
+                                    .and_then(Value::as_str)
+                                    .filter(|tag| tag.len() <= 80)
+                                {
+                                    allowed.insert(key.to_string(), Value::String(tag.to_string()));
+                                }
+                            }
+                            Value::Object(allowed)
+                        })
+                        .unwrap_or_else(|| json!({}));
+                    json!({
+                        "lessonId": value.get("lessonId").and_then(Value::as_str).unwrap_or(""),
+                        "targetId": value.get("targetId").and_then(Value::as_str).unwrap_or(""),
+                        "targetType": value.get("targetType").and_then(Value::as_str).unwrap_or(""),
+                        "tags": tags
+                    })
+                });
             let duration = record.latency_ms.unwrap_or(0);
+            let aggregate = json!({ "completedCount": u8::from(completed), "lesson": lesson });
+            let serialized =
+                serde_json::to_string(&aggregate).map_err(|error| error.to_string())?;
             connection.execute(
                     "INSERT INTO analytics_aggregates(schema_version,day,collection_type,layout,language,metric_type,from_code,sample_count,correction_count,latency_sum_ms,payload_json)
-                     VALUES(1,?1,'exercise',?2,?3,'target',?4,1,?5,?6,json_object('completedCount',?7))
+                     VALUES(1,?1,'exercise',?2,?3,'target',?4,1,?5,?6,?7)
                      ON CONFLICT DO UPDATE SET sample_count=sample_count+1, correction_count=correction_count+excluded.correction_count,
                        latency_sum_ms=latency_sum_ms+excluded.latency_sum_ms,
-                       payload_json=json_object('completedCount',COALESCE(json_extract(payload_json,'$.completedCount'),0)+?7)",
-                    params![record.day, layout, language, target, mistakes, duration, u8::from(completed)],
+                       payload_json=json_object('completedCount',COALESCE(json_extract(payload_json,'$.completedCount'),0)+json_extract(excluded.payload_json,'$.completedCount'),
+                         'lesson', json_extract(excluded.payload_json,'$.lesson'))",
+                    params![record.day, layout, language, target, mistakes, duration, serialized],
                 ).map_err(|error| error.to_string())?;
         }
         _ => return Err("unsupported analytics record type".into()),
