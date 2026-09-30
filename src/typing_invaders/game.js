@@ -4,6 +4,7 @@ import { createTypingInvadersView } from "./view.js";
 import { initializeSecondaryWindow, SECONDARY_WINDOWS } from "../secondary_window_ready.js";
 import { createExerciseAnalytics } from "./exercise_analytics.js";
 import { createLessonCatalog, createLessonTargetProvider, createWeakSpotLesson } from "../typing_lessons.js";
+import { createPracticeQueue, createPracticeQueueProvider } from "../practice_queue.js";
 import { buildAnalyticsReport } from "../typing_analytics.js";
 import { loadLayoutDefinition } from "../layout_catalog.js";
 
@@ -29,6 +30,8 @@ window.addEventListener("DOMContentLoaded", async () => {
       const diagnostics = document.getElementById("lessonDiagnostics");
       const weakSpotReading = document.getElementById("weakSpotReading");
       const weakSpotReadingLabel = document.getElementById("weakSpotReadingLabel");
+      const queueList = document.getElementById("practiceQueue");
+      const queueCount = document.getElementById("practiceQueueCount");
       const layoutKey = config?.defaultLayout;
       const layoutSource = config?.layouts?.[layoutKey];
       const loadedLayout = layoutKey ? await loadLayoutDefinition(layoutKey, layoutSource, {
@@ -39,11 +42,64 @@ window.addEventListener("DOMContentLoaded", async () => {
         layoutDefinition: loadedLayout.definition,
       });
       let weakPairs = [];
-      const applySelectedLesson = () => {
+      let queueItems = [];
+      const refreshQueueProvider = () => game.setTargetProvider(queueItems.length ? createPracticeQueueProvider(queueItems) : null);
+      const renderQueue = () => {
+        queueList.replaceChildren();
+        queueItems.forEach((item, index) => {
+          const entry = document.createElement("li");
+          entry.title = item.reasons.join("; ");
+          const word = document.createElement("span");
+          word.textContent = item.word;
+          const reason = document.createElement("small");
+          reason.textContent = item.reasons.join(" · ");
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.textContent = "×";
+          remove.setAttribute("aria-label", `Remove ${item.word}`);
+          remove.addEventListener("click", () => {
+            queueItems.splice(index, 1);
+            renderQueue();
+            refreshQueueProvider();
+          });
+          const move = (delta) => {
+            const next = index + delta;
+            if (next < 0 || next >= queueItems.length) return;
+            [queueItems[index], queueItems[next]] = [queueItems[next], queueItems[index]];
+            renderQueue();
+            refreshQueueProvider();
+          };
+          const earlier = document.createElement("button");
+          earlier.type = "button"; earlier.textContent = "‹"; earlier.title = "Move earlier"; earlier.addEventListener("click", () => move(-1));
+          const later = document.createElement("button");
+          later.type = "button"; later.textContent = "›"; later.title = "Move later"; later.addEventListener("click", () => move(1));
+          entry.append(word, reason, earlier, later, remove);
+          queueList.appendChild(entry);
+        });
+        queueCount.textContent = queueItems.length ? `${queueItems.length} targets` : "Arcade words";
+      };
+      const applySelectedLesson = async () => {
         const lesson = catalog.lessons.find((entry) => entry.id === select.value) ?? null;
-        const provider = lesson ? createLessonTargetProvider(lesson) : null;
-        game.setTargetProvider(provider);
-        const issues = provider?.diagnostics ?? [];
+        if (!lesson) {
+          queueItems = [];
+          renderQueue();
+          game.setTargetProvider(null);
+          diagnostics.textContent = "";
+          return;
+        }
+        const selectedProvider = createLessonTargetProvider(lesson);
+        const selectedTargets = await selectedProvider.getTargets();
+        const sources = [{ reason: `Selected: ${lesson.name}`, targets: selectedTargets }];
+        const weak = catalog.lessons.find((entry) => entry.id === "personal-weak-spots");
+        if (weak && weak.id !== lesson.id) {
+          const weakProvider = createLessonTargetProvider(weak);
+          sources.push({ reason: "Personal weak spot", targets: await weakProvider.getTargets() });
+        }
+        const queue = createPracticeQueue({ sources, mode: "invaders" });
+        queueItems = queue.items;
+        renderQueue();
+        refreshQueueProvider();
+        const issues = [...(selectedProvider.diagnostics ?? []), ...queue.diagnostics];
         diagnostics.textContent = issues.length ? `${issues.length} lesson target${issues.length === 1 ? " is" : "s are"} unavailable in Invaders.` : "";
       };
       const addLessonOption = (lesson) => {
@@ -73,10 +129,10 @@ window.addEventListener("DOMContentLoaded", async () => {
         if (index >= 0) catalog.lessons[index] = weak.lesson;
         else catalog.lessons.push(weak.lesson);
         addLessonOption(weak.lesson);
-        if (select.value === weak.lesson.id) applySelectedLesson();
+        if (select.value === weak.lesson.id) void applySelectedLesson();
         else diagnostics.textContent = "";
       });
-      select.addEventListener("change", applySelectedLesson);
+      select.addEventListener("change", () => void applySelectedLesson());
       controller.mount();
       tauri?.event?.listen?.("app-settings-saved", async () => {
         const latest = await tauri.core.invoke("read_config_state");

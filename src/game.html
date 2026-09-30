@@ -19,6 +19,10 @@
       <label id="weakSpotReadingLabel" class="lesson-picker" hidden>Weak-spot reading
         <select id="weakSpotReading"><option value="">Choose reading…</option><option value="en">US QWERTY</option><option value="ru">Russian ЙЦУКЕН</option></select>
       </label>
+      <section class="practice-queue" aria-labelledby="practiceQueueTitle">
+        <div class="practice-queue-heading"><span id="practiceQueueTitle">Practice queue</span><span id="practiceQueueCount">Arcade words</span></div>
+        <ol id="practiceQueue" aria-live="polite"></ol>
+      </section>
       <dl class="game-hud" aria-label="Current mission status">
         <div><dt>Score</dt><dd id="scoreValue">000000</dd></div>
         <div><dt>Wave</dt><dd id="waveValue">01</dd></div>
