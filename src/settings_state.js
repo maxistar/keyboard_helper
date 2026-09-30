@@ -70,7 +70,7 @@ export function createSettingsState(readResult) {
   }
 
   function setAnalyticsEnabled(kind, enabled) {
-    if (!["exercise", "background"].includes(kind)) return snapshot();
+    if (!["exercise", "background", "aiCoaching"].includes(kind)) return snapshot();
     return setDraft({
       ...draft,
       typingAnalytics: { ...draft.typingAnalytics, [kind]: enabled === true },

@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+mod ai_coaching;
 mod ble_keyboard_events;
 mod ble_layer_sync;
 mod config_store;
@@ -1637,6 +1638,13 @@ fn install_macos_application_menu(app: &mut tauri::App) -> tauri::Result<()> {
 }
 
 fn main() {
+    if std::env::args().any(|argument| argument == "mcp") {
+        if let Err(error) = ai_coaching::run_mcp_stdio() {
+            eprintln!("Keyboard Helper MCP server failed: {error}");
+            std::process::exit(1);
+        }
+        return;
+    }
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -1720,6 +1728,10 @@ fn main() {
             typing_analytics::read_typing_analytics,
             typing_analytics::delete_typing_analytics,
             typing_analytics::typing_analytics_storage_info,
+            ai_coaching::approve_ai_coaching_report,
+            ai_coaching::revoke_ai_coaching_report,
+            ai_coaching::read_ai_coaching_status,
+            ai_coaching::read_ai_coaching_recommendations,
             quality_smoke_requested,
             run_secondary_window_smoke,
             read_config_state,

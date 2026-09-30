@@ -39,7 +39,9 @@ const elements = {
   save: document.getElementById("saveButton"),
   exerciseAnalytics: document.getElementById("exerciseAnalytics"),
   backgroundAnalytics: document.getElementById("backgroundAnalytics"),
+  aiCoaching: document.getElementById("aiCoaching"),
   openInsights: document.getElementById("openInsightsButton"),
+  revokeAi: document.getElementById("revokeAiButton"),
   deleteAnalytics: document.getElementById("deleteAnalyticsButton"),
   analyticsStatus: document.getElementById("analyticsStatus"),
   addLesson: document.getElementById("addLessonButton"),
@@ -212,10 +214,13 @@ function render() {
   elements.hotkeyWarning.textContent = snapshot.validation.warnings.toggleHotkey ?? "";
   elements.exerciseAnalytics.checked = snapshot.draft.typingAnalytics?.exercise === true;
   elements.backgroundAnalytics.checked = snapshot.draft.typingAnalytics?.background === true;
+  elements.aiCoaching.checked = snapshot.draft.typingAnalytics?.aiCoaching === true;
   elements.exerciseAnalytics.disabled = loading || saving;
   elements.backgroundAnalytics.disabled = loading || saving;
+  elements.aiCoaching.disabled = loading || saving;
   elements.openInsights.disabled = !tauri?.core?.invoke;
   elements.deleteAnalytics.disabled = loading || saving || !tauri?.core?.invoke;
+  elements.revokeAi.disabled = loading || saving || !tauri?.core?.invoke;
   elements.addLesson.disabled = loading || saving || !tauri?.dialog?.open;
   elements.recovery.hidden = snapshot.status !== "invalid";
   if (snapshot.status === "invalid") {
@@ -391,6 +396,10 @@ elements.backgroundAnalytics.addEventListener("change", () => {
   state.setAnalyticsEnabled("background", elements.backgroundAnalytics.checked);
   render();
 });
+elements.aiCoaching.addEventListener("change", () => {
+  state.setAnalyticsEnabled("aiCoaching", elements.aiCoaching.checked);
+  render();
+});
 elements.openInsights.addEventListener("click", async () => {
   try {
     await tauri.core.invoke("open_typing_insights");
@@ -409,6 +418,14 @@ elements.deleteAnalytics.addEventListener("click", async () => {
     elements.analyticsStatus.textContent = "All local typing statistics were deleted.";
   } catch (error) {
     elements.analyticsStatus.textContent = displayError(error, "Could not delete local analytics.");
+  }
+});
+elements.revokeAi.addEventListener("click", async () => {
+  try {
+    await tauri.core.invoke("revoke_ai_coaching_report");
+    elements.analyticsStatus.textContent = "The approved AI Coaching report was revoked.";
+  } catch (error) {
+    elements.analyticsStatus.textContent = displayError(error, "Could not revoke the AI Coaching report.");
   }
 });
 elements.replaceInvalid.addEventListener("click", () => {

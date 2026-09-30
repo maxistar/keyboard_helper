@@ -30,8 +30,10 @@ function setOptions(document, select, options, selected) {
  *   elements: Record<string, any>,
  *   readRows: (from: string, to: string) => Promise<any[]>,
  *   readSettings?: () => Promise<{ exercise: boolean, background: boolean }>,
+ *   readRecommendations?: () => Promise<any[]>,
  *   catalog?: { definitions: Record<string, any>, defaultLayout?: string | null },
  *   openSettings?: () => void,
+ *   prepareAiCoaching?: (report: any) => void,
  *   today?: Date,
  * }} options
  */
@@ -40,13 +42,16 @@ export function createInsightsController({
   elements,
   readRows,
   readSettings = async () => ({ exercise: false, background: false }),
+  readRecommendations = async () => [],
   catalog = { definitions: {}, defaultLayout: null },
   openSettings,
+  prepareAiCoaching,
   today = new Date(),
 }) {
   const range = defaultRange(today);
   let rows = [];
   let settings = { exercise: false, background: false };
+  let recommendations = [];
   let loadedRange = null;
   elements.from.value = range.from;
   elements.to.value = range.to;
@@ -79,7 +84,19 @@ export function createInsightsController({
   function render() {
     const current = filters();
     const insights = buildInsights({ rows, settings, filters: current, layoutDefinition: layoutDefinition(current.layout), dictionaries: DICTIONARIES });
-    renderInsights(document, elements.content, insights, { layoutDefinition: layoutDefinition(current.layout), onOpenSettings: openSettings });
+    renderInsights(document, elements.content, insights, { layoutDefinition: layoutDefinition(current.layout), onOpenSettings: openSettings, recommendations });
+    if (elements.prepareAi) {
+      const coachingEnabled = settings.aiCoaching === true;
+      elements.prepareAi.disabled = insights.empty || !prepareAiCoaching;
+      elements.prepareAi.textContent = coachingEnabled ? "Prepare AI Coaching report" : "Enable AI Coaching in Settings";
+      elements.prepareAi.onclick = () => {
+        if (!coachingEnabled) {
+          openSettings?.();
+          return;
+        }
+        prepareAiCoaching?.(insights.report);
+      };
+    }
     elements.status.textContent = insights.empty
       ? "No statistics in this period."
       : `${rows.length} daily aggregates from ${current.from ?? "the start"} to ${current.to ?? "today"}.`;
@@ -90,7 +107,7 @@ export function createInsightsController({
     const current = filters();
     elements.status.textContent = "Loading statistics…";
     try {
-      [rows, settings] = await Promise.all([readRows(current.from, current.to), readSettings()]);
+      [rows, settings, recommendations] = await Promise.all([readRows(current.from, current.to), readSettings(), readRecommendations()]);
       loadedRange = `${current.from}|${current.to}`;
       refreshFilterOptions();
       return render();

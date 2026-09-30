@@ -42,7 +42,7 @@ export function createDefaultConfig() {
     defaultLayout: "qwerty",
     toggleHotkey: null,
     layouts: Object.fromEntries(Object.keys(BUILTIN_LAYOUTS).map((key) => [key, true])),
-    typingAnalytics: { exercise: false, background: false },
+    typingAnalytics: { exercise: false, background: false, aiCoaching: false },
     typingLessons: [],
   };
 }
@@ -117,6 +117,7 @@ export function normalizeConfig(value) {
     typingAnalytics: {
       exercise: value.typingAnalytics?.exercise === true,
       background: value.typingAnalytics?.background === true,
+      aiCoaching: value.typingAnalytics?.aiCoaching === true,
     },
     typingLessons,
   };
@@ -137,6 +138,7 @@ export function serializeConfig(original, draft) {
     typingAnalytics: {
       exercise: draft.typingAnalytics?.exercise === true,
       background: draft.typingAnalytics?.background === true,
+      aiCoaching: draft.typingAnalytics?.aiCoaching === true,
     },
   };
   if (typingLessons.length || Object.hasOwn(base, "typingLessons")) serialized.typingLessons = typingLessons;

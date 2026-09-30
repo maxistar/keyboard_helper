@@ -8,6 +8,7 @@ import {
 import { normalizeHidDescriptor } from "../hid_descriptor.js";
 import { normalizeKeyEntry, normalizeLayerData } from "../layout_semantics.js";
 import { pairReadings, practiceWords } from "./readings.js";
+import { createAiCoachingReport } from "../ai_coaching.js";
 
 export const SIGNAL_LABELS = Object.freeze({
   slow: "Slow transition",
@@ -227,6 +228,9 @@ export function buildInsights({ rows = [], settings = {}, filters = {}, layoutDe
   const correctionTotal = period.pairs.reduce((sum, row) => sum + (row.correctionCount ?? 0), 0);
   return {
     empty: rows.length === 0,
+    // The same aggregate report backs both the visible dashboard and the AI coaching preview.
+    // It contains no raw text or key history.
+    report: createAiCoachingReport(period.report),
     summary: {
       exerciseWpm: exercise.wpm,
       exerciseAccuracy: exercise.accuracy,

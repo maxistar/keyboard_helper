@@ -67,8 +67,11 @@
         <p>Statistics stay on this device. Background analytics stores key-code aggregates, never typed text or application names.</p>
         <label class="analytics-option"><input id="exerciseAnalytics" type="checkbox" disabled> Collect focused exercise statistics</label>
         <label class="analytics-option"><input id="backgroundAnalytics" type="checkbox" disabled> Collect background timing and possible-correction statistics</label>
+        <label class="analytics-option"><input id="aiCoaching" type="checkbox" disabled> Allow AI Coaching reports (always requires report approval)</label>
+        <p class="field-help">AI Coaching exports only approved aggregate reports. It never exports raw text or raw key logs.</p>
         <div class="hotkey-row">
           <button id="openInsightsButton" class="button secondary" type="button" disabled>Open Typing Insights</button>
+          <button id="revokeAiButton" class="button ghost" type="button" disabled>Revoke AI report</button>
           <button id="deleteAnalyticsButton" class="button danger" type="button" disabled>Delete all statistics</button>
         </div>
         <p id="analyticsStatus" class="field-help" aria-live="polite"></p>

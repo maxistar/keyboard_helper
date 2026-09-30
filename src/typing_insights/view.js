@@ -183,13 +183,24 @@ function renderSuggestion(document, suggestion) {
   ]);
 }
 
+function renderAiRecommendations(document, recommendations = []) {
+  if (!recommendations.length) return el(document, "p", { className: "insights-empty-note", text: "No AI recommendations have been submitted." });
+  return el(document, "ul", { className: "insights-suggestions" }, recommendations.map((recommendation) => el(document, "li", {
+    className: `insights-suggestion ${recommendation.supported === false ? "unsupported" : "ai-recommendation"}`,
+  }, [
+    el(document, "h3", { text: recommendation.title ?? "AI Coaching recommendation" }),
+    el(document, "p", { text: recommendation.text ?? recommendation.reason ?? "No recommendation text provided." }),
+    el(document, "p", { className: "insights-signal", text: recommendation.supported === false ? "Not confirmed by exported evidence." : `Evidence: ${(recommendation.evidence ?? []).join(", ")}` }),
+  ])));
+}
+
 /**
  * Renders every insights view into the container.
  * @param {Document} document
  * @param {HTMLElement} container
  * @param {ReturnType<import("./model.js").buildInsights>} insights
  */
-export function renderInsights(document, container, insights, { layoutDefinition = null, onOpenSettings } = {}) {
+export function renderInsights(document, container, insights, { layoutDefinition = null, onOpenSettings, recommendations = [] } = {}) {
   container.replaceChildren();
   if (insights.empty) {
     container.appendChild(renderEmptyState(document, { onOpenSettings }));
@@ -225,6 +236,7 @@ export function renderInsights(document, container, insights, { layoutDefinition
       ? el(document, "ul", { className: "insights-suggestions" }, insights.suggestions.map((suggestion) => renderSuggestion(document, suggestion)))
       : el(document, "p", { className: "insights-empty-note", text: "No suggestions yet: they appear once a pair is slow or correction-prone with enough samples." }),
   ]));
+  container.appendChild(section(document, "aiRecommendations", "AI Coaching recommendations", [renderAiRecommendations(document, recommendations)]));
   container.appendChild(section(document, "limitations", "About this data", [
     el(document, "ul", {}, [
       hasUnknownLanguage

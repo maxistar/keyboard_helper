@@ -104,6 +104,22 @@ test("populated dashboard renders cards, labelled hotspots, suggestions with bot
   assert.doesNotMatch(text, /Unmapped keys/);
 });
 
+test("dashboard renders supported and unsupported AI recommendations separately", async () => {
+  const definition = await layout("qwerty");
+  const insights = buildInsights({ rows: populatedRows(), layoutDefinition: definition, dictionaries: { en: EN_WORDS, ru: RU_WORDS } });
+  const container = new NodeStub("div");
+  renderInsights(documentStub, container, insights, {
+    layoutDefinition: definition,
+    recommendations: [
+      { title: "Practice TH", text: "Repeat the transition", evidence: ["KeyT"], supported: true },
+      { title: "Change layer", text: "Use another layer", evidence: ["layer"], supported: false, reason: "Unavailable evidence" },
+    ],
+  });
+  assert.match(container.textContent, /AI Coaching recommendations/);
+  assert.match(container.textContent, /Practice TH/);
+  assert.match(container.textContent, /Not confirmed by exported evidence/);
+});
+
 test("suggestions narrow to one reading when the language is known and explain missing words", () => {
   const insights = buildInsights({
     rows: [pair("KeyG", "KeyH", { bucket: 7, count: 40, language: "xkb:layout:ru" }), pair("KeyA", "KeyS", { bucket: 2, count: 160, language: "xkb:layout:ru" }),
@@ -150,15 +166,17 @@ test("trend chart plots one point per day with exercise data", () => {
 
 test("controller loads the default range, rebuilds on filter changes, and reloads on range changes", async () => {
   const qwerty = await layout("qwerty");
-  const elements = Object.fromEntries(["from", "to", "layout", "language", "source", "minSamples", "refresh", "status", "content"]
+  const elements = Object.fromEntries(["from", "to", "layout", "language", "source", "minSamples", "refresh", "prepareAi", "status", "content"]
     .map((name) => [name, new NodeStub(name === "content" ? "div" : "select")]));
   elements.minSamples.value = "0";
   const reads = [];
+  let preparedReport = null;
   const controller = createInsightsController({
     document: documentStub,
     elements,
     readRows: async (from, to) => { reads.push([from, to]); return populatedRows(); },
-    readSettings: async () => ({ exercise: true, background: true }),
+    readSettings: async () => ({ exercise: true, background: true, aiCoaching: true }),
+    prepareAiCoaching: (report) => { preparedReport = report; },
     catalog: { definitions: { qwerty }, defaultLayout: "qwerty" },
     today: new Date(2026, 8, 28, 12),
   });
@@ -166,6 +184,9 @@ test("controller loads the default range, rebuilds on filter changes, and reload
   const initial = await controller.load();
   assert.deepEqual(reads, [["2026-08-30", "2026-09-28"]]);
   assert.equal(initial.slowPairs.length, 1);
+  elements.prepareAi.onclick();
+  assert.equal(typeof preparedReport, "object");
+  assert.ok(Array.isArray(preparedReport.rows));
   assert.deepEqual(elements.layout.children.map((option) => option.value), ["", "qwerty"]);
   assert.deepEqual(elements.language.children.map((option) => option.textContent), ["All languages", "Unknown language"]);
 
