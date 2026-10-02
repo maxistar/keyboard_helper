@@ -26,6 +26,7 @@ class ElementStub {
     this.children = [];
     this.dataset = {};
     this.disabled = false;
+    this.checked = false;
     this.hidden = false;
     this.listeners = new Map();
     this.style = new StyleStub();
@@ -63,14 +64,14 @@ function live(overrides = {}) {
 
 function harness() {
   const ids = [
-    "viewer-layout", "viewer-layers", "viewer-diagnostic",
-    "viewer-scroller", "viewer-gesture", "viewer-canvas", "viewer-keyboard", "viewer-empty", "viewer-mode-browse",
-    "viewer-mode-live", "viewer-stream-status", "viewer-combo-status",
+    "viewer-layout", "viewer-layer-field", "viewer-layer", "viewer-live-layer", "viewer-live-layer-name", "viewer-diagnostic",
+    "viewer-scroller", "viewer-gesture", "viewer-canvas", "viewer-keyboard", "viewer-empty",
+    "viewer-live-switch", "viewer-stream-status", "viewer-combo-status",
     "viewer-telemetry-guidance",
     "viewer-import-layout", "viewer-remove-controls", "viewer-remove-target",
     "viewer-remove-layout", "viewer-layout-status",
   ];
-  const elements = new Map(ids.map((id) => [id, new ElementStub(id.includes("mode-") ? "button" : "div")]));
+  const elements = new Map(ids.map((id) => [id, new ElementStub(id === "viewer-layer" || id === "viewer-layout" || id === "viewer-remove-target" ? "select" : "div")]));
   const document = {
     activeElement: null,
     createElement: (tagName) => new ElementStub(tagName),
@@ -105,27 +106,50 @@ function harness() {
   };
 }
 
-test("Browse and Live controls expose stream state and preserve manual navigation", () => {
+test("Live switch exposes stream state, swaps the layer selector for a read-only indicator, and preserves manual navigation", () => {
   const subject = harness();
-  const browseButton = subject.elements.get("viewer-mode-browse");
-  const liveButton = subject.elements.get("viewer-mode-live");
-  assert.equal(browseButton.attributes.get("aria-pressed"), "true");
-  assert.equal(liveButton.disabled, true);
+  const liveSwitch = subject.elements.get("viewer-live-switch");
+  const layerField = subject.elements.get("viewer-layer-field");
+  const liveLayer = subject.elements.get("viewer-live-layer");
+  assert.equal(liveSwitch.checked, false);
+  assert.equal(liveSwitch.disabled, true, "unavailable Live stays visible but is not operable");
+  assert.equal(layerField.hidden, false);
+  assert.equal(liveLayer.hidden, true);
 
   subject.telemetry.publish(live());
-  assert.equal(liveButton.disabled, false);
-  assert.equal(liveButton.attributes.get("aria-pressed"), "true");
+  assert.equal(liveSwitch.disabled, false);
+  assert.equal(liveSwitch.checked, true);
   assert.match(subject.elements.get("viewer-stream-status").textContent, /Live telemetry active/);
-  assert.equal(subject.elements.get("viewer-layers").children[1].attributes.get("aria-pressed"), "true");
+  assert.equal(layerField.hidden, true);
+  assert.equal(liveLayer.hidden, false);
+  assert.equal(subject.elements.get("viewer-live-layer-name").textContent, subject.presentation.snapshot().presentation.layerName);
+  assert.equal(subject.elements.get("viewer-layer").value, "1");
 
-  browseButton.dispatch("click");
+  liveSwitch.checked = false;
+  liveSwitch.dispatch("change");
   assert.equal(subject.presentation.snapshot().mode, LayoutPresentationMode.BROWSE);
+  assert.equal(layerField.hidden, false);
+  assert.equal(liveLayer.hidden, true);
   subject.browse.selectLayer(2);
+  assert.equal(subject.elements.get("viewer-layer").value, "2", "selector returns showing the retained Browse layer");
   subject.telemetry.publish(live({ activeLayer: 2, pressedPositions: [7] }));
   assert.equal(subject.presentation.snapshot().mode, LayoutPresentationMode.BROWSE);
-  liveButton.dispatch("click");
+  liveSwitch.checked = true;
+  liveSwitch.dispatch("change");
   assert.equal(subject.presentation.snapshot().selectedLayerIndex, 2);
   assert.deepEqual(subject.presentation.snapshot().pressedPositions, [7]);
+});
+
+test("Live switch binds to the resolved mode even when Live was requested but is unavailable", () => {
+  const subject = harness();
+  const liveSwitch = subject.elements.get("viewer-live-switch");
+  subject.telemetry.publish(live());
+  assert.equal(liveSwitch.checked, true);
+  subject.telemetry.publish(createTelemetrySnapshot(2, TelemetryStatus.STALE));
+  assert.equal(subject.presentation.snapshot().requestedMode, LayoutPresentationMode.LIVE);
+  assert.equal(liveSwitch.checked, false);
+  assert.equal(liveSwitch.disabled, true);
+  assert.equal(subject.elements.get("viewer-layer-field").hidden, false);
 });
 
 test("high-rate key and combo updates retain DOM identity, focus, geometry, and bounded children", () => {
@@ -133,7 +157,7 @@ test("high-rate key and combo updates retain DOM identity, focus, geometry, and 
   subject.telemetry.publish(live());
   const keyboard = subject.elements.get("viewer-keyboard");
   const retainedKeys = [...keyboard.children];
-  const retainedFocus = subject.elements.get("viewer-mode-live");
+  const retainedFocus = subject.elements.get("viewer-live-switch");
   subject.document.activeElement = retainedFocus;
 
   for (let sequence = 0; sequence < 120; sequence += 1) {
@@ -227,7 +251,8 @@ test("Live UI source preserves accessibility, responsive containment, privacy, a
     readFile(path.join(projectRoot, "src-mobile/telemetry_session.js"), "utf8"),
     readFile(path.join(projectRoot, "src-mobile/app.js"), "utf8"),
   ]);
-  assert.match(html, /aria-label="Layout presentation mode"/);
+  assert.match(html, /<input id="viewer-live-switch" type="checkbox" role="switch"[\s\S]*>Live</);
+  assert.doesNotMatch(html, /id="viewer-mode-browse"|id="viewer-mode-live"|aria-label="Layout presentation mode"/);
   assert.match(html, /viewer-stream-status[\s\S]*aria-live="polite"/);
   assert.doesNotMatch(html, /id="viewer-current-layer"|id="viewer-summary"|keyboard-stage-heading/);
   assert.match(css, /min-height:\s*44px/);

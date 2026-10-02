@@ -34,7 +34,12 @@ test("mobile surface composes a viewport-first keyboard workspace", async () => 
   const appBar = html.match(/<header class="workspace-app-bar">([\s\S]*?)<\/header>/)?.[1] ?? "";
   assert.doesNotMatch(appBar, /keyboard-mark|<h1>|>Companion</);
   assert.match(appBar, /workspace-connection-state/);
-  assert.match(html, /class="viewer-control-bar"/);
+  assert.match(appBar, /id="viewer-layout"/);
+  assert.match(appBar, /id="viewer-layer"/);
+  assert.match(appBar, /id="viewer-live-switch"/);
+  assert.match(appBar, /id="workspace-settings-open"/);
+  assert.doesNotMatch(html, /class="viewer-control-bar"/, "application and viewer controls share one row");
+  assert.match(html, /id="workspace-connection-notice"[^>]*aria-hidden="true"/);
   assert.match(html, /class="keyboard-stage"/);
   assert.match(html, /id="workspace-settings"/);
   assert.equal((html.match(/id="workspace-settings"/g) ?? []).length, 1);

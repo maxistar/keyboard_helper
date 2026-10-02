@@ -28,6 +28,10 @@ Pair the keyboard first in Android **Settings > Connected devices > Pair new dev
 companion, choose **Connect**, select the bonded keyboard, and wait for **Connection: connected**.
 If Android asks to pair during connection, accept the system prompt.
 
+The top row holds the **Layout** and **Layer** selectors, a **Live** switch, and the settings button,
+whose small indicator shows connection state. A brief notice appears over the keyboard when it connects
+or disconnects, and full connection details live in Settings.
+
 **Browse** always lets you inspect bundled and locally imported keyboard layouts. Use **Import
 layout** to select a text-based Keyboard Helper JSON document; accepted content is copied to private
 application storage and the source location is not retained. A stock ZMK keyboard adds

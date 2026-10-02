@@ -38,6 +38,7 @@ class ElementStub {
     this.children = [];
     this.dataset = {};
     this.disabled = false;
+    this.checked = false;
     this.hidden = false;
     this.listeners = new Map();
     this.style = new StyleStub();
@@ -63,14 +64,15 @@ class ElementStub {
 
 function viewHarness(model = new MobileLayoutViewerModel(), { portrait = false } = {}) {
   const ids = [
-    "viewer-layout", "viewer-layers", "viewer-diagnostic",
+    "viewer-layout", "viewer-layer-field", "viewer-layer", "viewer-live-layer", "viewer-live-layer-name",
+    "viewer-diagnostic",
     "viewer-scroller", "viewer-gesture", "viewer-canvas", "viewer-keyboard", "viewer-empty",
-    "viewer-mode-browse", "viewer-mode-live", "viewer-stream-status",
+    "viewer-live-switch", "viewer-stream-status",
     "viewer-combo-status", "viewer-telemetry-guidance",
     "viewer-import-layout", "viewer-remove-controls", "viewer-remove-target",
     "viewer-remove-layout", "viewer-layout-status",
   ];
-  const elements = new Map(ids.map((id) => [id, new ElementStub(id.includes("layout") || id.includes("target") ? "select" : "div")]));
+  const elements = new Map(ids.map((id) => [id, new ElementStub(id === "viewer-layout" || id === "viewer-layer" || id.includes("target") ? "select" : "div")]));
   const document = {
     createElement: (tagName) => new ElementStub(tagName),
     getElementById: (id) => elements.get(id) ?? null,
@@ -185,20 +187,22 @@ test("every bundled layer matches shared effective-entry and ordering semantics"
   assert.equal(sawTransparentFallback, true);
 });
 
-test("view preserves layer control focus objects while legends update atomically", () => {
+test("view preserves the layer selector element while legends update atomically", () => {
   const harness = viewHarness();
   assert.equal(harness.elements.get("viewer-layout").children.length, MOBILE_BUNDLED_LAYOUT_ORDER.length);
   const initialKeys = harness.elements.get("viewer-keyboard").children.length;
   assert.ok(initialKeys > 0);
 
   harness.model.selectLayout("corne");
-  const layers = harness.elements.get("viewer-layers").children;
-  const retainedButton = layers[2];
-  retainedButton.dispatch("click");
+  const selector = harness.elements.get("viewer-layer");
+  const retainedOption = selector.children[2];
+  selector.value = "2";
+  selector.dispatch("change");
   assert.equal(harness.model.snapshot().selectedLayerIndex, 2);
-  assert.equal(harness.elements.get("viewer-layers").children[2], retainedButton);
-  assert.equal(retainedButton.attributes.get("aria-pressed"), "true");
-  assert.equal(retainedButton.textContent, harness.model.snapshot().presentation.layerName);
+  assert.equal(selector.children[2], retainedOption);
+  assert.equal(selector.value, "2");
+  assert.equal(retainedOption.textContent, harness.model.snapshot().presentation.layerName);
+  assert.deepEqual(selector.children.map(({ value }) => value), harness.model.snapshot().presentation.layers.map(({ index }) => String(index)));
 });
 
 test("view redraws every layer when a custom catalog replaces the bundled catalog", () => {
@@ -219,13 +223,14 @@ test("view redraws every layer when a custom catalog replaces the bundled catalo
 
   harness.model.replaceCatalog(catalog, "custom:11111111-1111-4111-8111-111111111111");
 
-  const layers = harness.elements.get("viewer-layers");
-  assert.equal(layers.hidden, false);
+  const layers = harness.elements.get("viewer-layer");
+  assert.equal(harness.elements.get("viewer-layer-field").hidden, false);
   assert.deepEqual(layers.children.map(({ textContent }) => textContent), ["Default", "Function", "Navigation"]);
-  layers.children[1].dispatch("click");
+  layers.value = "1";
+  layers.dispatch("change");
   assert.equal(harness.model.snapshot().selectedLayerIndex, 1);
   assert.equal(layers.children.length, 3);
-  assert.equal(layers.children[1].attributes.get("aria-pressed"), "true");
+  assert.equal(layers.value, "1");
 });
 
 test("view reports empty catalogs without throwing or rendering geometry", () => {
@@ -306,10 +311,13 @@ test("viewer markup, styles, and modules enforce responsive accessible isolation
     readFile(path.join(projectRoot, "src-mobile/layout_viewer.js"), "utf8"),
   ]);
   assert.match(html, /data-viewer="mobile-layout-viewer"/);
-  assert.match(html, /aria-label="Keyboard layers"/);
-  assert.match(html, /aria-label="Layout presentation mode"/);
-  assert.match(html, /id="viewer-mode-browse"[\s\S]*>Browse</);
-  assert.match(html, /id="viewer-mode-live"[\s\S]*>Live</);
+  assert.match(html, /<select id="viewer-layer" aria-label="Keyboard layer">/);
+  assert.match(html, /<label class="viewer-field-label" for="viewer-layer">Layer<\/label>/);
+  assert.match(html, /id="viewer-live-layer"[^>]*role="status"/);
+  assert.match(html, /<input id="viewer-live-switch" type="checkbox" role="switch"/);
+  assert.match(html, /<span class="viewer-live-label">Live<\/span>/);
+  assert.doesNotMatch(html, /id="viewer-layers"|id="viewer-mode-browse"|id="viewer-mode-live"|aria-label="Keyboard layers"/);
+  assert.doesNotMatch(css, /\.viewer-layer\b|\.viewer-layers|\.viewer-mode-controls|\.viewer-control-bar/);
   assert.match(html, /aria-label="Fitted physical keyboard layout"/);
   assert.doesNotMatch(html, /id="viewer-current-layer"|id="viewer-summary"|keyboard-stage-heading/);
   assert.match(html, /id="viewer-canvas" class="viewer-canvas" data-orientation="landscape"/);

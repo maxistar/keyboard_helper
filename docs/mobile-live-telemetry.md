@@ -12,6 +12,12 @@ presentation derived from the current BLE lifecycle generation. It becomes autho
 the phone receives its own valid `STREAM_START | SNAPSHOT` layer frame. Leaving Live or losing the
 generation reveals the unchanged Browse selection and clears all held key and combo highlights.
 
+The viewer exposes this as a **Live** switch: on while Live is the resolved presentation, off in
+Browse, and unavailable while Live cannot be followed. Live starts automatically when telemetry
+becomes available and the switch pauses it; the switch never reflects a requested Live that is not
+currently available. While Live is on, the Layer selector is replaced by a read-only active-layer
+indicator.
+
 Firmware layer events own the persistent Live layer. Key and combo layer bytes are context only.
 Physical positions and combo IDs are mapped through the manually selected bundled or validated
 custom layout; an absent

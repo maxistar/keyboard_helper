@@ -11,34 +11,40 @@
     <main id="mobile-workspace" class="shell" data-workspace="mobile-keyboard-workspace" data-settings-open="false" data-settings-presentation="sheet">
       <div id="workspace-content" class="workspace-content">
         <header class="workspace-app-bar">
-          <div class="workspace-connection-compact" role="status" aria-live="polite">
-            <span class="workspace-connection-dot" aria-hidden="true"></span>
-            <span class="workspace-connection-copy">
-              <strong id="workspace-connection-state">Getting ready</strong><span>, <span id="workspace-connection-device">No keyboard</span> · <span id="workspace-connection-battery">—</span></span>
-            </span>
+          <div class="viewer-controls" data-viewer="mobile-layout-viewer" role="group" aria-labelledby="viewer-title">
+            <h2 id="viewer-title" class="visually-hidden">Explore your keyboard</h2>
+            <div class="viewer-field viewer-field-select">
+              <label class="viewer-field-label" for="viewer-layout">Layout</label>
+              <select id="viewer-layout" aria-label="Keyboard layout"></select>
+            </div>
+            <div id="viewer-layer-field" class="viewer-field viewer-field-select">
+              <label class="viewer-field-label" for="viewer-layer">Layer</label>
+              <select id="viewer-layer" aria-label="Keyboard layer"></select>
+            </div>
+            <div id="viewer-live-layer" class="viewer-field viewer-live-layer" role="status" aria-label="Active keyboard layer" hidden>
+              <span class="viewer-field-label" aria-hidden="true">Layer · live</span>
+              <strong id="viewer-live-layer-name" class="viewer-live-layer-name"></strong>
+            </div>
           </div>
-          <button id="workspace-settings-open" class="workspace-settings-open secondary" type="button" aria-label="Open settings" aria-controls="workspace-settings" aria-expanded="false">
+          <label class="viewer-live-switch">
+            <input id="viewer-live-switch" type="checkbox" role="switch" disabled />
+            <span class="viewer-live-track" aria-hidden="true"></span>
+            <span class="viewer-live-label">Live</span>
+          </label>
+          <button id="workspace-settings-open" class="workspace-settings-open secondary" type="button" aria-label="Open settings" aria-controls="workspace-settings" aria-expanded="false" aria-describedby="workspace-connection-compact">
             <svg class="workspace-settings-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M19.43 12.98c.04-.32.07-.65.07-.98s-.02-.66-.07-.98l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.2 7.2 0 0 0-1.69-.98L14.5 2.42A.49.49 0 0 0 14 2h-4a.49.49 0 0 0-.49.42L9.13 5.07c-.61.25-1.18.58-1.69.98l-2.49-1a.49.49 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64l2.11 1.65c-.04.32-.08.65-.08.98s.03.66.08.98l-2.11 1.65a.5.5 0 0 0-.12.64l2 3.46c.12.21.37.3.61.22l2.49-1c.51.4 1.08.73 1.69.98l.38 2.65c.04.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.18-.58 1.69-.98l2.49 1c.23.08.49-.01.61-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.65ZM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5Z" />
             </svg>
+            <span class="workspace-status-indicator" aria-hidden="true"></span>
           </button>
+          <p id="viewer-stream-status" class="viewer-stream-status" role="status" aria-live="polite">Browse mode</p>
+          <div id="workspace-connection-compact" class="workspace-connection-compact visually-hidden" role="status" aria-live="polite">
+            <strong id="workspace-connection-state">Getting ready</strong><span>, <span id="workspace-connection-device">No keyboard</span> · <span id="workspace-connection-battery">—</span></span>
+          </div>
         </header>
 
-        <section class="viewer-control-bar" data-viewer="mobile-layout-viewer" aria-labelledby="viewer-title">
-          <h2 id="viewer-title" class="visually-hidden">Explore your keyboard</h2>
-          <div class="viewer-mode-controls" role="group" aria-label="Layout presentation mode">
-            <button id="viewer-mode-browse" type="button" aria-pressed="true">Browse</button>
-            <button id="viewer-mode-live" type="button" aria-pressed="false" disabled>Live</button>
-          </div>
-          <div class="viewer-controls">
-            <label class="visually-hidden" for="viewer-layout">Keyboard layout</label>
-            <select id="viewer-layout" aria-label="Keyboard layout"></select>
-          </div>
-          <p id="viewer-stream-status" class="viewer-stream-status" role="status" aria-live="polite">Browse mode</p>
-          <div id="viewer-layers" class="viewer-layers" role="group" aria-label="Keyboard layers"></div>
-        </section>
-
         <section class="keyboard-stage">
+          <div id="workspace-connection-notice" class="connection-notice" aria-hidden="true" hidden></div>
           <p id="viewer-empty" class="viewer-empty" role="status" hidden>No bundled keyboard layout is available.</p>
           <div id="viewer-scroller" class="viewer-scroller" role="region" aria-label="Fitted physical keyboard layout">
             <div id="viewer-gesture" class="viewer-gesture">

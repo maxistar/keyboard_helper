@@ -127,15 +127,17 @@ export function createMobileLayoutViewerView(
 ) {
   const elements = {
     layout: required(document, "viewer-layout"),
-    layers: required(document, "viewer-layers"),
+    layerField: required(document, "viewer-layer-field"),
+    layer: required(document, "viewer-layer"),
+    liveLayer: required(document, "viewer-live-layer"),
+    liveLayerName: required(document, "viewer-live-layer-name"),
     diagnostic: required(document, "viewer-diagnostic"),
     scroller: required(document, "viewer-scroller"),
     gesture: required(document, "viewer-gesture"),
     canvas: required(document, "viewer-canvas"),
     keyboard: required(document, "viewer-keyboard"),
     empty: required(document, "viewer-empty"),
-    browseMode: required(document, "viewer-mode-browse"),
-    liveMode: required(document, "viewer-mode-live"),
+    liveSwitch: required(document, "viewer-live-switch"),
     streamStatus: required(document, "viewer-stream-status"),
     comboStatus: required(document, "viewer-combo-status"),
     guidance: required(document, "viewer-telemetry-guidance"),
@@ -151,7 +153,6 @@ export function createMobileLayoutViewerView(
   let renderedLayout = null;
   let renderedKeyboard = null;
   let keyElements = [];
-  let layerButtons = [];
   let lastStreamTitle = null;
   let currentPresentation = null;
   let currentFit = null;
@@ -387,17 +388,12 @@ export function createMobileLayoutViewerView(
     const signature = `${browse.selectedLayoutKey}:${browse.presentation?.layers.map(({ name }) => name).join("|") ?? ""}`;
     if (renderedLayout === signature) return;
     renderedLayout = signature;
-    layerButtons = [];
-    elements.layers.replaceChildren();
+    elements.layer.replaceChildren();
     for (const layer of browse.presentation?.layers ?? []) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "viewer-layer";
-      button.dataset.layerIndex = String(layer.index);
-      button.textContent = layer.name;
-      button.addEventListener("click", () => model.selectLayer(layer.index));
-      layerButtons.push(button);
-      elements.layers.append(button);
+      const option = document.createElement("option");
+      option.value = String(layer.index);
+      option.textContent = layer.name;
+      elements.layer.append(option);
     }
   }
 
@@ -424,10 +420,11 @@ export function createMobileLayoutViewerView(
     elements.importLayout.disabled = !layoutController?.available;
     elements.empty.hidden = Boolean(ready);
     elements.scroller.hidden = !ready;
-    elements.layers.hidden = !ready;
-    elements.browseMode.setAttribute("aria-pressed", String(resolved.mode === LayoutPresentationMode.BROWSE));
-    elements.liveMode.setAttribute("aria-pressed", String(resolved.mode === LayoutPresentationMode.LIVE));
-    elements.liveMode.disabled = !resolved.liveAvailable;
+    const liveMode = resolved.mode === LayoutPresentationMode.LIVE;
+    elements.layerField.hidden = !ready || liveMode;
+    elements.liveLayer.hidden = !ready || !liveMode;
+    elements.liveSwitch.checked = liveMode;
+    elements.liveSwitch.disabled = !resolved.liveAvailable;
     const [streamTitle, guidance] = streamCopy(resolved);
     if (lastStreamTitle !== streamTitle) {
       elements.streamStatus.textContent = streamTitle;
@@ -457,12 +454,8 @@ export function createMobileLayoutViewerView(
     }
 
     renderLayers(browse);
-    layerButtons.forEach((button, index) => {
-      const selected = index === resolved.selectedLayerIndex;
-      button.setAttribute("aria-pressed", String(selected));
-      button.dataset.selected = String(selected);
-      button.disabled = resolved.mode === LayoutPresentationMode.LIVE;
-    });
+    elements.layer.value = String(resolved.selectedLayerIndex);
+    elements.liveLayerName.textContent = resolved.presentation.layerName ?? "";
     currentPresentation = resolved.presentation;
     elements.keyboard.style.width = `${resolved.presentation.width}px`;
     elements.keyboard.style.height = `${resolved.presentation.height}px`;
@@ -522,13 +515,15 @@ export function createMobileLayoutViewerView(
       render();
     }
   };
-  const onBrowseMode = () => presentationController?.selectMode(LayoutPresentationMode.BROWSE);
-  const onLiveMode = () => presentationController?.selectMode(LayoutPresentationMode.LIVE);
+  const onLayerChange = () => model.selectLayer(Number(elements.layer.value));
+  const onLiveSwitch = () => presentationController?.selectMode(
+    elements.liveSwitch.checked ? LayoutPresentationMode.LIVE : LayoutPresentationMode.BROWSE,
+  );
   elements.layout.addEventListener("change", onLayoutChange);
   elements.importLayout.addEventListener("click", onImportLayout);
   elements.removeLayout.addEventListener("click", onRemoveLayout);
-  elements.browseMode.addEventListener("click", onBrowseMode);
-  elements.liveMode.addEventListener("click", onLiveMode);
+  elements.layer.addEventListener("change", onLayerChange);
+  elements.liveSwitch.addEventListener("change", onLiveSwitch);
   const unsubscribe = presentationController
     ? presentationController.subscribe(render)
     : model.subscribe((snapshot) => render(browsePresentation(snapshot)));
@@ -551,8 +546,8 @@ export function createMobileLayoutViewerView(
       elements.layout.removeEventListener?.("change", onLayoutChange);
       elements.importLayout.removeEventListener?.("click", onImportLayout);
       elements.removeLayout.removeEventListener?.("click", onRemoveLayout);
-      elements.browseMode.removeEventListener?.("click", onBrowseMode);
-      elements.liveMode.removeEventListener?.("click", onLiveMode);
+      elements.layer.removeEventListener?.("change", onLayerChange);
+      elements.liveSwitch.removeEventListener?.("change", onLiveSwitch);
     },
     reportLayoutStatus,
   };

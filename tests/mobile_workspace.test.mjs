@@ -48,13 +48,30 @@ class MediaStub {
   set(matches) { this.matches = matches; for (const listener of this.listeners) listener(this); }
 }
 
-function harness({ panel = false } = {}) {
+function fakeTimers() {
+  let now = 0;
+  let nextId = 1;
+  const queue = new Map();
+  return {
+    schedule(callback, ms) { const id = nextId++; queue.set(id, { callback, at: now + ms }); return id; },
+    cancel(id) { queue.delete(id); },
+    advance(ms) {
+      now += ms;
+      for (const [id, item] of [...queue].sort((a, b) => a[1].at - b[1].at)) {
+        if (item.at <= now && queue.delete(id)) item.callback();
+      }
+    },
+  };
+}
+
+function harness({ panel = false, timers = fakeTimers() } = {}) {
   const ids = [
     "mobile-workspace", "workspace-content", "workspace-settings-open", "workspace-settings",
     "workspace-settings-close", "workspace-settings-backdrop", "workspace-settings-title",
     "workspace-section-connection", "workspace-section-layout", "workspace-section-diagnostics",
     "workspace-panel-connection", "workspace-panel-layout", "workspace-panel-diagnostics",
     "workspace-connection-state", "workspace-connection-device", "workspace-connection-battery",
+    "workspace-connection-notice",
   ];
   const elements = new Map();
   const document = {
@@ -84,8 +101,10 @@ function harness({ panel = false } = {}) {
     removeEventListener(type, listener) { listeners.set(type, (listeners.get(type) ?? []).filter((item) => item !== listener)); },
     dispatch(type) { for (const listener of listeners.get(type) ?? []) listener({ type }); },
   };
-  const workspace = createMobileKeyboardWorkspace(document, { window });
-  return { document, elements, history, media, window, workspace };
+  const workspace = createMobileKeyboardWorkspace(document, {
+    window, schedule: timers.schedule, cancel: timers.cancel,
+  });
+  return { document, elements, history, media, timers, window, workspace };
 }
 
 test("settings uses one stateful subtree across sheet and panel presentations", () => {
@@ -160,6 +179,48 @@ test("actionable lifecycle transitions elevate connection once and passive evide
   assert.equal(subject.workspace.snapshot().open, true, "a new actionable transition is elevated");
 });
 
+test("connection indicator follows presentation severity without relying on color", () => {
+  const subject = harness();
+  const shell = subject.elements.get("mobile-workspace");
+  const states = [
+    [{ phase: "idle", title: "Ready to find a keyboard", severity: "neutral" }, "neutral"],
+    [{ phase: "scanning", title: "Looking for keyboards", severity: "progress" }, "progress"],
+    [{ phase: "ready", title: "Keyboard connected", severity: "success" }, "ready"],
+    [{ phase: "reconnecting", title: "Reconnecting", severity: "progress" }, "progress"],
+    [{ phase: "bluetooth-unavailable", title: "Bluetooth is off", severity: "attention" }, "attention"],
+    [{ phase: "failed", title: "Could not connect", severity: "error" }, "problem"],
+  ];
+  for (const [presentation, indicator] of states) {
+    subject.workspace.updateConnection(presentation);
+    assert.equal(shell.dataset.connectionIndicator, indicator, presentation.phase);
+    assert.equal(subject.elements.get("workspace-connection-state").textContent, presentation.title);
+  }
+  subject.workspace.updateConnection({ phase: "idle", title: "Ready to find a keyboard", severity: "neutral" });
+  assert.equal(shell.dataset.connectionIndicator, "neutral", "no keyboard is neutral, not an error");
+});
+
+test("transient connection notice appears for ready and loss, carries battery, and hides itself", () => {
+  const subject = harness();
+  const notice = subject.elements.get("workspace-connection-notice");
+  subject.workspace.updateConnection({ phase: "ready", title: "Keyboard connected", severity: "success", selectedDevice: { name: "Corne" } });
+  assert.equal(notice.textContent, "", "notice waits for the settle window");
+  subject.timers.advance(600);
+  assert.equal(notice.hidden, false);
+  assert.match(notice.textContent, /Keyboard connected · Corne/);
+  subject.workspace.updateEvidence({ battery: { status: "available", value: 81 } });
+  assert.match(notice.textContent, /Corne · 81%/);
+  subject.timers.advance(4000);
+  assert.equal(notice.hidden, true);
+  assert.equal(notice.textContent, "");
+
+  subject.workspace.updateConnection({ phase: "disconnected", title: "Keyboard disconnected", severity: "attention", selectedDevice: { name: "Corne" } });
+  subject.timers.advance(600);
+  assert.match(notice.textContent, /Keyboard disconnected · Corne/);
+  assert.equal(subject.workspace.snapshot().open, true, "automatic settings elevation is unchanged");
+  subject.timers.advance(4000);
+  assert.equal(notice.hidden, true);
+});
+
 test("workspace source and CSS encode edge-to-edge safe-area, overflow, and reduced-motion contracts", async () => {
   const [html, css, source] = await Promise.all([
     readFile(path.join(root, "src-mobile/index.html"), "utf8"),
@@ -190,6 +251,10 @@ test("workspace source and CSS encode edge-to-edge safe-area, overflow, and redu
   assert.match(css, /\.viewer-stream-status[\s\S]*position:\s*absolute/);
   assert.match(html, /id="viewer-stream-status"[\s\S]*aria-live="polite"/);
   assert.match(css, /\.workspace-settings-body[\s\S]*overflow-y:\s*auto/);
+  assert.match(html, /id="workspace-connection-compact"[^>]*class="[^"]*visually-hidden[^"]*"[^>]*role="status"/);
+  assert.match(html, /id="workspace-settings-open"[^>]*aria-describedby="workspace-connection-compact"/);
+  assert.match(css, /\.connection-notice[\s\S]*pointer-events:\s*none/);
+  assert.match(css, /prefers-reduced-motion: reduce[\s\S]*\.connection-notice/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css, /orientation:\s*landscape/);
   assert.doesNotMatch(source, /localStorage|sessionStorage|indexedDB|fetch\(|WebSocket|write\(|startScan|connectSelected|subscribeNotifications/);
