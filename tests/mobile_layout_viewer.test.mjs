@@ -253,7 +253,12 @@ test("view fits the complete keyboard, rotates only the portrait canvas, and res
   assert.match(landscapeCanvas.style.height, /px$/);
   assert.match(portraitCanvas.style.width, /px$/);
   assert.match(portraitCanvas.style.height, /px$/);
-  assert.match(portrait.elements.get("viewer-keyboard").style.values.get("--viewer-canvas-translate-x"), /px$/);
+  // Counterclockwise rotation lifts the canvas above its box; the shift is the rotated (displayed) height.
+  assert.equal(
+    portrait.elements.get("viewer-keyboard").style.values.get("--viewer-canvas-translate-y"),
+    portraitCanvas.style.height,
+  );
+  assert.equal(portrait.elements.get("viewer-keyboard").style.values.has("--viewer-canvas-translate-x"), false);
   assert.equal(landscape.elements.get("viewer-layout").value, "qwerty");
   assert.equal(portrait.elements.get("viewer-layout").value, "qwerty");
 });
@@ -334,7 +339,9 @@ test("viewer markup, styles, and modules enforce responsive accessible isolation
   assert.doesNotMatch(css, /\.keyboard-stage\s*\{[^}]*border:/);
   assert.doesNotMatch(css, /\.keyboard-stage\s*\{[^}]*padding:/);
   assert.match(css, /\.viewer-scroller[\s\S]*padding:\s*6px/);
-  assert.match(css, /\.viewer-canvas\[data-orientation="portrait"\][\s\S]*rotate\(90deg\)/);
+  assert.match(css, /\.viewer-canvas\[data-orientation="portrait"\][^{]*\{[^}]*translateY\(var\(--viewer-canvas-translate-y[^}]*rotate\(-90deg\)/);
+  assert.doesNotMatch(css, /rotate\(90deg\)/, "portrait is counterclockwise so a clockwise turn keeps the canvas fixed to the device");
+  assert.doesNotMatch(css, /\.viewer-canvas\[data-orientation="landscape"\][^{]*\{[^}]*rotate/, "landscape stays unrotated");
   assert.match(css, /\.viewer-gesture[\s\S]*--viewer-gesture-zoom/);
   assert.match(css, /\.viewer-key-legend\s*\{\s*font-size:\s*1\.4em/);
   assert.match(css, /env\(safe-area-inset-top, 0px\)/);

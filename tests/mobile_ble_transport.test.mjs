@@ -259,3 +259,136 @@ test("explicit reconnect starts a fresh connection attempt", async () => {
     ],
   );
 });
+
+function fakeClock() {
+  let id = 0;
+  const timers = new Map();
+  return {
+    timers,
+    schedule(handler, delay) { const timer = ++id; timers.set(timer, { handler, delay }); return timer; },
+    cancelSchedule(timer) { timers.delete(timer); },
+    fire(delay) {
+      const entry = [...timers.entries()].find(([, value]) => value.delay === delay);
+      assert.ok(entry, `expected a ${delay}ms timer`);
+      timers.delete(entry[0]);
+      entry[1].handler();
+    },
+  };
+}
+
+async function connectedTransport(adapter = new FakeAdapter()) {
+  const clock = fakeClock();
+  const transport = new AndroidBleTransport(adapter, { schedule: clock.schedule, cancelSchedule: clock.cancelSchedule });
+  adapter.permission = "granted";
+  await transport.checkPermission();
+  await transport.connect("AA:BB");
+  return { adapter, clock, transport };
+}
+
+test("a scan failure after start finishes the scan and reaches the caller as a structured error", async () => {
+  const adapter = new FakeAdapter();
+  adapter.startScan = async (_handler, _timeoutMs, onError) => { adapter.scanError = onError; };
+  const clock = fakeClock();
+  const transport = new AndroidBleTransport(adapter, { schedule: clock.schedule, cancelSchedule: clock.cancelSchedule });
+  adapter.permission = "granted";
+  await transport.checkPermission();
+  const errors = [];
+  await transport.startScan({ timeoutMs: 5000, onError: (error) => errors.push(error) });
+  assert.equal(transport.snapshot().scanning, true);
+
+  adapter.scanError(new Error("scan-6: Android BLE scan failed with code 6"));
+  assert.equal(transport.snapshot().scanning, false);
+  assert.equal(clock.timers.size, 0, "the scan timer is cleared");
+  assert.equal(errors[0].code, "scan-throttled");
+
+  await transport.startScan({ timeoutMs: 5000, onError: (error) => errors.push(error) });
+  adapter.scanError(new Error("scan-3: internal error"));
+  assert.equal(errors[1].code, "scan-failed");
+
+  adapter.scanError(new Error("scan-3: after the scan ended"));
+  assert.equal(errors.length, 2, "an error after the scan ended is ignored");
+});
+
+test("native operations receive their deadlines and the backstop fires after the native deadline", async () => {
+  const cases = [
+    ["connect", 20000, (t) => t.connect("AA:BB"), "connect"],
+    ["listServices", 10000, (t) => t.discoverServices(), "discover"],
+    ["read", 5000, (t) => t.read("180f", "2a19"), "read"],
+    ["subscribe", 8000, (t) => t.subscribe("b34a0001-e782-4706-8f9c-6c056c416507", "b34a0004-e782-4706-8f9c-6c056c416507"), "subscribe"],
+  ];
+  for (const [method, nativeMs, run, label] of cases) {
+    const adapter = new FakeAdapter();
+    const received = [];
+    let hang = false;
+    const original = adapter[method].bind(adapter);
+    adapter[method] = (...args) => {
+      received.push(args.at(-1));
+      return hang ? new Promise(() => {}) : original(...args);
+    };
+    const { transport, clock } = await connectedTransport(adapter);
+    if (method === "connect") {
+      // the first connect inside connectedTransport completed; start a fresh transport for the hanging one
+    }
+    hang = true;
+    const target = method === "connect" ? new AndroidBleTransport(adapter, { schedule: clock.schedule, cancelSchedule: clock.cancelSchedule }) : transport;
+    if (method === "connect") { adapter.permission = "granted"; await target.checkPermission(); }
+    const pending = run(target);
+    const settled = assert.rejects(pending, (error) => error.code === "timeout");
+    assert.deepEqual(received.at(-1), { timeoutMs: nativeMs }, `${label} passes its deadline to the native layer`);
+    clock.fire(nativeMs + 2000);
+    await settled;
+    assert.ok(adapter.calls.some(([name]) => name === "disconnect"), `${label} backstop requests a disconnect`);
+    assert.equal([...clock.timers.values()].some(({ delay }) => delay === nativeMs + 2000), false, `${label} timer is cleared`);
+  }
+});
+
+test("a native timeout is reported without the backstop disconnect and a late result is ignored", async () => {
+  const adapter = new FakeAdapter();
+  const { transport, clock } = await connectedTransport(adapter);
+  adapter.calls.length = 0;
+  const late = deferred();
+  adapter.read = () => late.promise;
+  const pending = transport.read("180f", "2a19");
+  const settled = assert.rejects(pending, (error) => error.code === "timeout");
+  late.reject(new Error("timeout: characteristic read timed out"));
+  await settled;
+  assert.equal(adapter.calls.some(([name]) => name === "disconnect"), false);
+  assert.equal(clock.timers.size, 0);
+
+  const second = deferred();
+  adapter.read = () => second.promise;
+  const next = transport.read("180f", "2a19");
+  second.resolve([7]);
+  assert.deepEqual(await next, [7], "the previous read's timeout does not affect a later read");
+});
+
+test("a connect that completes after its backstop does not revive the connection", async () => {
+  const adapter = new FakeAdapter();
+  const clock = fakeClock();
+  const gate = deferred();
+  adapter.connect = async () => { await gate.promise; };
+  const transport = new AndroidBleTransport(adapter, { schedule: clock.schedule, cancelSchedule: clock.cancelSchedule });
+  adapter.permission = "granted";
+  await transport.checkPermission();
+  const pending = transport.connect("AA:BB");
+  const settled = assert.rejects(pending, (error) => error.code === "timeout");
+  clock.fire(22000);
+  await settled;
+  assert.equal(transport.snapshot().connection, ConnectionState.FAILED);
+  gate.resolve();
+  await Promise.resolve();
+  assert.equal(transport.snapshot().connection, ConnectionState.FAILED);
+});
+
+test("a scan start refused as throttled keeps its reason and leaves no scan running", async () => {
+  const adapter = new FakeAdapter();
+  adapter.startScan = async () => { throw new Error("scan-throttled: Android allows five scans per 30 seconds; try again in 12 s"); };
+  const clock = fakeClock();
+  const transport = new AndroidBleTransport(adapter, { schedule: clock.schedule, cancelSchedule: clock.cancelSchedule });
+  adapter.permission = "granted";
+  await transport.checkPermission();
+
+  await assert.rejects(transport.startScan({ timeoutMs: 5000 }), (error) => error.code === "scan-throttled");
+  assert.equal(transport.snapshot().scanning, false);
+  assert.equal(clock.timers.size, 0);
+});

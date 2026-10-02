@@ -48,7 +48,7 @@ export class NativeBleAdapter {
     };
   }
 
-  async startScan(handler, timeoutMs) {
+  async startScan(handler, timeoutMs, onError) {
     this.devices.clear();
     const channel = new this.Channel();
     channel.onmessage = (event) => {
@@ -56,7 +56,8 @@ export class NativeBleAdapter {
         this.devices.set(event.device.address, event.device);
         handler([...this.devices.values()]);
       } else if (event.kind === "error") {
-        throw new Error(`${event.code}: ${event.message}`);
+        // The scan error arrives after start_scan has resolved, so it can only be reported by callback.
+        onError?.(new Error(`${event.code}: ${event.message}`));
       }
     };
     this.scanChannel = channel;
@@ -71,7 +72,7 @@ export class NativeBleAdapter {
     this.scanChannel = null;
   }
 
-  async connect(address, onDisconnect) {
+  async connect(address, onDisconnect, options = {}) {
     const attempt = ++this.attempt;
     const channel = new this.Channel();
     channel.onmessage = (event) => {
@@ -81,25 +82,28 @@ export class NativeBleAdapter {
     await this.invoke("plugin:keyboard-helper-ble|connect", {
       address,
       attempt,
+      ...timeoutArgument(options),
       onDisconnect: channel,
     });
   }
 
-  async listServices(_address) {
+  async listServices(_address, options = {}) {
     return this.invoke("plugin:keyboard-helper-ble|list_services", {
       attempt: this.attempt,
+      ...timeoutArgument(options),
     });
   }
 
-  async read(characteristicUuid, serviceUuid) {
+  async read(characteristicUuid, serviceUuid, options = {}) {
     return this.invoke("plugin:keyboard-helper-ble|read", {
       attempt: this.attempt,
       serviceUuid,
       characteristicUuid,
+      ...timeoutArgument(options),
     });
   }
 
-  async subscribe(characteristicUuid, serviceUuid, handler) {
+  async subscribe(characteristicUuid, serviceUuid, handler, options = {}) {
     const attempt = this.attempt;
     const channel = new this.Channel();
     channel.onmessage = (event) => {
@@ -110,6 +114,7 @@ export class NativeBleAdapter {
       attempt,
       serviceUuid,
       characteristicUuid,
+      ...timeoutArgument(options),
       onNotification: channel,
     });
   }
@@ -130,6 +135,10 @@ export class NativeBleAdapter {
     this.disconnectChannel = null;
     this.notificationChannel = null;
   }
+}
+
+function timeoutArgument({ timeoutMs } = {}) {
+  return Number.isFinite(timeoutMs) && timeoutMs > 0 ? { timeoutMs } : {};
 }
 
 function normalizeAvailability(value) {

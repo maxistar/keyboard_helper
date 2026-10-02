@@ -15,6 +15,15 @@ export const ConnectionState = Object.freeze({
   FAILED: "failed",
 });
 
+/** Deadlines handed to the native layer; the transport adds a backstop slightly after each one. */
+export const OPERATION_TIMEOUTS_MS = Object.freeze({
+  connect: 20_000,
+  discover: 10_000,
+  read: 5_000,
+  subscribe: 8_000,
+});
+const BACKSTOP_MARGIN_MS = 2_000;
+
 export class BleTransportError extends Error {
   constructor(code, message, cause) {
     super(message, cause ? { cause } : undefined);
@@ -39,6 +48,14 @@ export function normalizeTransportError(error, fallbackCode = "failed") {
   else if (/timeout|timed out/.test(normalized)) code = "timeout";
   else if (/disconnect|not connected/.test(normalized)) code = "disconnected";
   return new BleTransportError(code, message, error);
+}
+
+/** Android scan failure codes arrive as `scan-<code>`; 6 means scans were started too frequently. */
+export function normalizeScanError(error) {
+  const normalized = normalizeTransportError(error, "scan-failed");
+  if (normalized.code === "scan-6") return new BleTransportError("scan-throttled", normalized.message, error);
+  if (/^scan-\d+$/.test(normalized.code)) return new BleTransportError("scan-failed", normalized.message, error);
+  return normalized;
 }
 
 export function normalizeUuid(value) {
@@ -104,6 +121,7 @@ export class AndroidBleTransport {
     this.defaultScanTimeoutMs = options.scanTimeoutMs ?? 10_000;
     this.schedule = options.schedule ?? globalThis.setTimeout.bind(globalThis);
     this.cancelSchedule = options.cancelSchedule ?? globalThis.clearTimeout.bind(globalThis);
+    this.operationTimeouts = Object.freeze({ ...OPERATION_TIMEOUTS_MS, ...options.operationTimeouts });
     this.permission = PermissionState.UNKNOWN;
     this.scanning = false;
     this.devices = new Map();
@@ -145,7 +163,7 @@ export class AndroidBleTransport {
     }
   }
 
-  async startScan({ timeoutMs = this.defaultScanTimeoutMs, onDevices } = {}) {
+  async startScan({ timeoutMs = this.defaultScanTimeoutMs, onDevices, onError } = {}) {
     if (this.permission !== PermissionState.GRANTED) {
       throw new BleTransportError("permission-required", "Bluetooth permission is required before scanning.");
     }
@@ -166,11 +184,44 @@ export class AndroidBleTransport {
           this.devices.set(device.id, device);
         }
         onDevices?.([...this.devices.values()]);
-      }, timeoutMs);
+      }, timeoutMs, (error) => {
+        // Android reported a scan failure after the scan had started.
+        if (!this.scanning) return;
+        this.finishScan();
+        onError?.(normalizeScanError(error));
+      });
       return this.snapshot();
     } catch (error) {
       this.finishScan();
       throw normalizeTransportError(error, "scan-failed");
+    }
+  }
+
+  /**
+   * Runs a native call with its deadline. The native layer enforces the deadline itself; the
+   * backstop only covers a bridge that never answers. Whichever outcome comes first wins, and a
+   * late native result is discarded because the race has already settled.
+   */
+  async withDeadline(kind, run) {
+    const timeoutMs = this.operationTimeouts[kind];
+    let timer = null;
+    let backstopFired = false;
+    const backstop = new Promise((_resolve, reject) => {
+      timer = this.schedule(() => {
+        backstopFired = true;
+        reject(new BleTransportError("timeout", `timeout: ${kind} did not complete within ${timeoutMs + BACKSTOP_MARGIN_MS} ms`));
+      }, timeoutMs + BACKSTOP_MARGIN_MS);
+    });
+    try {
+      return await Promise.race([run({ timeoutMs }), backstop]);
+    } catch (error) {
+      if (backstopFired) {
+        // The link state is unknown; release it. Best effort, the original timeout is what callers see.
+        void Promise.resolve(this.adapter.disconnect?.()).catch(() => {});
+      }
+      throw error;
+    } finally {
+      this.cancelSchedule(timer);
     }
   }
 
@@ -204,7 +255,9 @@ export class AndroidBleTransport {
     const attempt = ++this.connectionAttempt;
     this.connection = ConnectionState.CONNECTING;
     try {
-      await this.adapter.connect(id, (event) => this.handleDisconnect(attempt, event));
+      await this.withDeadline("connect", (options) => (
+        this.adapter.connect(id, (event) => this.handleDisconnect(attempt, event), options)
+      ));
       if (attempt !== this.connectionAttempt) {
         throw new BleTransportError("stale-operation", "Connection completed for an inactive attempt.");
       }
@@ -264,7 +317,7 @@ export class AndroidBleTransport {
   async discoverServices() {
     const { id, attempt } = this.requireConnection();
     try {
-      const services = await this.adapter.listServices(id);
+      const services = await this.withDeadline("discover", (options) => this.adapter.listServices(id, options));
       if (attempt !== this.connectionAttempt) {
         throw new BleTransportError("stale-operation", "Discovery completed for an inactive attempt.");
       }
@@ -277,7 +330,9 @@ export class AndroidBleTransport {
   async read(serviceUuid, characteristicUuid) {
     const { attempt } = this.requireConnection();
     try {
-      const value = await this.adapter.read(normalizeUuid(characteristicUuid), normalizeUuid(serviceUuid));
+      const value = await this.withDeadline("read", (options) => (
+        this.adapter.read(normalizeUuid(characteristicUuid), normalizeUuid(serviceUuid), options)
+      ));
       if (attempt !== this.connectionAttempt) {
         throw new BleTransportError("stale-operation", "Read completed for an inactive attempt.");
       }
@@ -295,7 +350,7 @@ export class AndroidBleTransport {
       throw new BleTransportError("invalid-state", "A notification subscription is already active.");
     }
     try {
-      await this.adapter.subscribe(characteristic, service, (value) => {
+      await this.withDeadline("subscribe", (options) => this.adapter.subscribe(characteristic, service, (value) => {
         if (attempt !== this.connectionAttempt) return;
         onNotification?.(Object.freeze({
           attempt,
@@ -303,7 +358,7 @@ export class AndroidBleTransport {
           characteristicUuid: characteristic,
           bytes: normalizeBytes(value),
         }));
-      });
+      }, options));
       if (attempt !== this.connectionAttempt) {
         throw new BleTransportError("stale-operation", "Subscription completed for an inactive attempt.");
       }

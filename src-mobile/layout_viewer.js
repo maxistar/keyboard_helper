@@ -286,7 +286,7 @@ export function createMobileLayoutViewerView(
     elements.canvas.style.width = `${fit.displayedWidth}px`;
     elements.canvas.style.height = `${fit.displayedHeight}px`;
     elements.keyboard.style.setProperty("--viewer-canvas-scale", fit.scale);
-    elements.keyboard.style.setProperty("--viewer-canvas-translate-x", `${fit.displayedWidth}px`);
+    elements.keyboard.style.setProperty("--viewer-canvas-translate-y", `${fit.displayedHeight}px`);
     renderGesture();
     return fit;
   }

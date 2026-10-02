@@ -261,7 +261,7 @@ test("Live UI source preserves accessibility, responsive containment, privacy, a
   assert.match(css, /@media \(orientation: landscape\) and \(max-height: 520px\)/);
   assert.match(css, /\.viewer-scroller[\s\S]*overflow:\s*hidden/);
   assert.doesNotMatch(css, /\.keyboard-stage\s*\{[^}]*border:/);
-  assert.match(css, /\.viewer-canvas\[data-orientation="portrait"\][\s\S]*rotate\(90deg\)/);
+  assert.match(css, /\.viewer-canvas\[data-orientation="portrait"\][\s\S]*rotate\(-90deg\)/);
   assert.match(css, /viewer-key-state/);
   assert.match(css, /outline:\s*3px dashed/);
   const source = `${view}\n${presentation}\n${telemetry}\n${app}`;

@@ -392,7 +392,8 @@ summary:focus-visible,
   transform: scale(var(--viewer-canvas-scale, 1));
 }
 .viewer-canvas[data-orientation="portrait"] .viewer-keyboard {
-  transform: translateX(var(--viewer-canvas-translate-x, 0px)) rotate(90deg) scale(var(--viewer-canvas-scale, 1));
+  /* Counterclockwise, so turning the phone clockwise keeps the canvas fixed to the device body. */
+  transform: translateY(var(--viewer-canvas-translate-y, 0px)) rotate(-90deg) scale(var(--viewer-canvas-scale, 1));
 }
 
 .viewer-key {

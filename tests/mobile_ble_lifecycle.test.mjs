@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { PermissionState } from "../src-mobile/ble_transport.js";
+import { BleTransportError, PermissionState } from "../src-mobile/ble_transport.js";
 import {
   AppVisibility,
   BACKGROUND_DEBOUNCE_MS,
@@ -64,6 +64,7 @@ class FakeTransport {
       characteristics: [{ uuid: "b34a0003-e782-4706-8f9c-6c056c416507" }],
     }];
     this.connectFailures = [];
+    this.discoverFailures = [];
   }
 
   snapshot() { return { connectionAttempt: this.connectionAttempt }; }
@@ -71,7 +72,7 @@ class FakeTransport {
   async checkBluetoothAvailability() { this.calls.push(["availability"]); return this.availability; }
   async observeBluetoothAvailability(handler) { this.availabilityHandler = handler; return () => { this.availabilityHandler = null; }; }
   onConnectionLoss(handler) { this.lossHandler = handler; return () => { this.lossHandler = null; }; }
-  async startScan({ onDevices }) { this.calls.push(["scan"]); this.scanHandler = onDevices; }
+  async startScan({ onDevices, onError }) { this.calls.push(["scan"]); this.scanHandler = onDevices; this.scanErrorHandler = onError; }
   async stopScan() { this.calls.push(["stop-scan"]); }
   async connect(id) {
     this.calls.push(["connect", id]);
@@ -79,7 +80,12 @@ class FakeTransport {
     const failure = this.connectFailures.shift();
     if (failure) throw failure;
   }
-  async discoverServices() { this.calls.push(["discover"]); return this.services; }
+  async discoverServices() {
+    this.calls.push(["discover"]);
+    const failure = this.discoverFailures.shift();
+    if (failure) throw failure;
+    return this.services;
+  }
   async disconnect() { this.calls.push(["disconnect"]); this.connectionAttempt += 1; }
   async read() { this.calls.push(["read"]); return [81]; }
   async subscribe(_service, _characteristic, handler) { this.notificationHandler = handler; }
@@ -407,4 +413,113 @@ test("disconnect invalidates running and queued ready-generation GATT operations
   await assert.rejects(read, (error) => error.code === "stale-operation");
   await assert.rejects(enrollment, (error) => error.code === "stale-operation");
   assert.equal(enrollmentStarted, false);
+});
+
+test("a scan failure after start leaves scanning with a structured reason and clears the scan timer", async () => {
+  const transport = new FakeTransport();
+  const clock = fakeClock();
+  const coordinator = new BleLifecycleCoordinator(transport, {
+    extensionServiceUuid,
+    schedule: clock.schedule,
+    cancelSchedule: clock.cancel,
+  });
+  await coordinator.initialize();
+  await coordinator.startScan(10_000);
+  assert.equal(coordinator.snapshot().phase, LifecyclePhase.SCANNING);
+
+  transport.scanErrorHandler(new BleTransportError("scan-throttled", "scan-6: too frequent"));
+  await coordinator.queue;
+
+  assert.equal(coordinator.snapshot().phase, LifecyclePhase.FAILED);
+  assert.equal(coordinator.snapshot().reason.code, "scan-throttled");
+  assert.equal(clock.scheduled.size, 0);
+});
+
+test("a scan failure that arrives after the scan ended is ignored", async () => {
+  const transport = new FakeTransport();
+  const clock = fakeClock();
+  const coordinator = new BleLifecycleCoordinator(transport, {
+    extensionServiceUuid,
+    schedule: clock.schedule,
+    cancelSchedule: clock.cancel,
+  });
+  await coordinator.initialize();
+  await coordinator.startScan(2_500);
+  const staleError = transport.scanErrorHandler;
+  await clock.fireDelay(2_500, coordinator);
+  assert.equal(coordinator.snapshot().phase, LifecyclePhase.IDLE);
+
+  staleError(new BleTransportError("scan-failed", "scan-3: internal"));
+  await coordinator.queue;
+
+  assert.equal(coordinator.snapshot().phase, LifecyclePhase.IDLE);
+  assert.equal(coordinator.snapshot().reason, null);
+});
+
+test("an explicit connect that times out fails with reason timeout and schedules no retry", async () => {
+  const transport = new FakeTransport();
+  const clock = fakeClock();
+  transport.connectFailures.push(new BleTransportError("timeout", "timeout: connect timed out"));
+  const coordinator = new BleLifecycleCoordinator(transport, {
+    extensionServiceUuid,
+    schedule: clock.schedule,
+    cancelSchedule: clock.cancel,
+  });
+  await coordinator.initialize();
+  await coordinator.selectDevice({ id: "keyboard", name: "Keyboard" });
+  await coordinator.connectSelected();
+
+  assert.equal(coordinator.snapshot().phase, LifecyclePhase.FAILED);
+  assert.equal(coordinator.snapshot().reason.code, "timeout");
+  assert.equal(clock.scheduled.size, 0);
+  assert.equal(transport.calls.filter(([name]) => name === "connect").length, 1);
+});
+
+test("a reconnect attempt that times out consumes the bounded budget without extending it", async () => {
+  const { coordinator, transport, clock } = await readyCoordinator();
+  const timeout = () => new BleTransportError("timeout", "timeout: connect timed out");
+  transport.connectFailures.push(timeout(), timeout(), timeout());
+  transport.lossHandler({ code: "connection-lost", message: "gone" });
+  await coordinator.queue;
+
+  await clock.fireDelay(RECONNECT_DELAYS_MS[0], coordinator);
+  assert.equal(coordinator.snapshot().phase, LifecyclePhase.RECONNECTING);
+  assert.equal(coordinator.snapshot().reason.code, "timeout");
+  assert.equal(coordinator.snapshot().retry.attempt, 2);
+  await clock.fireDelay(RECONNECT_DELAYS_MS[1], coordinator);
+  await clock.fireDelay(RECONNECT_DELAYS_MS[2], coordinator);
+
+  assert.equal(coordinator.snapshot().phase, LifecyclePhase.DISCONNECTED);
+  assert.equal(coordinator.snapshot().reason.code, "reconnect-exhausted");
+  assert.equal(clock.scheduled.size, 0);
+  assert.equal(transport.calls.filter(([name]) => name === "connect").length, 4);
+});
+
+test("a discovery timeout leaves discovering with reason timeout and does not stay ready", async () => {
+  const transport = new FakeTransport();
+  const clock = fakeClock();
+  transport.discoverFailures.push(new BleTransportError("timeout", "timeout: service discovery timed out"));
+  const coordinator = new BleLifecycleCoordinator(transport, {
+    extensionServiceUuid,
+    schedule: clock.schedule,
+    cancelSchedule: clock.cancel,
+  });
+  await coordinator.initialize();
+  await coordinator.selectDevice({ id: "keyboard", name: "Keyboard" });
+  await coordinator.connectSelected();
+
+  assert.equal(coordinator.snapshot().phase, LifecyclePhase.FAILED);
+  assert.equal(coordinator.snapshot().reason.code, "timeout");
+  assert.equal(coordinator.snapshot().capabilityMode, CapabilityMode.UNKNOWN);
+});
+
+test("a native timeout in the ready phase arrives as an unexpected loss and uses the reconnect budget", async () => {
+  const { coordinator, transport, clock } = await readyCoordinator();
+  transport.lossHandler({ code: "timeout", message: "Bluetooth characteristic read timed out; the connection was released", status: -1 });
+  await coordinator.queue;
+
+  assert.equal(coordinator.snapshot().phase, LifecyclePhase.RECONNECTING);
+  assert.equal(coordinator.snapshot().retry.attempt, 1);
+  await clock.fireDelay(RECONNECT_DELAYS_MS[0], coordinator);
+  assert.equal(coordinator.snapshot().phase, LifecyclePhase.READY);
 });

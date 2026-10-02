@@ -113,6 +113,16 @@ test("stock and enhanced readiness share one base overview", () => {
   assert.equal(JSON.stringify(enhanced).includes("private-address"), false);
 });
 
+test("timeout and scan throttling have their own actionable copy", () => {
+  for (const [code, pattern] of [["timeout", /did not respond in time/], ["scan-throttled", /limits how often scans/]]) {
+    const presentation = createConnectionOverviewPresentation(snapshot(LifecyclePhase.FAILED, {
+      reason: { code, message: code, recoverable: true },
+    }));
+    assert.match(presentation.detail, pattern, code);
+    assert.equal(presentation.severity, "error", code);
+  }
+});
+
 test("repeated snapshots produce deterministic presentation", () => {
   const current = snapshot(LifecyclePhase.RECONNECTING, {
     retry: { attempt: 2, limit: 3 },

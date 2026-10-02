@@ -44,6 +44,8 @@ const REASON_COPY = Object.freeze({
   "connection-lost": "The keyboard connection was lost.",
   "discovery-failed": "The keyboard connected, but its services could not be prepared.",
   "scan-failed": "The nearby keyboard scan could not be completed.",
+  "scan-throttled": "Android limits how often scans can start. Wait a few seconds and try again.",
+  timeout: "The keyboard did not respond in time. Move closer and try again.",
   unsupported: "Bluetooth connection support is unavailable on this device.",
 });
 
