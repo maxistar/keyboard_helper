@@ -124,6 +124,10 @@ Troubleshooting keeps failure categories distinct:
 - `connection-failed`, `discovery-failed`, `read-failed`, and `subscription-failed`: preserve the
   operation category and retry only from a valid connected state.
 - `stale-operation`: discard the result because a newer connection generation owns the surface.
+- `timeout`: a native connect, discovery, read or subscribe exceeded its deadline (20/10/5/8 s);
+  the plugin releases the connection and the lifecycle decides whether to reconnect.
+- `scan-throttled` / `scan-failed`: Android reported the scan failure after it started; the scan
+  has already stopped.
 - Some OEM builds forbid ADB `pm clear` and permission revocation. For a permission-clean hardware
   run, uninstall/reinstall the proof app and confirm Nearby Devices state in system settings.
 

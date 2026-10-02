@@ -55,7 +55,7 @@ test("shared inline fixture has matching desktop and mobile image presentation",
   assert.deepEqual(snapshot.presentation.layers.map(({ name }) => name), desktopLayers.names);
   assert.equal(snapshot.presentation.keySize.w, desktopLayout.keySize.w);
   assert.equal(snapshot.presentation.keys[1].widthUnits, desktopLayout.keys[1].w);
-  assert.equal(snapshot.presentation.width, 3 * (fixture.keySize.w + fixture.keySize.gap) + fixture.keySize.w);
+  assert.equal(snapshot.presentation.width, 3 * (fixture.keySize.w + fixture.keySize.gap) - fixture.keySize.gap);
   assert.equal(desktopUrls.length, 1);
   assert.equal(mobileUrls.length, 1);
 });

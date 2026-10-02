@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "typing-insights",
+  "description": "Capability for the Typing Insights window",
+  "windows": ["typing-insights"],
+  "platforms": ["macOS", "windows", "linux"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-close",
+    "core:window:allow-destroy"
+  ]
+}

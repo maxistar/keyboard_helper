@@ -59,6 +59,19 @@ active ──confirmed background──▶ suspended ──foreground + intent�
   but never opens a permission prompt or starts a scan by itself.
 - Explicit disconnect clears desired connection before cleanup, so a late native callback cannot
   restart the session.
+- Native operations are bounded: connect 20 s, service discovery 10 s, characteristic read 5 s,
+  notification subscribe 8 s. The JS transport passes each deadline to the Kotlin plugin, which
+  enforces it; the transport adds a backstop 2 s later in case the bridge itself never answers. An
+  expired operation fails with reason `timeout`, the plugin closes the GATT and reports an
+  unexpected connection loss, so a ready session reconnects under the normal three-attempt budget
+  and a timeout during a reconnect attempt consumes one attempt.
+- A scan failure that Android reports after the scan started ends the scan with reason
+  `scan-failed` or `scan-throttled`. Android 11+ silently drops scan starts beyond five per 30
+  seconds, so the plugin counts its own starts and refuses the sixth up front with
+  `scan-throttled` and the seconds to wait.
+- The Kotlin plugin keeps all GATT, scan and pending-operation state on the main looper: Tauri
+  commands and Android callbacks are marshalled there in arrival order. Disconnecting while a
+  connect is in flight settles the connect and accepts the next one.
 
 ## Android availability integration
 
@@ -84,6 +97,8 @@ keyboard session; lack of the Keyboard Helper extension is not `unsupported`.
 - `security-required`: keep the app in the foreground and complete Android pairing/encryption UI.
 - `capacity-unavailable`: close other BLE sessions or reboot Bluetooth, then explicitly retry.
 - `reconnect-exhausted`: bring the keyboard near the phone and use Reconnect.
+- `timeout`: the keyboard stopped answering; move it closer or power-cycle it, then reconnect.
+- `scan-throttled`: Android allows only a few scan starts per 30 seconds; wait and scan again.
 - `discovery-failed` or generic connection failure: disconnect, power-cycle the keyboard if
   needed, and start a new explicit connection flow.
 - On OEM builds that aggressively stop WebViews, use `adb logcat`, disable battery restrictions

@@ -21,8 +21,10 @@ export function createAppMenuStateController({
   openTypingInvaders,
   openKeyboardSnake = async () => false,
   openFlappyKeyBird = async () => false,
+  openUnderwaterTypingFishing = async () => false,
   openKeyboardSelfTest = async () => false,
   enterMiniMode = async () => false,
+  openTypingInsights = async () => false,
   openSettings,
   openHelp,
   onChange = () => {},
@@ -34,8 +36,10 @@ export function createAppMenuStateController({
   let gamePending = false;
   let snakePending = false;
   let flappyPending = false;
+  let fishingPending = false;
   let selfTestPending = false;
   let miniPending = false;
+  let insightsPending = false;
   let settingsPending = false;
   let feedback = null;
   let activeRevision = 0;
@@ -67,10 +71,14 @@ export function createAppMenuStateController({
       snakePending,
       flappyAvailable: hasNativeBridge(),
       flappyPending,
+      fishingAvailable: hasNativeBridge(),
+      fishingPending,
       selfTestAvailable: hasNativeBridge(),
       selfTestPending,
       miniAvailable: hasNativeBridge(),
       miniPending,
+      insightsAvailable: hasNativeBridge(),
+      insightsPending,
       settingsAvailable: hasNativeBridge(),
       settingsPending,
       feedback,
@@ -194,70 +202,65 @@ export function createAppMenuStateController({
     }
   }
 
-  async function launchGame() {
-    if (gamePending || !hasNativeBridge()) return false;
-    gamePending = true;
-    feedback = null;
-    notify();
-    try {
-      const result = await openTypingInvaders();
-      if (result === false) throw new Error("Shift-Space Invaders could not be opened.");
-      return true;
-    } catch (error) {
-      feedback = {
-        kind: "error",
-        message: errorMessage(error, "Failed to open Shift-Space Invaders."),
-      };
-      return false;
-    } finally {
-      gamePending = false;
+  function createSecondaryWindowLauncher({ isPending, setPending, open, falseMessage, fallbackMessage }) {
+    return async () => {
+      if (isPending() || !hasNativeBridge()) return false;
+      setPending(true);
+      feedback = null;
       notify();
-    }
+      try {
+        const result = await open();
+        if (result === false) throw new Error(falseMessage);
+        return true;
+      } catch (error) {
+        feedback = { kind: "error", message: errorMessage(error, fallbackMessage) };
+        return false;
+      } finally {
+        setPending(false);
+        notify();
+      }
+    };
   }
 
-  async function launchSnake() {
-    if (snakePending || !hasNativeBridge()) return false;
-    snakePending = true; feedback = null; notify();
-    try {
-      const result = await openKeyboardSnake();
-      if (result === false) throw new Error("Keyboard Snake could not be opened.");
-      return true;
-    } catch (error) {
-      feedback = { kind: "error", message: errorMessage(error, "Failed to open Keyboard Snake.") };
-      return false;
-    } finally { snakePending = false; notify(); }
-  }
+  const launchGame = createSecondaryWindowLauncher({
+    isPending: () => gamePending,
+    setPending: (value) => { gamePending = value; },
+    open: openTypingInvaders,
+    falseMessage: "Shift-Space Invaders could not be opened.",
+    fallbackMessage: "Failed to open Shift-Space Invaders.",
+  });
 
-  async function launchFlappy() {
-    if (flappyPending || !hasNativeBridge()) return false;
-    flappyPending = true; feedback = null; notify();
-    try {
-      const result = await openFlappyKeyBird();
-      if (result === false) throw new Error("Flappy Key-Bird could not be opened.");
-      return true;
-    } catch (error) {
-      feedback = { kind: "error", message: errorMessage(error, "Failed to open Flappy Key-Bird.") };
-      return false;
-    } finally { flappyPending = false; notify(); }
-  }
+  const launchSnake = createSecondaryWindowLauncher({
+    isPending: () => snakePending,
+    setPending: (value) => { snakePending = value; },
+    open: openKeyboardSnake,
+    falseMessage: "Keyboard Snake could not be opened.",
+    fallbackMessage: "Failed to open Keyboard Snake.",
+  });
 
-  async function selfTest() {
-    if (selfTestPending || !hasNativeBridge()) return false;
-    selfTestPending = true;
-    feedback = null;
-    notify();
-    try {
-      const result = await openKeyboardSelfTest(currentKey());
-      if (result === false) throw new Error("Keyboard Self-test could not be opened.");
-      return true;
-    } catch (error) {
-      feedback = { kind: "error", message: errorMessage(error, "Failed to open Keyboard Self-test.") };
-      return false;
-    } finally {
-      selfTestPending = false;
-      notify();
-    }
-  }
+  const launchFlappy = createSecondaryWindowLauncher({
+    isPending: () => flappyPending,
+    setPending: (value) => { flappyPending = value; },
+    open: openFlappyKeyBird,
+    falseMessage: "Flappy Key-Bird could not be opened.",
+    fallbackMessage: "Failed to open Flappy Key-Bird.",
+  });
+
+  const launchFishing = createSecondaryWindowLauncher({
+    isPending: () => fishingPending,
+    setPending: (value) => { fishingPending = value; },
+    open: openUnderwaterTypingFishing,
+    falseMessage: "Underwater Typing Fishing could not be opened.",
+    fallbackMessage: "Failed to open Underwater Typing Fishing.",
+  });
+
+  const selfTest = createSecondaryWindowLauncher({
+    isPending: () => selfTestPending,
+    setPending: (value) => { selfTestPending = value; },
+    open: () => openKeyboardSelfTest(currentKey()),
+    falseMessage: "Keyboard Self-test could not be opened.",
+    fallbackMessage: "Failed to open Keyboard Self-test.",
+  });
 
   async function mini() {
     if (miniPending || !hasNativeBridge()) return false;
@@ -285,26 +288,21 @@ export function createAppMenuStateController({
     }
   }
 
-  async function settings() {
-    if (settingsPending || !hasNativeBridge()) return false;
-    settingsPending = true;
-    feedback = null;
-    notify();
-    try {
-      const result = await openSettings();
-      if (result === false) throw new Error("Settings could not be opened.");
-      return true;
-    } catch (error) {
-      feedback = {
-        kind: "error",
-        message: errorMessage(error, "Failed to open Settings."),
-      };
-      return false;
-    } finally {
-      settingsPending = false;
-      notify();
-    }
-  }
+  const insights = createSecondaryWindowLauncher({
+    isPending: () => insightsPending,
+    setPending: (value) => { insightsPending = value; },
+    open: openTypingInsights,
+    falseMessage: "Typing Insights could not be opened.",
+    fallbackMessage: "Failed to open Typing Insights.",
+  });
+
+  const settings = createSecondaryWindowLauncher({
+    isPending: () => settingsPending,
+    setPending: (value) => { settingsPending = value; },
+    open: openSettings,
+    falseMessage: "Settings could not be opened.",
+    fallbackMessage: "Failed to open Settings.",
+  });
 
   return {
     getSnapshot: snapshot,
@@ -317,8 +315,10 @@ export function createAppMenuStateController({
     launchGame,
     launchSnake,
     launchFlappy,
+    launchFishing,
     selfTest,
     mini,
+    insights,
     settings,
     help,
   };

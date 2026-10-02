@@ -35,12 +35,12 @@ function live(overrides = {}) {
 test("Browse resolution preserves the exact model-owned presentation without BLE mutation", () => {
   const browseModel = new MobileLayoutViewerModel();
   browseModel.selectLayout("corne");
-  browseModel.selectLayer(3);
+  browseModel.selectLayer(2);
   const browse = browseModel.snapshot();
   const result = resolveMobileLayoutPresentation(browse, live(), LayoutPresentationMode.BROWSE);
   assert.equal(result.mode, LayoutPresentationMode.BROWSE);
   assert.equal(result.presentation, browse.presentation);
-  assert.equal(result.selectedLayerIndex, 3);
+  assert.equal(result.selectedLayerIndex, 2);
   assert.deepEqual(result.pressedPositions, []);
   assert.equal(Object.isFrozen(result), true);
 });
@@ -48,7 +48,7 @@ test("Browse resolution preserves the exact model-owned presentation without BLE
 test("controller enters Live at stream readiness and restores retained Browse exactly", () => {
   const browse = new MobileLayoutViewerModel();
   browse.selectLayout("corne");
-  browse.selectLayer(3);
+  browse.selectLayer(2);
   const retained = browse.snapshot();
   const telemetry = new TelemetryModel(createTelemetrySnapshot(1, TelemetryStatus.AWAITING_STREAM_START));
   const controller = new MobileLayoutPresentationController(browse, telemetry);
@@ -59,12 +59,12 @@ test("controller enters Live at stream readiness and restores retained Browse ex
   assert.equal(controller.snapshot().selectedLayerIndex, 1);
   controller.selectMode(LayoutPresentationMode.BROWSE);
   assert.equal(controller.snapshot().presentation, retained.presentation);
-  assert.equal(controller.snapshot().selectedLayerIndex, 3);
+  assert.equal(controller.snapshot().selectedLayerIndex, 2);
 
-  telemetry.publish(live({ activeLayer: 2, pressedPositions: [7] }));
+  telemetry.publish(live({ activeLayer: 0, pressedPositions: [7] }));
   assert.equal(controller.snapshot().mode, LayoutPresentationMode.BROWSE);
   controller.selectMode(LayoutPresentationMode.LIVE);
-  assert.equal(controller.snapshot().selectedLayerIndex, 2);
+  assert.equal(controller.snapshot().selectedLayerIndex, 0);
   assert.deepEqual(controller.snapshot().pressedPositions, [7]);
 });
 
@@ -87,17 +87,17 @@ test("disconnect fallback and cold process recreation reveal only process-local 
 test("only authoritative layer state selects persistent Live layers", () => {
   const browse = new MobileLayoutViewerModel();
   browse.selectLayout("corne");
-  browse.selectLayer(3);
+  browse.selectLayer(2);
   const contextualOnly = resolveMobileLayoutPresentation(
     browse.snapshot(),
     live({ activeLayer: null, layerAuthoritative: false, activeCombos: [{ comboId: 1, positions: [1, 2], layer: 18 }] }),
     LayoutPresentationMode.LIVE,
   );
-  assert.equal(contextualOnly.selectedLayerIndex, 3);
+  assert.equal(contextualOnly.selectedLayerIndex, 2);
   assert.equal(contextualOnly.activeCombos[0].contextualLayer, 18);
 });
 
-test("current bundled layout alone maps exact positions and combo metadata", () => {
+test("stock Corne maps exact positions and rejects undeclared combo metadata", () => {
   const browse = new MobileLayoutViewerModel();
   browse.selectLayout("corne");
   const result = resolveMobileLayoutPresentation(
@@ -108,9 +108,10 @@ test("current bundled layout alone maps exact positions and combo metadata", () 
   );
   assert.deepEqual(result.pressedPositions, [1]);
   assert.deepEqual(result.comboPositions, [1, 2, 3]);
-  assert.equal(result.activeCombos[0].label, "Escape");
-  assert.equal(result.activeCombos[0].matched, true);
+  assert.equal(result.activeCombos[0].label, "Combo 1");
+  assert.equal(result.activeCombos[0].matched, false);
   assert.equal(result.activeCombos[1].matched, false);
+  assert.ok(result.mismatches.some(({ kind, comboId }) => kind === "combo" && comboId === 1));
   assert.ok(result.mismatches.some(({ kind, position }) => kind === "position" && position === 99));
   assert.ok(result.mismatches.some(({ kind, comboId }) => kind === "combo" && comboId === 999));
   assert.ok(result.mismatches.length <= PRESENTATION_MISMATCH_LIMIT);

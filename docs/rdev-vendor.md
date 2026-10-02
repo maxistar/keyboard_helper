@@ -57,8 +57,10 @@ cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
 On Linux, `cargo check` also requires the Tauri GTK/WebKit/AppIndicator
-development packages. A missing `gdk-3.0.pc` is an environment issue, not an
-`rdev` regression.
+development packages and `libx11-dev`. The latter is declared explicitly for
+Keyboard Helper's X11/XKB input-source adapter rather than being treated as an
+incidental transitive dependency of this vendored crate. A missing
+`gdk-3.0.pc` is an environment issue, not an `rdev` regression.
 
 ## Upstreaming
 

@@ -583,7 +583,15 @@ export class BleLifecycleCoordinator {
 
   async runScanEffect(nextEffect) {
     try {
-      await this.transport.startScan({ timeoutMs: nextEffect.timeoutMs, onDevices: (devices) => void this.dispatch({ type: LifecycleEvent.SCAN_DEVICES, devices }).catch(() => {}) });
+      await this.transport.startScan({
+        timeoutMs: nextEffect.timeoutMs,
+        onDevices: (devices) => void this.dispatch({ type: LifecycleEvent.SCAN_DEVICES, devices }).catch(() => {}),
+        onError: (error) => {
+          if (nextEffect.generation !== this.state.generation || this.state.phase !== LifecyclePhase.SCANNING) return;
+          this.clearTimer("scan");
+          void this.dispatch({ type: LifecycleEvent.OPERATION_FAILED, generation: nextEffect.generation, reason: normalizedReason(error, "scan-failed") }).catch(() => {});
+        },
+      });
       if (nextEffect.generation !== this.state.generation || this.state.phase !== LifecyclePhase.SCANNING) return;
       this.clearTimer("scan");
       this.timers.scan = this.schedule(() => {

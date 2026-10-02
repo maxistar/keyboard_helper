@@ -13,17 +13,16 @@ async function read(relativePath) {
 test("Android configuration keeps a distinct companion identity and frontend", async () => {
   const desktop = JSON.parse(await read("src-tauri/tauri.conf.json"));
   const android = JSON.parse(await read("src-tauri/tauri.android.conf.json"));
-  const macos = JSON.parse(await read("src-tauri/tauri.macos.conf.json"));
 
   assert.equal(desktop.identifier, "me.maxistar.keyri-app");
-  assert.equal(desktop.app.macOSPrivateApi, false);
-  assert.equal(macos.app.macOSPrivateApi, true);
+  assert.equal(desktop.app.macOSPrivateApi, true);
+  await assert.rejects(access(path.join(root, "src-tauri/tauri.macos.conf.json")));
   assert.equal(android.productName, "Keyboard Helper Companion");
   assert.equal(android.identifier, "me.maxistar.keyboardhelper.companion");
   assert.equal(android.build.frontendDist, "../src-mobile");
   assert.equal(android.bundle.android.minSdkVersion, 24);
   assert.deepEqual(android.app.windows.map(({ label }) => label), ["mobile"]);
-  assert.equal(android.app.macOSPrivateApi, false);
+  assert.equal(Object.hasOwn(android.app, "macOSPrivateApi"), false);
 });
 
 test("mobile surface composes a viewport-first keyboard workspace", async () => {
@@ -35,7 +34,12 @@ test("mobile surface composes a viewport-first keyboard workspace", async () => 
   const appBar = html.match(/<header class="workspace-app-bar">([\s\S]*?)<\/header>/)?.[1] ?? "";
   assert.doesNotMatch(appBar, /keyboard-mark|<h1>|>Companion</);
   assert.match(appBar, /workspace-connection-state/);
-  assert.match(html, /class="viewer-control-bar"/);
+  assert.match(appBar, /id="viewer-layout"/);
+  assert.match(appBar, /id="viewer-layer"/);
+  assert.match(appBar, /id="viewer-live-switch"/);
+  assert.match(appBar, /id="workspace-settings-open"/);
+  assert.doesNotMatch(html, /class="viewer-control-bar"/, "application and viewer controls share one row");
+  assert.match(html, /id="workspace-connection-notice"[^>]*aria-hidden="true"/);
   assert.match(html, /class="keyboard-stage"/);
   assert.match(html, /id="workspace-settings"/);
   assert.equal((html.match(/id="workspace-settings"/g) ?? []).length, 1);
@@ -56,6 +60,15 @@ test("mobile surface composes a viewport-first keyboard workspace", async () => 
   assert.match(app, /NativeLayoutAdapter/);
   assert.match(app, /querySelectorAll\("\.connection-settings button"\)/);
   assert.doesNotMatch(app, /querySelectorAll\("button"\)/);
+});
+
+test("the packaged keyboard geometry is exactly the canonical shared module", async () => {
+  const [canonical, packaged] = await Promise.all([
+    read("src/layout_geometry.js"),
+    read("src-mobile/shared-generated/layout_geometry.js"),
+  ]);
+  assert.equal(packaged, canonical);
+  assert.doesNotMatch(canonical, /\bdocument\b|\bwindow\b|\bimport\b/, "the shared module stays pure and dependency free");
 });
 
 test("mobile runtime imports remain inside the packaged frontend", async () => {
@@ -118,9 +131,9 @@ test("mobile native entry registers only target-gated companion adapters", async
   assert.match(cargoToml, /cfg\(target_os = "android"\)[\s\S]*tauri-plugin-keyboard-helper-layouts/);
   assert.match(
     cargoToml,
-    /\[dependencies\]\s*tauri = \{ version = "2", features = \[\s*"tray-icon"\] \}/,
+    /\[dependencies\]\s*tauri = \{ version = "2", features = \["macos-private-api", "tray-icon"\] \}/,
   );
-  assert.match(cargoToml, /cfg\(target_os = "macos"\)[\s\S]*macos-private-api/);
+  assert.equal(cargoToml.match(/^tauri = /gm)?.length, 1);
 });
 
 test("Android notification enrollment resets CCC and teardown confirms remote disable", async () => {

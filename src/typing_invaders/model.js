@@ -61,9 +61,11 @@ export function createTypingInvadersGame({
   rules = GAME_RULES,
   scoring = SCORING,
   random = Math.random,
+  targetProvider = null,
 } = {}) {
   let state = initialState();
   let events = [];
+  let selectedTargetProvider = targetProvider;
 
   function emit(type, detail = {}) {
     events.push({ type, ...detail });
@@ -129,9 +131,10 @@ export function createTypingInvadersGame({
       || state.targets.length >= config.maxTargets
     ) return null;
 
+    const supplied = selectedTargetProvider?.next?.({ wave: state.wave, activeTargets: state.targets.map(cloneTarget) }) ?? null;
     const words = wordTiers[config.tier] ?? [];
-    const word = selectDistinctWord(words, state.targets, random);
-    if (!word) {
+    const word = selectedTargetProvider ? supplied?.word : selectDistinctWord(words, state.targets, random);
+    if (!word || !/^[a-z]+$/.test(word)) {
       emit("spawn-deferred");
       return null;
     }
@@ -142,6 +145,10 @@ export function createTypingInvadersGame({
       progress: 0,
       x: rules.minSpawnX + random() * (rules.maxSpawnX - rules.minSpawnX),
       y: 0,
+      lessonId: supplied?.lessonId ?? null,
+      targetId: supplied?.targetId ?? null,
+      targetType: supplied?.targetType ?? null,
+      analyticsTags: supplied?.analyticsTags ?? null,
     };
     state.nextTargetId += 1;
     state.targets.push(target);
@@ -242,6 +249,10 @@ export function createTypingInvadersGame({
       emit("target-destroyed", {
         targetId: target.id,
         word: target.word,
+        lessonId: target.lessonId,
+        lessonTargetId: target.targetId,
+        lessonTargetType: target.targetType,
+        analyticsTags: target.analyticsTags,
         x: target.x,
         y: target.y,
       });
@@ -265,6 +276,7 @@ export function createTypingInvadersGame({
     tick,
     typeCharacter,
     spawnTarget,
+    setTargetProvider(provider) { selectedTargetProvider = provider ?? null; },
     getSnapshot: snapshot,
     drainEvents,
   };

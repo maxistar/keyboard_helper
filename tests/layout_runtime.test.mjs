@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 
 import {
   buildLayout,
@@ -8,8 +9,17 @@ import {
   normalizeKeyEntry,
   normalizeLayerData,
 } from "../src/layout_catalog.js";
-import { calcBounds, calcKeyBounds } from "../src/keyboard_renderer.js";
+import {
+  ACTIVE_RING,
+  applyCanvasGeometry,
+  calcKeyBounds,
+  calcOverlayCanvas,
+  COMBO_BORDER_PADDING,
+  OVERLAY_EDGE_MARGIN,
+  renderKeyLabel,
+} from "../src/keyboard_renderer.js";
 import { descriptorMatches, normalizeHidDescriptor, normalizeModifier } from "../src/hid_descriptor.js";
+import { canonicalLayoutDigestInput } from "../src/layout_semantics.js";
 import { inlineImageLayout } from "./fixtures/inline_layout_assets.mjs";
 
 test("normalizes named layers and keeps stable display order", () => {
@@ -42,6 +52,77 @@ test("effective layer entries fall back only for absent or null entries", () => 
   assert.equal(normalizeKeyEntry(effectiveLayerEntry(layers, 1, 1)).code, "");
 });
 
+test("object entries keep accessible names with and without image legends", () => {
+  assert.deepEqual(normalizeKeyEntry({ text: "", alt: "Disabled", code: "" }), {
+    label: { text: "", alt: "Disabled" },
+    code: "",
+    explicit: true,
+  });
+  assert.deepEqual(normalizeKeyEntry({ text: "⌫", alt: "Backspace", code: "Backspace" }).label, {
+    text: "⌫",
+    alt: "Backspace",
+  });
+  assert.deepEqual(normalizeKeyEntry({ text: "Mac", image: "assets/images/mac.svg", alt: "Mac" }).label, {
+    text: "Mac",
+    image: "assets/images/mac.svg",
+    alt: "Mac",
+  });
+  assert.equal(normalizeKeyEntry({ text: "A", code: "KeyA" }).label, "A");
+  assert.equal(normalizeKeyEntry(["⌫", "Backspace"]).label, "⌫");
+  assert.equal(normalizeKeyEntry("A").label, "A");
+});
+
+test("canonical layout digest input distinguishes accessible names on text entries", () => {
+  const definition = (entry) => ({
+    name: "Test",
+    keySize: { w: 40, h: 40, gap: 0 },
+    keyPositions: [{ row: 0, col: 0 }],
+    keyLayers: { default: [entry] },
+  });
+  const plain = canonicalLayoutDigestInput(definition(["", ""]));
+  const disabled = canonicalLayoutDigestInput(definition({ text: "", alt: "Disabled", code: "" }));
+  assert.notDeepEqual(plain, disabled);
+  assert.deepEqual(disabled.layout.keyLayers[0].entries[0], {
+    label: { text: "", image: null, alt: "Disabled" },
+    code: "",
+    explicit: true,
+  });
+});
+
+class KeyElementStub {
+  constructor() {
+    this.attributes = new Map();
+    this.children = [];
+    this.dataset = {};
+    this.innerHTML = "";
+    this.textContent = "";
+    this.ownerDocument = { createElement: (tagName) => ({ tagName }) };
+  }
+  appendChild(child) { this.children.push(child); }
+  getAttribute(name) { return this.attributes.get(name) ?? null; }
+  removeAttribute(name) { this.attributes.delete(name); }
+  setAttribute(name, value) { this.attributes.set(name, String(value)); }
+}
+
+test("desktop key labels expose accessible names independently of visible text", () => {
+  const element = new KeyElementStub();
+  renderKeyLabel(element, { text: "⌫", alt: "Backspace", code: "Backspace" });
+  assert.equal(element.textContent, "⌫");
+  assert.equal(element.getAttribute("aria-label"), "Backspace");
+  assert.equal(element.getAttribute("role"), "img");
+  assert.equal(element.dataset.key, "Backspace");
+
+  renderKeyLabel(element, { text: "", alt: "Disabled", code: "" });
+  assert.equal(element.textContent, "");
+  assert.equal(element.getAttribute("aria-label"), "Disabled");
+  assert.equal(element.dataset.key, undefined);
+
+  renderKeyLabel(element, ["A", "KeyA"]);
+  assert.equal(element.textContent, "A");
+  assert.equal(element.getAttribute("aria-label"), null);
+  assert.equal(element.getAttribute("role"), null);
+});
+
 test("shared geometry preserves spans and base labels", () => {
   const definition = {
     name: "Test",
@@ -50,7 +131,14 @@ test("shared geometry preserves spans and base labels", () => {
   };
   const layout = buildLayout(definition, [["A", "B"].map((label) => [label, `Key${label}`])]);
   assert.equal(layout.keys[0].code, "KeyA");
-  assert.deepEqual(calcBounds(layout.keys), { maxCol: 4, maxRow: 2 });
+  // The last key ends at x=172 (88 + 84) and y=88 (46 + 42); nothing is reserved beyond it except
+  // the overlay edge margin that keeps combo borders and active rings inside the layout element.
+  assert.deepEqual(calcOverlayCanvas(layout.keys, definition.keySize), {
+    originX: -OVERLAY_EDGE_MARGIN,
+    originY: -OVERLAY_EDGE_MARGIN,
+    width: 172 + 2 * OVERLAY_EDGE_MARGIN,
+    height: 88 + 2 * OVERLAY_EDGE_MARGIN,
+  });
   assert.deepEqual(calcKeyBounds(layout.keys[1], definition.keySize), {
     width: 84, height: 42, left: 88, top: 46,
   });
@@ -115,4 +203,29 @@ test("HID descriptors normalize modifiers and require their active context", () 
   assert.equal(normalizeHidDescriptor("Foo+Bar").supported, false);
   assert.equal(normalizeHidDescriptor("MO(1)").supported, false);
   assert.equal(normalizeHidDescriptor("Unknown(115)").supported, false);
+});
+
+test("the overlay edge margin covers the combo border and the active ring", () => {
+  assert.equal(COMBO_BORDER_PADDING, 4);
+  assert.equal(ACTIVE_RING, 2);
+  assert.equal(OVERLAY_EDGE_MARGIN, COMBO_BORDER_PADDING + ACTIVE_RING);
+});
+
+test("applyCanvasGeometry sizes the layout element and publishes the key origin", () => {
+  const values = new Map();
+  const root = { style: { setProperty: (name, value) => values.set(name, value) } };
+  applyCanvasGeometry(root, { originX: -6, originY: 12, width: 300, height: 120 });
+  assert.equal(root.style.width, "300px");
+  assert.equal(root.style.height, "120px");
+  assert.equal(values.get("--origin-x"), "-6px");
+  assert.equal(values.get("--origin-y"), "12px");
+});
+
+test("keys are positioned from the canvas origin and the combo border padding is shared", async () => {
+  const css = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
+  assert.match(css, /\.key\s*\{[^}]*left:\s*calc\([^;]*-\s*var\(--origin-x, 0px\)\)/);
+  assert.match(css, /\.key\s*\{[^}]*top:\s*calc\([^;]*-\s*var\(--origin-y, 0px\)\)/);
+  const main = await readFile(new URL("../src/main.js", import.meta.url), "utf8");
+  assert.doesNotMatch(main, /maxCol \* \(w \+ gap\)/, "the old tail formula is gone");
+  assert.match(main, /padding = COMBO_BORDER_PADDING/);
 });

@@ -271,7 +271,6 @@ export class CustomLayoutController {
   }
 
   async initialize() {
-    if (!this.available) return { status: "unavailable", diagnostics: [] };
     this.dispose();
     const bundledDefinitions = {};
     for (const [key, definition] of Object.entries(this.sourceBundledDefinitions)) {
@@ -283,6 +282,11 @@ export class CustomLayoutController {
       bundledDefinitions[key] = resolved.definition;
     }
     this.bundledDefinitions = Object.freeze(bundledDefinitions);
+    if (!this.available) {
+      const catalog = this.buildCatalog();
+      this.viewerModel.replaceCatalog(catalog, catalog.selectedLayoutKey);
+      return { status: "unavailable", selectedLayoutKey: catalog.selectedLayoutKey, diagnostics: [] };
+    }
     const [loaded, saved] = await Promise.all([this.adapter.listRecords(), this.adapter.readSelection()]);
     const diagnostics = [...(loaded?.diagnostics ?? []), ...(saved?.diagnostic ? [saved.diagnostic] : [])];
     const records = [];
@@ -315,6 +319,14 @@ export class CustomLayoutController {
     this.viewerModel.replaceCatalog(catalog, selected);
     if (selected && selected !== requested) await this.adapter.writeSelection(layoutReferenceFromKey(selected));
     return { status: "ready", selectedLayoutKey: selected, diagnostics: [...this.diagnostics] };
+  }
+
+  restoreBundledFallback(message = "Custom layouts could not be loaded.") {
+    this.diagnostics = message ? [diagnostic(message)] : [];
+    const catalog = this.buildCatalog();
+    const selected = catalog.selectedLayoutKey;
+    this.viewerModel.replaceCatalog(catalog, selected);
+    return { status: "fallback", selectedLayoutKey: selected, diagnostics: [...this.diagnostics] };
   }
 
   async selectLayout(layoutKey) {

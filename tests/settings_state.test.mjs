@@ -14,9 +14,29 @@ test("missing configuration starts with a clean built-in draft", () => {
   const state = createSettingsState({ status: "missing", path: "/home/me/.keyri.json", revision: "missing" });
   const snapshot = state.snapshot();
   assert.equal(snapshot.draft.defaultLayout, "qwerty");
+  assert.deepEqual(snapshot.draft.typingAnalytics, { exercise: false, background: false, aiCoaching: false });
   assert.equal(Object.hasOwn(snapshot.draft, "highlightingSource"), false);
   assert.equal(snapshot.dirty, false);
   assert.equal(snapshot.canSave, false);
+});
+
+test("exercise and background analytics settings are edited independently", () => {
+  const state = createSettingsState({ status: "missing", revision: "missing" });
+  state.setAnalyticsEnabled("exercise", true);
+  assert.deepEqual(state.snapshot().draft.typingAnalytics, { exercise: true, background: false, aiCoaching: false });
+  state.setAnalyticsEnabled("background", true);
+  assert.deepEqual(state.serializedConfig().typingAnalytics, { exercise: true, background: true, aiCoaching: false });
+});
+
+test("imported typing lessons remain local configuration data", () => {
+  const state = createSettingsState({ status: "missing", revision: "missing" });
+  const lesson = { id: "home-row", name: "Home row", targets: [{ id: "asdf", type: "word", value: "asdf" }] };
+  state.addLesson(lesson);
+  assert.equal(state.snapshot().draft.typingLessons[0].id, "home-row");
+  assert.equal(state.addLesson(lesson).duplicateLessonId, "home-row");
+  assert.equal(state.serializedConfig().typingLessons[0].targets[0].value, "asdf");
+  state.removeLesson("home-row");
+  assert.deepEqual(state.snapshot().draft.typingLessons, []);
 });
 
 test("valid edits remain draft-only and preserve unknown fields", () => {

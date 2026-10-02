@@ -151,10 +151,11 @@ export function normalizeKeyEntry(entry) {
     };
   }
   if (typeof entry === "object") {
+    let label = entry.label ?? entry.text ?? entry;
+    if (entry.image) label = { text: entry.text ?? entry.label, image: entry.image, alt: entry.alt };
+    else if (entry.alt != null) label = { text: entry.text ?? entry.label ?? "", alt: entry.alt };
     return {
-      label: entry.image
-        ? { text: entry.text ?? entry.label, image: entry.image, alt: entry.alt }
-        : (entry.label ?? entry.text ?? entry),
+      label,
       code: entry.code ?? null,
       explicit: true,
     };

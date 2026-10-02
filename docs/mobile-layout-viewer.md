@@ -6,10 +6,21 @@ diagnostic panel remains a separate surface and does not control viewer state.
 
 ## Using the viewer
 
-1. Choose a bundled or custom keyboard from **Keyboard layout**.
-2. Choose a layer from the layer controls below it. Changing layouts returns to that layout's first
-   layer.
-3. Swipe horizontally inside the labelled keyboard region when a layout is wider than the screen.
+1. Choose a bundled or custom keyboard from **Layout**.
+2. Choose a layer from the **Layer** selector beside it. Changing layouts returns to that layout's
+   first layer. Every layer stays in one selector regardless of how many a layout defines.
+3. Use the **Live** switch to follow a compatible enhanced keyboard. It stays visible but off and
+   unavailable until telemetry can be followed. While Live follows the keyboard, the Layer selector
+   is replaced by a read-only indicator of the firmware's active layer; turning Live off restores the
+   selector at your last Browse layer.
+4. Swipe horizontally inside the labelled keyboard region when a layout is wider than the screen.
+
+Layout, Layer, the Live switch, and the settings button share one compact row so the keyboard keeps
+the rest of the screen. The connection is shown by a small indicator on the settings button (hollow
+circle: no keyboard; filled circle: connected; half-filled: working; diamond: needs attention; square:
+problem). When a keyboard connects or is lost, a short notice appears in the lower-left of the
+keyboard for a few seconds. Full connection text and details stay in **Settings > Connection**, and
+the same text is announced to assistive technology.
 
 Text and image legends use the same normalized meaning as the desktop viewer. A missing or
 transparent entry on a selected layer falls back to the base-layer legend. Image keys keep an

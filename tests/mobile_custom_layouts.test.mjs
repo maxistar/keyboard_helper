@@ -282,18 +282,14 @@ test("near-limit inline JSON records remain readable after a cold relaunch", asy
   assert.equal(controller.records.length, 1);
 });
 
-test("bundled inline legends are decoded, resolved, and revoked by the mobile runtime owner", async () => {
+test("stock Corne selection owns no inline asset presentation URLs", async () => {
   const created = [];
   const revoked = [];
-  const decodedDimensions = [[256, 256], [220, 256], [256, 256]];
   const model = new MobileLayoutViewerModel();
   const controller = new CustomLayoutController(model, new MemoryAdapter(), {
     crypto: webcrypto,
     Blob,
-    createImageBitmap: async () => {
-      const [width, height] = decodedDimensions.shift();
-      return { width, height, close() {} };
-    },
+    createImageBitmap: async () => { throw new Error("stock Corne has no image to decode"); },
     requireCompleteDecoding: true,
     urlApi: {
       createObjectURL: () => `blob:bundled-${created.push(true)}`,
@@ -302,11 +298,11 @@ test("bundled inline legends are decoded, resolved, and revoked by the mobile ru
   });
   await controller.initialize();
   await controller.selectLayout("corne");
-  model.selectLayer(3);
-  assert.match(model.snapshot().presentation.keys.find(({ image }) => image)?.image ?? "", /^blob:bundled-/u);
-  assert.equal(created.length, 3);
+  model.selectLayer(2);
+  assert.equal(model.snapshot().presentation.keys.some(({ image }) => Boolean(image)), false);
+  assert.equal(created.length, 0);
   controller.dispose();
-  assert.equal(revoked.length, 3);
+  assert.equal(revoked.length, 0);
 });
 
 test("picker cancellation is a no-op and a failed preference commit rolls back a new record", async () => {
@@ -321,6 +317,55 @@ test("picker cancellation is a no-op and a failed preference commit rolls back a
   await assert.rejects(controller.importLayout(), /preference failed/);
   assert.equal(adapter.records.length, 0);
   assert.equal(model.snapshot().selectedLayoutKey, "qwerty");
+});
+
+test("startup keeps hydrating state until a saved bundled selection is resolved", async () => {
+  const adapter = new MemoryAdapter({ selection: { schemaVersion: 1, source: "bundled", id: "corne" } });
+  const model = new MobileLayoutViewerModel({ hydrating: true });
+  const visible = [];
+  model.subscribe((snapshot) => { if (snapshot.presentation) visible.push(snapshot.selectedLayoutKey); });
+  const controller = new CustomLayoutController(model, adapter, { crypto: webcrypto, Blob });
+
+  assert.equal(model.snapshot().presentation, null);
+  await controller.initialize();
+
+  assert.deepEqual(visible, ["corne"]);
+  assert.equal(model.snapshot().selectedLayoutKey, "corne");
+  assert.equal(model.snapshot().selectedLayerIndex, 0);
+});
+
+test("startup keeps hydrating state until a saved custom selection is resolved", async () => {
+  const stored = await inlineRecord();
+  const adapter = new MemoryAdapter({ records: [stored], selection: { schemaVersion: 1, source: "custom", id: FIRST_ID } });
+  const created = [];
+  const model = new MobileLayoutViewerModel({ hydrating: true });
+  const visible = [];
+  model.subscribe((snapshot) => { if (snapshot.presentation) visible.push(snapshot.selectedLayoutKey); });
+  const controller = new CustomLayoutController(model, adapter, {
+    crypto: webcrypto,
+    urlApi: { createObjectURL: () => `blob:first-visible-${created.push(true)}`, revokeObjectURL: () => {} },
+    Blob,
+  });
+
+  await controller.initialize();
+
+  assert.deepEqual(visible, [`custom:${FIRST_ID}`]);
+  assert.equal(model.snapshot().presentation.keys[0].image, "blob:first-visible-1");
+  assert.equal(created.length, 1);
+});
+
+test("storage initialization failure can publish bundled fallback after hydration", async () => {
+  const adapter = new MemoryAdapter();
+  adapter.listRecords = async () => { throw new Error("storage offline"); };
+  const model = new MobileLayoutViewerModel({ hydrating: true });
+  const controller = new CustomLayoutController(model, adapter, { crypto: webcrypto, Blob });
+
+  await assert.rejects(controller.initialize(), /storage offline/);
+  const fallback = controller.restoreBundledFallback("storage offline");
+
+  assert.equal(fallback.selectedLayoutKey, "qwerty");
+  assert.equal(model.snapshot().selectedLayoutKey, "qwerty");
+  assert.ok(model.snapshot().diagnostics.some((message) => message.includes("storage offline")));
 });
 
 test("startup revalidates records, restores custom selection at layer zero, and bounds recovery", async () => {

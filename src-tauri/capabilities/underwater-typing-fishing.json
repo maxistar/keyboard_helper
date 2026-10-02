@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "underwater-typing-fishing",
+  "description": "Capability for the Underwater Typing Fishing window",
+  "windows": ["underwater-typing-fishing"],
+  "platforms": ["macOS", "windows", "linux"],
+  "permissions": ["core:default"]
+}

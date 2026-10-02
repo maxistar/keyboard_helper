@@ -14,6 +14,7 @@ import { routeSystemKeyEvent } from "./system_key_event_router.js";
 import { formatBleKeyboardStatus } from "./ble_status.js";
 import { BUILTIN_LAYOUT_FILES, normalizeConfig, parseExternalLayout, pickAvailableLayout } from "./app_config.js";
 import { reloadOverlayAfterSettingsSave } from "./settings_runtime.js";
+import { createBackgroundAnalytics } from "./typing_analytics.js";
 import {
   createOverlayModeController,
   createOverlayModeView,
@@ -21,10 +22,16 @@ import {
 import { buildLayout, normalizeKeyEntry, normalizeLayerData } from "./layout_catalog.js";
 import { InlineAssetPresentationOwner } from "./inline_asset_presentation.js";
 import { parseLayoutJson } from "./layout_semantics.js";
-import { normalizeInputSourceSync } from "./input_source_sync_config.js";
-import { createMacosInputSourceController } from "./macos_input_source.js";
+import { detectRuntimePlatform, normalizeInputSourceSync } from "./input_source_sync_config.js";
+import { createPlatformInputSourceAdapter } from "./input_source_sync_adapter.js";
 import { createInputSourceLayerReconciler } from "./input_source_layer_reconciler.js";
-import { calcBounds, calcKeyBounds, renderKeyLabel } from "./keyboard_renderer.js";
+import {
+  applyCanvasGeometry,
+  calcKeyBounds,
+  calcOverlayCanvas,
+  COMBO_BORDER_PADDING,
+  renderKeyLabel,
+} from "./keyboard_renderer.js";
 import { createSelfTestOverlayPresentation } from "./self_test/overlay_presentation.js";
 import {
   createSelfTestLayerLeaseCoordinator,
@@ -177,7 +184,7 @@ function rebuildLayoutData() {
     layoutLayerKeys[key] = layerKeys;
     layouts[key] = buildLayout(def, layers);
     layoutBleSources[key] = normalizeBleLayerSource(def);
-    const inputSourceSync = normalizeInputSourceSync(def, layers.length);
+    const inputSourceSync = normalizeInputSourceSync(def, layers.length, { platform: runtimePlatform });
     layoutInputSourceSync[key] = inputSourceSync.config;
     if (inputSourceSync.error) {
       layoutLoadErrors.push(`${def.name ?? key}: ${inputSourceSync.error}`);
@@ -208,9 +215,12 @@ let overlayModeController = null;
 let windowModeControls = null;
 let currentLayoutKey = "qwerty";
 let bleLayerSync = null;
-let macosInputSource = null;
+const runtimePlatform = detectRuntimePlatform();
+let inputSourceSyncAdapter = null;
 let sourceLayerReconciler = null;
+let inputSourceDiagnosticsMessage = null;
 let languageMenuState = {
+  languageVisible: false,
   languageAvailable: false,
   languageOptions: [],
   currentInputSourceId: null,
@@ -228,6 +238,7 @@ let bleHighlightController = null;
 let highlightingStatus = null;
 let bleKeyboardStatus = null;
 let bleBatteryLevel = null;
+let backgroundAnalytics = null;
 const pressedKeyTracker = createPressedKeyTracker();
 
 function languageStatusLabel(status) {
@@ -259,19 +270,52 @@ function configuredLanguageOptions(config, availableIds = new Set()) {
   }));
 }
 
+function formatInputSourceDiagnostics(diagnostics) {
+  if (diagnostics?.platform === "windows") {
+    const installed = diagnostics.installedSourceIds?.join(", ") || "none";
+    const missing = diagnostics.missingSourceIds?.join(", ");
+    const context = diagnostics.contextId ? "Following the foreground window." : "Foreground context unavailable.";
+    return `Windows layouts: ${installed}. ${context}${missing ? ` Missing configured layouts: ${missing}.` : ""}`;
+  }
+  if (!diagnostics || !Array.isArray(diagnostics.groups)) return null;
+  const groups = diagnostics.groups.map((group) => {
+    const identifiers = Array.isArray(group.identifiers) ? group.identifiers.join(", ") : "";
+    return `${group.groupIndex}: ${group.groupName}${identifiers ? ` (${identifiers})` : ""}`;
+  });
+  return groups.length ? `Detected XKB groups: ${groups.join("; ")}` : null;
+}
+
 async function startLanguageSync(layoutKey) {
   sourceLayerReconciler?.dispose();
   sourceLayerReconciler = null;
+  inputSourceDiagnosticsMessage = null;
   const syncConfig = layoutInputSourceSync[layoutKey] ?? null;
-  if (!syncConfig || !macosInputSource || !bleLayerSync) {
-    await macosInputSource?.stop();
+  if (!syncConfig || !inputSourceSyncAdapter || !bleLayerSync) {
+    await inputSourceSyncAdapter?.stop();
     updateLanguageMenu({
+      languageVisible: false,
       languageAvailable: false,
       languageOptions: [],
       currentInputSourceId: null,
       languageStatus: "waiting",
       languageStatusLabel: "Waiting for keyboard",
       languageMessage: null,
+      languagePendingId: null,
+    });
+    return false;
+  }
+
+  if (!inputSourceSyncAdapter.supported) {
+    await inputSourceSyncAdapter.stop();
+    const status = inputSourceSyncAdapter.getStatus();
+    updateLanguageMenu({
+      languageVisible: true,
+      languageAvailable: false,
+      languageOptions: configuredLanguageOptions(syncConfig),
+      currentInputSourceId: null,
+      languageStatus: "error",
+      languageStatusLabel: "Input Source Sync unavailable",
+      languageMessage: status.message,
       languagePendingId: null,
     });
     return false;
@@ -284,10 +328,11 @@ async function startLanguageSync(layoutKey) {
     onStateChange: (syncState) => updateLanguageMenu({
       languageStatus: syncState.status,
       languageStatusLabel: languageStatusLabel(syncState.status),
-      languageMessage: syncState.message,
+      languageMessage: syncState.message ?? inputSourceDiagnosticsMessage,
     }),
   });
   updateLanguageMenu({
+    languageVisible: true,
     languageAvailable: true,
     languageOptions: configuredLanguageOptions(syncConfig),
     currentInputSourceId: null,
@@ -296,22 +341,25 @@ async function startLanguageSync(layoutKey) {
     languageMessage: null,
     languagePendingId: null,
   });
-  const started = await macosInputSource.start(layoutKey, syncConfig);
+  const started = await inputSourceSyncAdapter.start(layoutKey, syncConfig);
   if (!started && currentLayoutKey === layoutKey) {
+    const status = inputSourceSyncAdapter.getStatus();
     updateLanguageMenu({
       languageStatus: "error",
-      languageStatusLabel: "Synchronization error",
+      languageStatusLabel: "Input Source Sync unavailable",
+      languageAvailable: false,
+      languageMessage: status.message ?? "The platform input-source adapter could not start.",
     });
   }
   return started;
 }
 
 async function selectLanguage(inputSourceId) {
-  if (!macosInputSource || languageMenuState.languagePendingId) return false;
+  if (!inputSourceSyncAdapter?.supported || languageMenuState.languagePendingId) return false;
   updateLanguageMenu({ languagePendingId: inputSourceId, languageMessage: null });
   selfTestLayerLease?.invalidate("input-source-selected");
   try {
-    await macosInputSource.select(inputSourceId);
+    await inputSourceSyncAdapter.select(inputSourceId);
     return true;
   } catch (error) {
     updateLanguageMenu({
@@ -394,7 +442,8 @@ function renderComboBorders(layout, comboDefinitions) {
     positionIndex.set(`${key.row},${key.col}`, key);
   });
 
-  const padding = 4;
+  const padding = COMBO_BORDER_PADDING;
+  const canvas = calcOverlayCanvas(layout.keys, layout.keySize);
   comboDefinitions.forEach((combo) => {
     const key1 = positionIndex.get(`${combo.key1.row},${combo.key1.col}`);
     const key2 = positionIndex.get(`${combo.key2.row},${combo.key2.col}`);
@@ -410,8 +459,8 @@ function renderComboBorders(layout, comboDefinitions) {
     const border = document.createElement("div");
     border.className = "combo-border";
     border.dataset.comboCode = combo.code;
-    border.style.left = `${left}px`;
-    border.style.top = `${top}px`;
+    border.style.left = `${left - canvas.originX}px`;
+    border.style.top = `${top - canvas.originY}px`;
     border.style.width = `${right - left}px`;
     border.style.height = `${bottom - top}px`;
     layoutRoot.appendChild(border);
@@ -446,12 +495,7 @@ function renderKeyboard(layout) {
   const comboDefinitions = comboDefinitionsByLayout[currentLayoutKey] ?? [];
   renderComboBorders(layout, comboDefinitions);
 
-  const { w, h, gap } = layout.keySize;
-  const { maxCol, maxRow } = calcBounds(layout.keys);
-  const widthPx = maxCol * (w + gap) + w;
-  const heightPx = maxRow * (h + gap) + h;
-  layoutRoot.style.width = `${widthPx}px`;
-  layoutRoot.style.height = `${heightPx}px`;
+  applyCanvasGeometry(layoutRoot, calcOverlayCanvas(layout.keys, layout.keySize));
 
   layout.keys.forEach((k, key) => {
     const el = document.createElement("div");
@@ -744,6 +788,18 @@ async function openFlappyKeyBird() {
   return true;
 }
 
+async function openUnderwaterTypingFishing() {
+  if (!tauriHandle?.core?.invoke) throw new Error("Underwater Typing Fishing requires the desktop application.");
+  await tauriHandle.core.invoke("open_underwater_typing_fishing");
+  return true;
+}
+
+async function openTypingInsightsWindow() {
+  if (!tauriHandle?.core?.invoke) throw new Error("Typing Insights requires the desktop application.");
+  await tauriHandle.core.invoke("open_typing_insights");
+  return true;
+}
+
 async function openSettingsWindow() {
   if (!tauriHandle?.core?.invoke) {
     throw new Error("Settings require the desktop application.");
@@ -834,6 +890,16 @@ window.addEventListener("DOMContentLoaded", async () => {
       .catch((err) => console.error("Failed to listen enter-mini-mode-requested:", err));
   }
   const config = await loadConfig();
+  backgroundAnalytics = createBackgroundAnalytics({
+    settings: config?.typingAnalytics,
+    context: () => ({
+      layout: currentLayoutKey || "unknown",
+      language: languageMenuState.currentInputSourceId || "unknown",
+    }),
+    write: (record) => tauriHandle?.core?.invoke("record_typing_analytics", { record }).catch((error) => {
+      console.error("Failed to persist typing analytics:", error);
+    }),
+  });
   globalOverlayHotkey = createGlobalOverlayHotkey({
     hotkey: config?.toggleHotkey ?? null,
     onToggle: () => tauriHandle?.core?.invoke("toggle_window").catch(console.error),
@@ -909,33 +975,38 @@ window.addEventListener("DOMContentLoaded", async () => {
     onStatus: publishSelfTestLayerLeaseStatus,
   });
 
-  if (tauri?.core?.invoke && tauri?.event?.listen) {
-    macosInputSource = createMacosInputSourceController({
-      tauri,
-      onSourceChange: (sourceId) => {
-        updateLanguageMenu({ currentInputSourceId: sourceId });
-        sourceLayerReconciler?.setSource(sourceId);
-      },
-      onAvailabilityChange: (availableIds) => {
-        const syncConfig = layoutInputSourceSync[currentLayoutKey];
-        updateLanguageMenu({
-          languageOptions: configuredLanguageOptions(syncConfig, availableIds),
-        });
-      },
-      onError: (error) => updateLanguageMenu({
-        languageStatus: "error",
-        languageStatusLabel: "Synchronization error",
-        languageMessage: error?.message ?? String(error),
-      }),
-    });
-    const refreshLanguageSync = () => {
-      macosInputSource?.refresh().then(() => sourceLayerReconciler?.resume());
-    };
-    window.addEventListener("focus", refreshLanguageSync);
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) refreshLanguageSync();
-    });
-  }
+  inputSourceSyncAdapter = createPlatformInputSourceAdapter({
+    platform: runtimePlatform,
+    tauri,
+    onSourceChange: (sourceId) => {
+      updateLanguageMenu({ currentInputSourceId: sourceId });
+      sourceLayerReconciler?.setSource(sourceId);
+    },
+    onAvailabilityChange: (availableIds) => {
+      const syncConfig = layoutInputSourceSync[currentLayoutKey];
+      updateLanguageMenu({
+        languageOptions: configuredLanguageOptions(syncConfig, availableIds),
+      });
+    },
+    onDiagnosticsChange: (diagnostics) => {
+      inputSourceDiagnosticsMessage = formatInputSourceDiagnostics(diagnostics);
+      if (inputSourceDiagnosticsMessage && languageMenuState.languageStatus !== "error") {
+        updateLanguageMenu({ languageMessage: inputSourceDiagnosticsMessage });
+      }
+    },
+    onError: (error) => updateLanguageMenu({
+      languageStatus: "error",
+      languageStatusLabel: "Synchronization error",
+      languageMessage: error?.message ?? String(error),
+    }),
+  });
+  const refreshLanguageSync = () => {
+    inputSourceSyncAdapter?.refresh().then(() => sourceLayerReconciler?.resume());
+  };
+  window.addEventListener("focus", refreshLanguageSync);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) refreshLanguageSync();
+  });
 
   menuStateController = createAppMenuStateController({
     getCurrentLayoutKey: () => currentLayoutKey,
@@ -948,8 +1019,10 @@ window.addEventListener("DOMContentLoaded", async () => {
     openTypingInvaders,
     openKeyboardSnake,
     openFlappyKeyBird,
+    openUnderwaterTypingFishing,
     openKeyboardSelfTest,
     enterMiniMode,
+    openTypingInsights: openTypingInsightsWindow,
     openSettings: openSettingsWindow,
     openHelp: openHelpPage,
     onChange: (state) => menuControls?.update(state),
@@ -964,6 +1037,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     onStartGame: () => menuStateController.launchGame(),
     onStartSnake: () => menuStateController.launchSnake(),
     onStartFlappy: () => menuStateController.launchFlappy(),
+    onStartFishing: () => menuStateController.launchFishing(),
+    onInsights: () => menuStateController.insights(),
     onSettings: () => menuStateController.settings(),
     onHelp: () => menuStateController.help(),
     onLanguageSelect: selectLanguage,
@@ -980,6 +1055,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       .listen("key_event", (e) => {
         const event = normalizeSystemKeyEvent(e.payload);
         if (event) {
+          backgroundAnalytics?.handle(event);
           routeSystemKeyEvent(event, {
             hotkeyController: globalOverlayHotkey,
             inputSourceController,
@@ -987,6 +1063,15 @@ window.addEventListener("DOMContentLoaded", async () => {
         }
       })
       .catch((err) => console.error("Failed to listen key_event:", err));
+
+    tauri.event
+      .listen("typing-exercise-ownership", (event) => {
+        backgroundAnalytics?.setSuspended(event.payload?.active === true);
+      })
+      .catch((err) => console.error("Failed to listen typing exercise ownership:", err));
+    tauri.event
+      .listen("typing-analytics-deleted", () => backgroundAnalytics?.resetTransient())
+      .catch((err) => console.error("Failed to listen typing analytics deletion:", err));
 
     tauri.event
       .listen("ble_keyboard_status", (event) => {

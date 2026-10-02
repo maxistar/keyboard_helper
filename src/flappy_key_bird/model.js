@@ -1,5 +1,5 @@
 import { createMiniGameRuntime, createMiniGameSession } from "../mini_games/runtime.js";
-import { createTargetMatcher, filterCompatibleTargets } from "../mini_games/targets.js";
+import { cloneNormalizedTarget, createTargetMatcher, filterCompatibleTargets } from "../mini_games/targets.js";
 import { FLAPPY_CONFIG } from "./config.js";
 
 function clamp(value, minimum, maximum) {
@@ -103,7 +103,7 @@ export function createFlappyGame({
   function nextTarget() {
     const target = targets[targetIndex % targets.length] ?? [];
     targetIndex += 1;
-    return [...target];
+    return cloneNormalizedTarget(target);
   }
 
   function createGate(x) {

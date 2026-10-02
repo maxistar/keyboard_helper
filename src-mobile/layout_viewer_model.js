@@ -8,9 +8,10 @@ import {
   normalizeLayerData,
   validateLayoutDefinition,
 } from "./layout_semantics.generated.js";
+import { calcCanvasGeometry } from "./shared-generated/layout_geometry.js";
 import { hasOwn } from "./webview_compat.js";
 
-export const ViewerCatalogStatus = Object.freeze({ READY: "ready", EMPTY: "empty" });
+export const ViewerCatalogStatus = Object.freeze({ HYDRATING: "hydrating", READY: "ready", EMPTY: "empty" });
 export const VIEWER_DIAGNOSTIC_LIMIT = 180;
 export const CUSTOM_LAYOUT_KEY_PREFIX = "custom:";
 
@@ -133,13 +134,10 @@ export function createLayoutPresentation(definition, layerIndex = 0) {
     throw new LayoutViewerError("invalid-layer", "The selected layer is not available.");
   }
   const gap = Number.isFinite(definition.keySize.gap) ? definition.keySize.gap : 0;
-  let maxCol = 0;
-  let maxRow = 0;
+  const canvas = calcCanvasGeometry(definition.keyPositions, definition.keySize);
   const keys = definition.keyPositions.map((position, index) => {
     const widthUnits = Number.isFinite(position.w) && position.w > 0 ? position.w : 1;
     const heightUnits = Number.isFinite(position.h) && position.h > 0 ? position.h : 1;
-    maxCol = Math.max(maxCol, position.col + widthUnits);
-    maxRow = Math.max(maxRow, position.row + heightUnits);
     const entry = viewerEntryPresentation(effectiveLayerEntry(layerData.layers, layerIndex, index));
     const accessibleLabel = String(entry.alt ?? entry.label ?? entry.code ?? `Key ${index + 1}`);
     return {
@@ -162,8 +160,9 @@ export function createLayoutPresentation(definition, layerIndex = 0) {
     layerName: layerData.names[layerIndex],
     layers: layerData.names.map((name, index) => ({ index, name, key: layerData.layerKeys[index] })),
     keySize: { w: definition.keySize.w, h: definition.keySize.h, gap },
-    width: maxCol * (definition.keySize.w + gap) + definition.keySize.w,
-    height: maxRow * (definition.keySize.h + gap) + definition.keySize.h,
+    width: canvas.width,
+    height: canvas.height,
+    origin: { x: canvas.originX, y: canvas.originY },
     keys,
   });
 }
@@ -181,9 +180,20 @@ function freezeViewerSnapshot(value) {
 
 export class MobileLayoutViewerModel {
   constructor(options = {}) {
-    this.catalog = createMobileLayoutCatalog(options);
     this.listeners = new Set();
-    this.state = this.buildSnapshot(this.catalog.selectedLayoutKey, 0);
+    if (options.hydrating === true) {
+      this.catalog = deepFreeze({
+        status: ViewerCatalogStatus.HYDRATING,
+        layouts: [],
+        selectedLayoutKey: null,
+        diagnostics: [],
+        definitions: {},
+      });
+      this.state = this.buildSnapshot(null, 0);
+    } else {
+      this.catalog = createMobileLayoutCatalog(options);
+      this.state = this.buildSnapshot(this.catalog.selectedLayoutKey, 0);
+    }
   }
 
   buildSnapshot(layoutKey, layerIndex) {

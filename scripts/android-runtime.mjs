@@ -13,10 +13,16 @@ export function validateActivitySource(source) {
     `package ${companionPackage}`,
     "class MainActivity : TauriActivity()",
     "enableEdgeToEdge()",
+    "WindowCompat.setDecorFitsSystemWindows(window, false)",
+    "window.statusBarColor = Color.TRANSPARENT",
+    "window.navigationBarColor = Color.TRANSPARENT",
     "WindowInsetsCompat.Type.systemBars()",
     "WindowInsetsCompat.Type.displayCutout()",
+    "WindowInsetsCompat.Type.mandatorySystemGestures()",
     "ViewCompat.setOnApplyWindowInsetsListener",
     "ViewCompat.requestApplyInsets",
+    "KeyboardHelperSafeInsets",
+    "publishSafeInsets()",
   ];
   for (const value of required) {
     if (!source.includes(value)) throw new Error(`Android runtime template is missing required contract: ${value}`);

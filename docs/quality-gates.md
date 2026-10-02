@@ -16,14 +16,16 @@ npm --prefix website run build
 ```
 
 `quality.yml` repeats JavaScript and Rust source checks on Ubuntu, Windows, and
-macOS 15. Linux needs the Tauri GTK/WebKit/AppIndicator development packages.
+macOS 15. Linux needs the Tauri GTK/WebKit/AppIndicator development packages
+and `libx11-dev` for the X11/XKB input-source adapter.
 Native window behavior, WebView2, platform packaging, macOS architecture, and
 signing cannot be established by a different host: those checks remain on their
 own runners.
 
 The Windows package job starts the release executable with
 `--quality-smoke-secondary-windows`. This test-only startup switch is inert in a
-normal launch. It opens Settings, Shift-Space Invaders, and Keyboard Self-test
+normal launch. It opens Settings, Shift-Space Invaders, Keyboard Snake, Flappy Key-Bird,
+Underwater Typing Fishing, and Keyboard Self-test
 through their production commands and checks page readiness, visibility,
 single-instance reuse, minimized-window restoration, focus, and clean close.
 The structured JSON report is retained as the

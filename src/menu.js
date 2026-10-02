@@ -22,6 +22,8 @@ export function createMenu({
   onStartGame,
   onStartSnake = async () => false,
   onStartFlappy = async () => false,
+  onStartFishing = async () => false,
+  onInsights = async () => false,
   onSettings,
   onHelp,
   onLanguageSelect = async () => false,
@@ -50,6 +52,8 @@ export function createMenu({
     snakePending: false,
     flappyAvailable: false,
     flappyPending: false,
+    fishingAvailable: false,
+    fishingPending: false,
     miniAvailable: false,
     miniPending: false,
     settingsAvailable: false,
@@ -91,9 +95,11 @@ export function createMenu({
   let gameButton;
   let snakeButton;
   let flappyButton;
+  let fishingButton;
   let gamesButton;
   let gamesFlyout;
   let miniButton;
+  let insightsButton;
   let settingsButton;
   let rootFeedback;
   let keyboardFeedback;
@@ -463,6 +469,19 @@ export function createMenu({
       const opened = await onStartFlappy();
       if (opened !== false) closeMenu();
     });
+    fishingButton = createFlyoutAction("Underwater Typing Fishing", "menu-action-fishing", "games", async () => {
+      feedbackContext = activeSubmenu === "games" ? "games" : "root";
+      const opened = await onStartFishing();
+      if (opened !== false) closeMenu();
+    });
+
+    insightsButton = createRootItem("Typing Insights", "menu-action-insights");
+    insightsButton.addEventListener("click", async () => {
+      feedbackContext = "root";
+      const opened = await onInsights();
+      if (opened !== false) closeMenu();
+    });
+    attachItemKeyboard(insightsButton, rootItems);
 
     settingsButton = createRootItem("Settings", "menu-action-settings");
     settingsButton.addEventListener("click", async () => {
@@ -487,6 +506,7 @@ export function createMenu({
       connectionButton,
       miniButton,
       gamesButton,
+      insightsButton,
       settingsButton,
       helpButton,
       rootFeedback,
@@ -494,7 +514,7 @@ export function createMenu({
 
     gamesFlyout = createFlyout("games", "gamesMenuFlyout", "gamesMenuParent");
     gamesFeedback = createFeedback("menu-feedback-games");
-    gamesFlyout.append(gameButton, snakeButton, flappyButton, gamesFeedback);
+    gamesFlyout.append(gameButton, snakeButton, flappyButton, fishingButton, gamesFeedback);
     keyboardFlyout = createFlyout("keyboard", "keyboardMenuFlyout", "keyboardMenuParent");
     const keyboardHeader = document.createElement("header");
     keyboardHeader.className = "menu-flyout-header";
@@ -561,7 +581,7 @@ export function createMenu({
     languageHeader.className = "menu-flyout-header";
     const languageEyebrow = document.createElement("span");
     languageEyebrow.className = "menu-eyebrow";
-    languageEyebrow.textContent = "macOS input source";
+    languageEyebrow.textContent = "Input Source Sync";
     languageStatus = document.createElement("div");
     languageStatus.className = "menu-language-status";
     languageStatus.setAttribute("role", "status");
@@ -652,7 +672,7 @@ export function createMenu({
   function renderFeedback() {
     if (state.reloadPending || state.selfTestPending) feedbackContext = "keyboard";
     else if (state.reconnectPending) feedbackContext = "connection";
-    else if (state.gamePending || state.snakePending || state.flappyPending) feedbackContext = activeSubmenu === "games" ? "games" : "root";
+    else if (state.gamePending || state.snakePending || state.flappyPending || state.fishingPending) feedbackContext = activeSubmenu === "games" ? "games" : "root";
     else if (state.miniPending || state.settingsPending) feedbackContext = "root";
 
     const targets = {
@@ -679,10 +699,11 @@ export function createMenu({
     currentLayoutName.textContent = layoutLabel;
     keyboardSummary.textContent = layoutLabel;
 
-    languageButton.hidden = !state.languageAvailable;
-    languageButton.disabled = !state.languageAvailable;
-    languageFlyout.hidden = !state.languageAvailable;
-    if (!state.languageAvailable && activeSubmenu === "language") closeSubmenu();
+    const languageVisible = state.languageVisible ?? state.languageAvailable;
+    languageButton.hidden = !languageVisible;
+    languageButton.disabled = !languageVisible;
+    languageFlyout.hidden = !languageVisible;
+    if (!languageVisible && activeSubmenu === "language") closeSubmenu();
     renderLanguageOptions();
     const selectedLanguage = state.languageOptions.find(
       (option) => option.inputSourceId === state.currentInputSourceId,
@@ -752,6 +773,17 @@ export function createMenu({
     flappyButton.textContent = state.flappyPending ? "Launching…" : "Flappy Key-Bird";
     flappyButton.title = state.flappyAvailable
       ? "Open Flappy Key-Bird in a separate window"
+      : "Available in the desktop application";
+    fishingButton.disabled = !state.fishingAvailable || state.fishingPending;
+    fishingButton.textContent = state.fishingPending ? "Launching…" : "Underwater Typing Fishing";
+    fishingButton.title = state.fishingAvailable
+      ? "Open Underwater Typing Fishing in a separate window"
+      : "Available in the desktop application";
+
+    insightsButton.disabled = !state.insightsAvailable || state.insightsPending;
+    insightsButton.textContent = state.insightsPending ? "Opening Typing Insights…" : "Typing Insights";
+    insightsButton.title = state.insightsAvailable
+      ? "Open local typing statistics in a separate window"
       : "Available in the desktop application";
 
     settingsButton.disabled = !state.settingsAvailable || state.settingsPending;

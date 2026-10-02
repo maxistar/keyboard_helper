@@ -20,6 +20,7 @@ function createHarness(overrides = {}) {
     gameCalls: 0,
     snakeCalls: 0,
     flappyCalls: 0,
+    fishingCalls: 0,
     selfTestCalls: [],
     miniCalls: 0,
     settingsCalls: 0,
@@ -51,6 +52,10 @@ function createHarness(overrides = {}) {
     },
     openFlappyKeyBird: async () => {
       data.flappyCalls += 1;
+      return true;
+    },
+    openUnderwaterTypingFishing: async () => {
+      data.fishingCalls += 1;
       return true;
     },
     openKeyboardSelfTest: async (key) => {
@@ -413,6 +418,49 @@ test("Flappy launch is desktop-only, serialized, and exposes launch failures", a
   assert.equal(failing.getSnapshot().feedback.message, "Flappy window unavailable");
 });
 
+test("Fishing launch is desktop-only, serialized, and exposes launch failures", async () => {
+  let finishLaunch;
+  const pending = new Promise((resolve) => { finishLaunch = resolve; });
+  const controller = createAppMenuStateController({
+    getCurrentLayoutKey: () => "builtin",
+    getCurrentLayoutLabel: () => "Built in",
+    getCurrentLayoutSource: () => true,
+    getCurrentBleSource: () => null,
+    hasNativeBridge: () => true,
+    reloadLayout: async () => true,
+    reconnectBle: async () => true,
+    openTypingInvaders: async () => true,
+    openUnderwaterTypingFishing: async () => pending,
+    openHelp: async () => true,
+  });
+  const first = controller.launchFishing();
+  assert.equal(controller.getSnapshot().fishingPending, true);
+  assert.equal(await controller.launchFishing(), false);
+  finishLaunch(true);
+  assert.equal(await first, true);
+  assert.equal(controller.getSnapshot().fishingPending, false);
+
+  const unavailable = createHarness({ native: false });
+  assert.equal(unavailable.controller.getSnapshot().fishingAvailable, false);
+  assert.equal(await unavailable.controller.launchFishing(), false);
+  assert.equal(unavailable.data.fishingCalls, 0);
+
+  const failing = createAppMenuStateController({
+    getCurrentLayoutKey: () => "builtin",
+    getCurrentLayoutLabel: () => "Built in",
+    getCurrentLayoutSource: () => true,
+    getCurrentBleSource: () => null,
+    hasNativeBridge: () => true,
+    reloadLayout: async () => true,
+    reconnectBle: async () => true,
+    openTypingInvaders: async () => true,
+    openUnderwaterTypingFishing: async () => { throw new Error("Fishing window unavailable"); },
+    openHelp: async () => true,
+  });
+  assert.equal(await failing.launchFishing(), false);
+  assert.equal(failing.getSnapshot().feedback.message, "Fishing window unavailable");
+});
+
 test("Settings requires native availability, prevents duplicates, and reports failure", async () => {
   let finishOpen;
   const pending = new Promise((resolve) => { finishOpen = resolve; });
@@ -485,4 +533,38 @@ test("Keyboard Self-test is desktop-only, seeded from the active layout, and ide
   assert.equal(browser.controller.getSnapshot().selfTestAvailable, false);
   assert.equal(await browser.controller.selfTest(), false);
   assert.deepEqual(browser.data.selfTestCalls, []);
+});
+
+test("Typing Insights opens from the overlay menu, is desktop-only, and reports failures", async () => {
+  let finishOpen;
+  const pending = new Promise((resolve) => { finishOpen = resolve; });
+  const base = {
+    getCurrentLayoutKey: () => "builtin",
+    getCurrentLayoutLabel: () => "Built in",
+    getCurrentLayoutSource: () => true,
+    getCurrentBleSource: () => null,
+    reloadLayout: async () => true,
+    reconnectBle: async () => true,
+    openTypingInvaders: async () => true,
+    openSettings: async () => true,
+    openHelp: async () => true,
+  };
+  const controller = createAppMenuStateController({ ...base, hasNativeBridge: () => true, openTypingInsights: async () => pending });
+  assert.equal(controller.getSnapshot().insightsAvailable, true);
+  const first = controller.insights();
+  assert.equal(controller.getSnapshot().insightsPending, true);
+  assert.equal(await controller.insights(), false);
+  finishOpen(true);
+  assert.equal(await first, true);
+  assert.equal(controller.getSnapshot().insightsPending, false);
+
+  let calls = 0;
+  const unavailable = createAppMenuStateController({ ...base, hasNativeBridge: () => false, openTypingInsights: async () => { calls += 1; return true; } });
+  assert.equal(unavailable.getSnapshot().insightsAvailable, false);
+  assert.equal(await unavailable.insights(), false);
+  assert.equal(calls, 0);
+
+  const failing = createAppMenuStateController({ ...base, hasNativeBridge: () => true, openTypingInsights: async () => { throw new Error("Insights window unavailable"); } });
+  assert.equal(await failing.insights(), false);
+  assert.equal(failing.getSnapshot().feedback.message, "Insights window unavailable");
 });

@@ -1,4 +1,5 @@
 import { collectLayoutImageReferences, parseLayoutJson, validateLayoutDefinition } from "./layout_semantics.js";
+import { validateLesson } from "./typing_lessons.js";
 
 export { validateLayoutDefinition } from "./layout_semantics.js";
 
@@ -7,6 +8,8 @@ export const BUILTIN_LAYOUTS = Object.freeze({
   qwertz: Object.freeze({ name: "QWERTZ", file: "layout_qwertz.json" }),
   corne: Object.freeze({ name: "Corne", file: "layout_corne.json" }),
   dactyl: Object.freeze({ name: "Dactyl", file: "layout_dactyl.json" }),
+  lily58: Object.freeze({ name: "Lily58", file: "layout_lily58.json" }),
+  sofle: Object.freeze({ name: "Sofle", file: "layout_sofle.json" }),
   magic: Object.freeze({ name: "Magic", file: "layout_magic.json" }),
   mac: Object.freeze({ name: "Mac", file: "layout_mac.json" }),
 });
@@ -39,6 +42,8 @@ export function createDefaultConfig() {
     defaultLayout: "qwerty",
     toggleHotkey: null,
     layouts: Object.fromEntries(Object.keys(BUILTIN_LAYOUTS).map((key) => [key, true])),
+    typingAnalytics: { exercise: false, background: false, aiCoaching: false },
+    typingLessons: [],
   };
 }
 
@@ -100,23 +105,44 @@ export function normalizeConfig(value) {
     : Object.keys(layouts)[0] ?? defaults.defaultLayout;
   const normalized = { ...value };
   delete normalized.highlightingSource;
+  const typingLessons = (Array.isArray(value.typingLessons) ? value.typingLessons : [])
+    .map((lesson) => validateLesson(lesson))
+    .filter((result) => result.valid)
+    .map((result) => result.lesson);
   return {
     ...normalized,
     defaultLayout,
     toggleHotkey: normalizeHotkey(value.toggleHotkey),
     layouts,
+    typingAnalytics: {
+      exercise: value.typingAnalytics?.exercise === true,
+      background: value.typingAnalytics?.background === true,
+      aiCoaching: value.typingAnalytics?.aiCoaching === true,
+    },
+    typingLessons,
   };
 }
 
 export function serializeConfig(original, draft) {
   const base = isPlainObject(original) ? { ...original } : {};
   delete base.highlightingSource;
-  return {
+  const typingLessons = (Array.isArray(draft.typingLessons) ? draft.typingLessons : [])
+    .map((lesson) => validateLesson(lesson))
+    .filter((result) => result.valid)
+    .map((result) => result.lesson);
+  const serialized = {
     ...base,
     defaultLayout: draft.defaultLayout,
     toggleHotkey: normalizeHotkey(draft.toggleHotkey),
     layouts: { ...draft.layouts },
+    typingAnalytics: {
+      exercise: draft.typingAnalytics?.exercise === true,
+      background: draft.typingAnalytics?.background === true,
+      aiCoaching: draft.typingAnalytics?.aiCoaching === true,
+    },
   };
+  if (typingLessons.length || Object.hasOwn(base, "typingLessons")) serialized.typingLessons = typingLessons;
+  return serialized;
 }
 
 export function validateConfigDraft(draft) {

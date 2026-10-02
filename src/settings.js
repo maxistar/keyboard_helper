@@ -9,6 +9,8 @@ import {
   persistSettingsDraft,
 } from "./settings_actions.js";
 import { parseExternalLayout } from "./app_config.js";
+import { parseLessonJson } from "./typing_lessons.js";
+import { loadLayoutDefinition } from "./layout_catalog.js";
 import { initializeSecondaryWindow, SECONDARY_WINDOWS } from "./secondary_window_ready.js";
 
 const elements = {
@@ -35,6 +37,16 @@ const elements = {
   formError: document.getElementById("formError"),
   cancel: document.getElementById("cancelButton"),
   save: document.getElementById("saveButton"),
+  exerciseAnalytics: document.getElementById("exerciseAnalytics"),
+  backgroundAnalytics: document.getElementById("backgroundAnalytics"),
+  aiCoaching: document.getElementById("aiCoaching"),
+  openInsights: document.getElementById("openInsightsButton"),
+  revokeAi: document.getElementById("revokeAiButton"),
+  deleteAnalytics: document.getElementById("deleteAnalyticsButton"),
+  analyticsStatus: document.getElementById("analyticsStatus"),
+  addLesson: document.getElementById("addLessonButton"),
+  lessons: document.getElementById("typingLessons"),
+  lessonsError: document.getElementById("lessonsError"),
 };
 
 const tauri = window.__TAURI__;
@@ -153,6 +165,37 @@ function renderExternalLayouts(snapshot) {
   elements.externalError.textContent = snapshot.validation.errors.externalLayouts ?? "";
 }
 
+function renderLessons(snapshot) {
+  elements.lessons.replaceChildren();
+  const lessons = snapshot.draft.typingLessons ?? [];
+  if (!lessons.length) {
+    const empty = document.createElement("li");
+    empty.className = "empty-message";
+    empty.textContent = "No imported lessons.";
+    elements.lessons.appendChild(empty);
+    return;
+  }
+  for (const lesson of lessons) {
+    const item = document.createElement("li");
+    item.className = "external-layout";
+    const detail = document.createElement("div");
+    const name = document.createElement("strong");
+    name.textContent = lesson.name;
+    const summary = document.createElement("span");
+    const preview = lesson.targets.slice(0, 3).map((target) => target.value).join(", ");
+    summary.textContent = `${lesson.targets.length} targets · ${preview}${lesson.targets.length > 3 ? "…" : ""} · ${lesson.id}`;
+    detail.append(name, summary);
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "button ghost small";
+    remove.textContent = "Remove";
+    remove.disabled = loading || saving;
+    remove.addEventListener("click", () => { state.removeLesson(lesson.id); render(); });
+    item.append(detail, remove);
+    elements.lessons.appendChild(item);
+  }
+}
+
 function render() {
   if (!state) return;
   const snapshot = state.snapshot();
@@ -169,6 +212,16 @@ function render() {
   elements.hotkeyValue.classList.toggle("recording", recording);
   elements.hotkeyError.textContent = snapshot.validation.errors.toggleHotkey ?? "";
   elements.hotkeyWarning.textContent = snapshot.validation.warnings.toggleHotkey ?? "";
+  elements.exerciseAnalytics.checked = snapshot.draft.typingAnalytics?.exercise === true;
+  elements.backgroundAnalytics.checked = snapshot.draft.typingAnalytics?.background === true;
+  elements.aiCoaching.checked = snapshot.draft.typingAnalytics?.aiCoaching === true;
+  elements.exerciseAnalytics.disabled = loading || saving;
+  elements.backgroundAnalytics.disabled = loading || saving;
+  elements.aiCoaching.disabled = loading || saving;
+  elements.openInsights.disabled = !tauri?.core?.invoke;
+  elements.deleteAnalytics.disabled = loading || saving || !tauri?.core?.invoke;
+  elements.revokeAi.disabled = loading || saving || !tauri?.core?.invoke;
+  elements.addLesson.disabled = loading || saving || !tauri?.dialog?.open;
   elements.recovery.hidden = snapshot.status !== "invalid";
   if (snapshot.status === "invalid") {
     elements.recoveryMessage.textContent = `${snapshot.error ?? "The file is malformed."} (${snapshot.path})`;
@@ -180,6 +233,7 @@ function render() {
   renderBuiltinLayouts(snapshot);
   renderDefaultLayout(snapshot);
   renderExternalLayouts(snapshot);
+  renderLessons(snapshot);
 }
 
 async function validateExistingExternalLayouts() {
@@ -216,6 +270,33 @@ async function addExternalLayout() {
     render();
   } catch (error) {
     elements.externalError.textContent = displayError(error, "Could not add that layout file.");
+  }
+}
+
+async function addLesson() {
+  elements.lessonsError.textContent = "";
+  try {
+    const path = await tauri.dialog.open({ multiple: false, directory: false, filters: [{ name: "Typing lesson", extensions: ["json"] }] });
+    if (!path) return;
+    const snapshot = state.snapshot();
+    const layoutKey = snapshot.draft.defaultLayout;
+    const layoutSource = snapshot.draft.layouts[layoutKey];
+    const loadedLayout = await loadLayoutDefinition(layoutKey, layoutSource, {
+      readExternal: (layoutPath) => tauri.core.invoke("read_layout_file", { path: layoutPath }),
+    });
+    const parsed = parseLessonJson(await tauri.core.invoke("read_layout_file", { path }), {
+      layoutDefinition: loadedLayout.definition,
+    });
+    if (!parsed.valid) {
+      elements.lessonsError.textContent = parsed.diagnostics.map((item) => item.message).join(" ");
+      return;
+    }
+    const result = state.addLesson(parsed.lesson);
+    if (result.duplicateLessonId) elements.lessonsError.textContent = "A lesson with that ID is already imported.";
+    else if (parsed.diagnostics.length) elements.lessonsError.textContent = parsed.diagnostics.map((item) => item.message).join(" ");
+    render();
+  } catch (error) {
+    elements.lessonsError.textContent = displayError(error, "Could not import that lesson.");
   }
 }
 
@@ -300,11 +381,52 @@ elements.defaultLayout.addEventListener("change", () => {
   render();
 });
 elements.addLayout.addEventListener("click", addExternalLayout);
+elements.addLesson.addEventListener("click", addLesson);
 elements.recordHotkey.addEventListener("click", startRecording);
 elements.clearHotkey.addEventListener("click", () => {
   if (recording) finishRecording();
   state.setHotkey(null);
   render();
+});
+elements.exerciseAnalytics.addEventListener("change", () => {
+  state.setAnalyticsEnabled("exercise", elements.exerciseAnalytics.checked);
+  render();
+});
+elements.backgroundAnalytics.addEventListener("change", () => {
+  state.setAnalyticsEnabled("background", elements.backgroundAnalytics.checked);
+  render();
+});
+elements.aiCoaching.addEventListener("change", () => {
+  state.setAnalyticsEnabled("aiCoaching", elements.aiCoaching.checked);
+  render();
+});
+elements.openInsights.addEventListener("click", async () => {
+  try {
+    await tauri.core.invoke("open_typing_insights");
+  } catch (error) {
+    elements.analyticsStatus.textContent = displayError(error, "Could not open Typing Insights.");
+  }
+});
+elements.deleteAnalytics.addEventListener("click", async () => {
+  const confirmed = typeof tauri?.dialog?.confirm === "function"
+    ? await tauri.dialog.confirm("Delete all local typing statistics?", { title: "Delete typing statistics", kind: "warning" })
+    : globalThis.confirm?.("Delete all local typing statistics?");
+  if (!confirmed) return;
+  try {
+    await tauri.core.invoke("delete_typing_analytics");
+    await tauri.event?.emit?.("typing-analytics-deleted");
+    elements.analyticsStatus.textContent = "All local typing statistics were deleted.";
+  } catch (error) {
+    elements.analyticsStatus.textContent = displayError(error, "Could not delete local analytics.");
+  }
+});
+elements.revokeAi.addEventListener("click", async () => {
+  try {
+    await tauri.core.invoke("revoke_ai_coaching_report");
+    elements.analyticsStatus.textContent = "The approved AI Coaching report was revoked.";
+  } catch (error) {
+    elements.analyticsStatus.textContent = displayError(error, "Could not revoke the AI Coaching report.");
+  }
 });
 elements.replaceInvalid.addEventListener("click", () => {
   state.authorizeReplacement();

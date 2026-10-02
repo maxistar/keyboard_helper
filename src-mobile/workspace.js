@@ -1,3 +1,5 @@
+import { connectionIndicatorState, createConnectionNoticeController } from "./connection_notice.js";
+
 export const WorkspacePresentation = Object.freeze({ SHEET: "sheet", PANEL: "panel" });
 export const WorkspaceSection = Object.freeze({
   CONNECTION: "connection",
@@ -41,6 +43,7 @@ export function createMobileKeyboardWorkspace(document, options = {}) {
     connectionState: required(document, "workspace-connection-state"),
     connectionDevice: required(document, "workspace-connection-device"),
     connectionBattery: required(document, "workspace-connection-battery"),
+    notice: document.getElementById("workspace-connection-notice"),
     sectionButtons: {
       [WorkspaceSection.CONNECTION]: required(document, "workspace-section-connection"),
       [WorkspaceSection.LAYOUT]: required(document, "workspace-section-layout"),
@@ -59,6 +62,17 @@ export function createMobileKeyboardWorkspace(document, options = {}) {
     open: false,
     section: WorkspaceSection.CONNECTION,
     presentation: media.matches ? WorkspacePresentation.PANEL : WorkspacePresentation.SHEET,
+  });
+  const notice = createConnectionNoticeController({
+    render(text) {
+      if (!elements.notice) return;
+      elements.notice.textContent = text ?? "";
+      elements.notice.hidden = !text;
+    },
+    schedule: options.schedule,
+    cancel: options.cancel,
+    settleMs: options.noticeSettleMs,
+    displayMs: options.noticeDisplayMs,
   });
   let lastFocused = null;
   let ownsHistoryEntry = false;
@@ -127,6 +141,8 @@ export function createMobileKeyboardWorkspace(document, options = {}) {
     elements.connectionState.dataset.severity = presentation?.severity ?? "neutral";
     elements.connectionDevice.textContent = presentation?.selectedDevice?.name ?? "No keyboard";
     elements.shell.dataset.connectionPhase = presentation?.phase ?? "unknown";
+    elements.shell.dataset.connectionIndicator = connectionIndicatorState(presentation);
+    notice.observe(presentation);
     const nextActionableKey = actionableKey(presentation, lifecycle);
     elements.shell.dataset.connectionAttention = String(Boolean(nextActionableKey));
     const newlyActionable = lastActionableKey !== undefined && nextActionableKey && nextActionableKey !== lastActionableKey;
@@ -139,9 +155,9 @@ export function createMobileKeyboardWorkspace(document, options = {}) {
   }
 
   function updateEvidence(snapshot) {
-    elements.connectionBattery.textContent = snapshot?.battery?.status === "available"
-      ? `${snapshot.battery.value}%`
-      : "—";
+    const battery = snapshot?.battery?.status === "available" ? `${snapshot.battery.value}%` : null;
+    elements.connectionBattery.textContent = battery ?? "—";
+    notice.setBattery(battery);
     return state;
   }
 
@@ -200,6 +216,7 @@ export function createMobileKeyboardWorkspace(document, options = {}) {
       for (const section of Object.values(WorkspaceSection)) elements.sectionButtons[section].removeEventListener?.("click", sectionHandlers[section]);
       media.removeEventListener?.("change", onMediaChange);
       hostWindow?.removeEventListener?.("popstate", onPopState);
+      notice.dispose();
     },
   };
 }

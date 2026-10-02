@@ -29,6 +29,15 @@ body {
 
 button { font: inherit; }
 
+.lesson-picker { display: grid; gap: 4px; color: #8e98bd; font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.lesson-picker select { min-width: 180px; border: 1px solid rgba(110, 247, 232, .28); border-radius: 8px; padding: 7px 9px; color: var(--mint); background: rgba(7, 11, 28, .85); font: inherit; letter-spacing: normal; text-transform: none; }
+.practice-queue { min-width: 190px; max-width: 240px; color: #8e98bd; font-size: 10px; }
+.practice-queue-heading { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.practice-queue ol { display: flex; gap: 4px; max-width: 240px; margin: 0; padding: 0; overflow: hidden; list-style-position: inside; }
+.practice-queue li { display: flex; align-items: center; gap: 4px; min-width: 48px; padding: 5px 6px; border: 1px solid rgba(110,247,232,.2); border-radius: 6px; color: var(--mint); background: rgba(7,11,28,.7); font-family: ui-monospace, monospace; font-size: 11px; text-align: center; }
+.practice-queue li small { display: block; max-width: 120px; overflow: hidden; color: #8e98bd; font-family: "Trebuchet MS", sans-serif; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.practice-queue li button { border: 0; padding: 0; color: var(--danger); background: transparent; cursor: pointer; }
+
 .game-shell {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;

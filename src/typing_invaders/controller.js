@@ -17,13 +17,17 @@ export function createTypingInvadersController({
   documentTarget = document,
   requestFrame = requestAnimationFrame,
   cancelFrame = cancelAnimationFrame,
+  onSnapshot = () => {},
 } = {}) {
   let frameId = null;
   let lastTimestamp = null;
   let mounted = false;
 
   function render() {
-    view.render(game.getSnapshot(), game.drainEvents());
+    const snapshot = game.getSnapshot();
+    const events = game.drainEvents();
+    view.render(snapshot, events);
+    onSnapshot(snapshot, events);
   }
 
   function performPrimaryAction() {
@@ -93,6 +97,7 @@ export function createTypingInvadersController({
     if (frameId !== null) cancelFrame(frameId);
     frameId = null;
     lastTimestamp = null;
+    onSnapshot({ ...game.getSnapshot(), phase: "destroyed" }, []);
   }
 
   return { mount, destroy, step, onKeydown, pauseForFocus, performPrimaryAction };

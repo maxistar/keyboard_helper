@@ -1,5 +1,12 @@
 import { MobileLayoutViewerModel, ViewerCatalogStatus } from "./layout_viewer_model.js";
 import { LayoutPresentationMode } from "./layout_live_presentation.js";
+import { fitKeyboardCanvas, KeyboardCanvasOrientation } from "./keyboard_canvas_fit.js";
+import {
+  createCanvasGestureState,
+  panCanvasGesture,
+  resetCanvasGesture,
+  zoomCanvasGesture,
+} from "./keyboard_canvas_gesture.js";
 
 function required(document, id) {
   const element = document.getElementById(id);
@@ -17,6 +24,7 @@ function renderKeyContent(document, element, key, pressed, combo) {
     children.push(image);
   } else {
     const label = document.createElement("span");
+    label.className = "viewer-key-legend";
     label.textContent = key.label;
     children.push(label);
   }
@@ -119,16 +127,18 @@ export function createMobileLayoutViewerView(
 ) {
   const elements = {
     layout: required(document, "viewer-layout"),
-    layers: required(document, "viewer-layers"),
-    summary: required(document, "viewer-summary"),
+    layerField: required(document, "viewer-layer-field"),
+    layer: required(document, "viewer-layer"),
+    liveLayer: required(document, "viewer-live-layer"),
+    liveLayerName: required(document, "viewer-live-layer-name"),
     diagnostic: required(document, "viewer-diagnostic"),
     scroller: required(document, "viewer-scroller"),
+    gesture: required(document, "viewer-gesture"),
+    canvas: required(document, "viewer-canvas"),
     keyboard: required(document, "viewer-keyboard"),
     empty: required(document, "viewer-empty"),
-    browseMode: required(document, "viewer-mode-browse"),
-    liveMode: required(document, "viewer-mode-live"),
+    liveSwitch: required(document, "viewer-live-switch"),
     streamStatus: required(document, "viewer-stream-status"),
-    currentLayer: required(document, "viewer-current-layer"),
     comboStatus: required(document, "viewer-combo-status"),
     guidance: required(document, "viewer-telemetry-guidance"),
     importLayout: required(document, "viewer-import-layout"),
@@ -138,12 +148,222 @@ export function createMobileLayoutViewerView(
     layoutStatus: required(document, "viewer-layout-status"),
   };
   const layoutController = options.layoutController ?? null;
+  const appWindow = options.window ?? globalThis.window;
+  const emptyMessage = elements.empty.textContent || "No bundled keyboard layout is available.";
+  const hydratingMessage = options.hydratingMessage ?? "Restoring keyboard layout…";
   let renderedCatalog = null;
   let renderedLayout = null;
   let renderedKeyboard = null;
   let keyElements = [];
-  let layerButtons = [];
   let lastStreamTitle = null;
+  let currentPresentation = null;
+  let currentFit = null;
+  let gestureState = createCanvasGestureState();
+  let resizeObserver = null;
+  let scheduledFit = null;
+  const activePointers = new Map();
+  let pinchBaseline = null;
+  let panPointer = null;
+
+  function stageBounds() {
+    const rect = elements.scroller.getBoundingClientRect?.();
+    let width = Number.isFinite(rect?.width) && rect.width > 0
+      ? rect.width
+      : elements.scroller.clientWidth ?? 0;
+    let height = Number.isFinite(rect?.height) && rect.height > 0
+      ? rect.height
+      : elements.scroller.clientHeight ?? 0;
+    const style = typeof appWindow?.getComputedStyle === "function"
+      ? appWindow.getComputedStyle(elements.scroller)
+      : null;
+    const horizontalPadding = [style?.paddingLeft, style?.paddingRight]
+      .map((value) => Number.parseFloat(value))
+      .filter(Number.isFinite)
+      .reduce((total, value) => total + value, 0);
+    const verticalPadding = [style?.paddingTop, style?.paddingBottom]
+      .map((value) => Number.parseFloat(value))
+      .filter(Number.isFinite)
+      .reduce((total, value) => total + value, 0);
+    width = Math.max(0, width - horizontalPadding);
+    height = Math.max(0, height - verticalPadding);
+    return { width, height };
+  }
+
+  function canvasOrientation({ width, height }) {
+    const query = appWindow?.matchMedia?.("(orientation: portrait)");
+    if (typeof query?.matches === "boolean") {
+      return query.matches ? KeyboardCanvasOrientation.PORTRAIT : KeyboardCanvasOrientation.LANDSCAPE;
+    }
+    return height > width ? KeyboardCanvasOrientation.PORTRAIT : KeyboardCanvasOrientation.LANDSCAPE;
+  }
+
+  function gestureGeometry(fit = currentFit) {
+    const bounds = stageBounds();
+    if (!fit) return null;
+    return {
+      canvasWidth: fit.displayedWidth,
+      canvasHeight: fit.displayedHeight,
+      viewportWidth: bounds.width,
+      viewportHeight: bounds.height,
+    };
+  }
+
+  function renderGesture() {
+    if (!currentFit) return;
+    elements.gesture.style.width = `${currentFit.displayedWidth}px`;
+    elements.gesture.style.height = `${currentFit.displayedHeight}px`;
+    elements.gesture.style.setProperty("--viewer-gesture-zoom", gestureState.zoom);
+    elements.gesture.style.setProperty("--viewer-gesture-pan-x", `${gestureState.panX}px`);
+    elements.gesture.style.setProperty("--viewer-gesture-pan-y", `${gestureState.panY}px`);
+  }
+
+  function resetPointerTracking() {
+    activePointers.clear();
+    pinchBaseline = null;
+    panPointer = null;
+  }
+
+  function pointFor(event) {
+    const rect = elements.scroller.getBoundingClientRect?.() ?? { left: 0, top: 0 };
+    return { x: finiteCoordinate(event?.clientX) - finiteCoordinate(rect.left), y: finiteCoordinate(event?.clientY) - finiteCoordinate(rect.top) };
+  }
+
+  function finiteCoordinate(value) {
+    return typeof value === "number" && Number.isFinite(value) ? value : 0;
+  }
+
+  function firstTwoPointers() {
+    return [...activePointers.values()].slice(0, 2);
+  }
+
+  function beginPinch() {
+    const [first, second] = firstTwoPointers();
+    if (!first || !second) return;
+    const distance = Math.hypot(second.x - first.x, second.y - first.y);
+    if (distance <= 0) return;
+    pinchBaseline = {
+      state: gestureState,
+      distance,
+      focal: { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 },
+    };
+    panPointer = null;
+  }
+
+  function beginPan() {
+    const [entry] = activePointers.entries();
+    if (!entry) return;
+    panPointer = { id: entry[0], point: entry[1] };
+    pinchBaseline = null;
+  }
+
+  function syncPointerMode() {
+    if (activePointers.size >= 2) beginPinch();
+    else if (activePointers.size === 1) beginPan();
+    else {
+      pinchBaseline = null;
+      panPointer = null;
+    }
+  }
+
+  function refitCanvas() {
+    scheduledFit = null;
+    if (!currentPresentation) return null;
+    const bounds = stageBounds();
+    const fit = fitKeyboardCanvas({
+      canvasWidth: currentPresentation.width,
+      canvasHeight: currentPresentation.height,
+      viewportWidth: bounds.width,
+      viewportHeight: bounds.height,
+      orientation: canvasOrientation(bounds),
+    });
+    if (!fit) return null;
+    const orientationChanged = currentFit && currentFit.orientation !== fit.orientation;
+    currentFit = fit;
+    gestureState = orientationChanged
+      ? resetCanvasGesture()
+      : createCanvasGestureState(gestureState);
+    const geometry = gestureGeometry(fit);
+    if (geometry) gestureState = zoomCanvasGesture(gestureState, { zoom: gestureState.zoom }, geometry);
+    elements.canvas.dataset.orientation = fit.orientation;
+    elements.canvas.style.width = `${fit.displayedWidth}px`;
+    elements.canvas.style.height = `${fit.displayedHeight}px`;
+    elements.keyboard.style.setProperty("--viewer-canvas-scale", fit.scale);
+    elements.keyboard.style.setProperty("--viewer-canvas-translate-y", `${fit.displayedHeight}px`);
+    renderGesture();
+    return fit;
+  }
+
+  function scheduleCanvasFit() {
+    if (scheduledFit != null) return;
+    const callback = () => refitCanvas();
+    if (typeof appWindow?.requestAnimationFrame === "function") {
+      scheduledFit = true;
+      const frame = appWindow.requestAnimationFrame(callback);
+      if (scheduledFit === true) scheduledFit = frame;
+    } else {
+      scheduledFit = true;
+      callback();
+    }
+  }
+
+  const onViewportChange = () => scheduleCanvasFit();
+  const orientationMedia = appWindow?.matchMedia?.("(orientation: portrait)");
+  orientationMedia?.addEventListener?.("change", onViewportChange);
+  orientationMedia?.addListener?.(onViewportChange);
+  appWindow?.addEventListener?.("resize", onViewportChange);
+  const ResizeObserverImplementation = options.ResizeObserver ?? appWindow?.ResizeObserver ?? globalThis.ResizeObserver;
+  if (typeof ResizeObserverImplementation === "function") {
+    resizeObserver = new ResizeObserverImplementation(onViewportChange);
+    resizeObserver.observe(elements.scroller);
+  }
+
+  const onPointerDown = (event) => {
+    if (!Number.isInteger(event?.pointerId)) return;
+    const point = pointFor(event);
+    activePointers.set(event.pointerId, point);
+    elements.scroller.setPointerCapture?.(event.pointerId);
+    syncPointerMode();
+    event.preventDefault?.();
+  };
+  const onPointerMove = (event) => {
+    if (!activePointers.has(event?.pointerId)) return;
+    const point = pointFor(event);
+    activePointers.set(event.pointerId, point);
+    const geometry = gestureGeometry();
+    if (!geometry) return;
+    if (activePointers.size >= 2) {
+      const [first, second] = firstTwoPointers();
+      const distance = Math.hypot(second.x - first.x, second.y - first.y);
+      if (pinchBaseline && distance > 0) {
+        const focal = { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
+        gestureState = zoomCanvasGesture(pinchBaseline.state, {
+          zoom: pinchBaseline.state.zoom * distance / pinchBaseline.distance,
+          fromPoint: pinchBaseline.focal,
+          toPoint: focal,
+        }, geometry);
+        renderGesture();
+      }
+    } else if (panPointer?.id === event.pointerId && gestureState.zoom > 1) {
+      gestureState = panCanvasGesture(gestureState, {
+        x: point.x - panPointer.point.x,
+        y: point.y - panPointer.point.y,
+      }, geometry);
+      panPointer = { id: event.pointerId, point };
+      renderGesture();
+    }
+    event.preventDefault?.();
+  };
+  const onPointerEnd = (event) => {
+    if (!activePointers.has(event?.pointerId)) return;
+    activePointers.delete(event.pointerId);
+    elements.scroller.releasePointerCapture?.(event.pointerId);
+    syncPointerMode();
+    event.preventDefault?.();
+  };
+  elements.scroller.addEventListener("pointerdown", onPointerDown);
+  elements.scroller.addEventListener("pointermove", onPointerMove);
+  elements.scroller.addEventListener("pointerup", onPointerEnd);
+  elements.scroller.addEventListener("pointercancel", onPointerEnd);
 
   function renderCatalog(snapshot) {
     const signature = snapshot.layouts.map(({ key, name }) => `${key}:${name}`).join("|");
@@ -175,17 +395,12 @@ export function createMobileLayoutViewerView(
     const signature = `${browse.selectedLayoutKey}:${browse.presentation?.layers.map(({ name }) => name).join("|") ?? ""}`;
     if (renderedLayout === signature) return;
     renderedLayout = signature;
-    layerButtons = [];
-    elements.layers.replaceChildren();
+    elements.layer.replaceChildren();
     for (const layer of browse.presentation?.layers ?? []) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "viewer-layer";
-      button.dataset.layerIndex = String(layer.index);
-      button.textContent = layer.name;
-      button.addEventListener("click", () => model.selectLayer(layer.index));
-      layerButtons.push(button);
-      elements.layers.append(button);
+      const option = document.createElement("option");
+      option.value = String(layer.index);
+      option.textContent = layer.name;
+      elements.layer.append(option);
     }
   }
 
@@ -204,27 +419,27 @@ export function createMobileLayoutViewerView(
 
   function render(resolved = presentationController?.snapshot() ?? browsePresentation(model.snapshot())) {
     const browse = model.snapshot();
+    const hydrating = browse.catalogStatus === ViewerCatalogStatus.HYDRATING;
     const ready = browse.catalogStatus === ViewerCatalogStatus.READY && resolved.presentation;
     renderCatalog(browse);
     elements.layout.disabled = !ready;
     elements.layout.value = browse.selectedLayoutKey ?? "";
     elements.removeLayout.disabled = elements.removeControls.hidden;
     elements.importLayout.disabled = !layoutController?.available;
+    elements.empty.textContent = hydrating ? hydratingMessage : emptyMessage;
     elements.empty.hidden = Boolean(ready);
     elements.scroller.hidden = !ready;
-    elements.layers.hidden = !ready;
-    elements.browseMode.setAttribute("aria-pressed", String(resolved.mode === LayoutPresentationMode.BROWSE));
-    elements.liveMode.setAttribute("aria-pressed", String(resolved.mode === LayoutPresentationMode.LIVE));
-    elements.liveMode.disabled = !resolved.liveAvailable;
+    const liveMode = resolved.mode === LayoutPresentationMode.LIVE;
+    elements.layerField.hidden = !ready || liveMode;
+    elements.liveLayer.hidden = !ready || !liveMode;
+    elements.liveSwitch.checked = liveMode;
+    elements.liveSwitch.disabled = !resolved.liveAvailable;
     const [streamTitle, guidance] = streamCopy(resolved);
     if (lastStreamTitle !== streamTitle) {
       elements.streamStatus.textContent = streamTitle;
       lastStreamTitle = streamTitle;
     }
     elements.guidance.textContent = guidance;
-    elements.currentLayer.textContent = resolved.mode === LayoutPresentationMode.LIVE
-      ? resolved.layerAuthoritative ? `Firmware layer: ${resolved.presentation.layerName}` : "Firmware layer unavailable"
-      : `Browsing: ${resolved.presentation?.layerName ?? "no layer"}`;
     elements.comboStatus.textContent = resolved.activeCombos.length
       ? `Active: ${resolved.activeCombos.map(({ label }) => label).join(", ")}`
       : "No active firmware-resolved combo.";
@@ -233,7 +448,14 @@ export function createMobileLayoutViewerView(
     elements.diagnostic.textContent = diagnostics.join(" ");
     elements.diagnostic.hidden = diagnostics.length === 0;
     if (!ready) {
-      elements.summary.textContent = "No bundled keyboard layout is available.";
+      currentPresentation = null;
+      currentFit = null;
+      gestureState = resetCanvasGesture();
+      resetPointerTracking();
+      elements.gesture.style.width = "";
+      elements.gesture.style.height = "";
+      elements.canvas.style.width = "";
+      elements.canvas.style.height = "";
       elements.keyboard.replaceChildren();
       renderedKeyboard = null;
       keyElements = [];
@@ -241,19 +463,18 @@ export function createMobileLayoutViewerView(
     }
 
     renderLayers(browse);
-    layerButtons.forEach((button, index) => {
-      const selected = index === resolved.selectedLayerIndex;
-      button.setAttribute("aria-pressed", String(selected));
-      button.dataset.selected = String(selected);
-      button.disabled = resolved.mode === LayoutPresentationMode.LIVE;
-    });
-    elements.summary.textContent = `${resolved.mode === LayoutPresentationMode.LIVE ? "Live" : "Browse"} · ${resolved.presentation.name} · ${resolved.presentation.layerName}`;
+    elements.layer.value = String(resolved.selectedLayerIndex);
+    elements.liveLayerName.textContent = resolved.presentation.layerName ?? "";
+    currentPresentation = resolved.presentation;
     elements.keyboard.style.width = `${resolved.presentation.width}px`;
     elements.keyboard.style.height = `${resolved.presentation.height}px`;
+    elements.keyboard.style.setProperty("--viewer-origin-x", `${resolved.presentation.origin.x}px`);
+    elements.keyboard.style.setProperty("--viewer-origin-y", `${resolved.presentation.origin.y}px`);
     elements.keyboard.style.setProperty("--viewer-key-width", `${resolved.presentation.keySize.w}px`);
     elements.keyboard.style.setProperty("--viewer-key-height", `${resolved.presentation.keySize.h}px`);
     elements.keyboard.style.setProperty("--viewer-key-gap", `${resolved.presentation.keySize.gap}px`);
     renderKeyboard(resolved);
+    scheduleCanvasFit();
   }
 
   function reportLayoutStatus(message, level = "info") {
@@ -305,13 +526,15 @@ export function createMobileLayoutViewerView(
       render();
     }
   };
-  const onBrowseMode = () => presentationController?.selectMode(LayoutPresentationMode.BROWSE);
-  const onLiveMode = () => presentationController?.selectMode(LayoutPresentationMode.LIVE);
+  const onLayerChange = () => model.selectLayer(Number(elements.layer.value));
+  const onLiveSwitch = () => presentationController?.selectMode(
+    elements.liveSwitch.checked ? LayoutPresentationMode.LIVE : LayoutPresentationMode.BROWSE,
+  );
   elements.layout.addEventListener("change", onLayoutChange);
   elements.importLayout.addEventListener("click", onImportLayout);
   elements.removeLayout.addEventListener("click", onRemoveLayout);
-  elements.browseMode.addEventListener("click", onBrowseMode);
-  elements.liveMode.addEventListener("click", onLiveMode);
+  elements.layer.addEventListener("change", onLayerChange);
+  elements.liveSwitch.addEventListener("change", onLiveSwitch);
   const unsubscribe = presentationController
     ? presentationController.subscribe(render)
     : model.subscribe((snapshot) => render(browsePresentation(snapshot)));
@@ -321,11 +544,21 @@ export function createMobileLayoutViewerView(
     dispose() {
       unsubscribe();
       layoutController?.dispose?.();
+      resizeObserver?.disconnect?.();
+      if (scheduledFit != null && typeof scheduledFit === "number") appWindow?.cancelAnimationFrame?.(scheduledFit);
+      orientationMedia?.removeEventListener?.("change", onViewportChange);
+      orientationMedia?.removeListener?.(onViewportChange);
+      appWindow?.removeEventListener?.("resize", onViewportChange);
+      resetPointerTracking();
+      elements.scroller.removeEventListener?.("pointerdown", onPointerDown);
+      elements.scroller.removeEventListener?.("pointermove", onPointerMove);
+      elements.scroller.removeEventListener?.("pointerup", onPointerEnd);
+      elements.scroller.removeEventListener?.("pointercancel", onPointerEnd);
       elements.layout.removeEventListener?.("change", onLayoutChange);
       elements.importLayout.removeEventListener?.("click", onImportLayout);
       elements.removeLayout.removeEventListener?.("click", onRemoveLayout);
-      elements.browseMode.removeEventListener?.("click", onBrowseMode);
-      elements.liveMode.removeEventListener?.("click", onLiveMode);
+      elements.layer.removeEventListener?.("change", onLayerChange);
+      elements.liveSwitch.removeEventListener?.("change", onLiveSwitch);
     },
     reportLayoutStatus,
   };

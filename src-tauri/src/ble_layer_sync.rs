@@ -750,8 +750,17 @@ async fn find_keyboard(
         .next()
         .ok_or_else(|| anyhow!("No BLE adapter found"))?;
 
+    #[cfg(target_os = "windows")]
+    if let Some(keyboard) =
+        find_paired_windows_keyboard(&adapter, name_filter, service_uuid, characteristic_uuid)
+            .await?
+    {
+        return Ok(KeyboardHandle::Btle(keyboard));
+    }
+
     adapter.start_scan(ScanFilter::default()).await?;
     sleep(Duration::from_secs(scan_secs)).await;
+    adapter.stop_scan().await?;
 
     let peripherals = adapter.peripherals().await?;
     let mut fallback_candidates = Vec::new();
@@ -771,7 +780,7 @@ async fn find_keyboard(
         }
 
         let has_service = props.services.iter().any(|uuid| *uuid == service_uuid);
-        if has_service {
+        if has_service && name_filter.is_none() {
             return Ok(KeyboardHandle::Btle(
                 connect_btle_keyboard(peripheral, service_uuid, characteristic_uuid).await?,
             ));
@@ -816,6 +825,53 @@ async fn find_keyboard(
     } else {
         Err(anyhow!("Keyboard with target service not found"))
     }
+}
+
+#[cfg(target_os = "windows")]
+async fn find_paired_windows_keyboard(
+    adapter: &btleplug::platform::Adapter,
+    name_filter: Option<&str>,
+    service_uuid: Uuid,
+    characteristic_uuid: Uuid,
+) -> Result<Option<BtleKeyboard>> {
+    use btleplug::api::BDAddr;
+    use windows::Devices::{Bluetooth::BluetoothLEDevice, Enumeration::DeviceInformation};
+
+    // Windows can keep HID connected after the peripheral stops advertising.
+    // Enumerate paired devices instead of depending on a new advertisement.
+    let selector = BluetoothLEDevice::GetDeviceSelectorFromPairingState(true)?;
+    let devices = tokio::time::timeout(Duration::from_secs(8), async {
+        DeviceInformation::FindAllAsyncAqsFilter(&selector)?.await
+    })
+    .await
+    .context("Timed out enumerating paired Bluetooth devices")?
+    .context("Could not enumerate paired Bluetooth devices")?;
+    let mut candidate_error = None;
+    for index in 0..devices.Size()? {
+        let info = devices.GetAt(index)?;
+        let name = info.Name()?.to_string();
+        if name_filter.is_some_and(|expected| expected != name) {
+            continue;
+        }
+        let result = tokio::time::timeout(Duration::from_secs(8), async {
+            let device = BluetoothLEDevice::FromIdAsync(&info.Id()?)?.await?;
+            let address = BDAddr::try_from(device.BluetoothAddress()?)?;
+            let peripheral = adapter.add_peripheral(&address.into()).await?;
+            connect_btle_keyboard(peripheral, service_uuid, characteristic_uuid).await
+        })
+        .await;
+        match result {
+            Ok(Ok(keyboard)) => return Ok(Some(keyboard)),
+            Ok(Err(error)) => candidate_error = Some(error.to_string()),
+            Err(_) => candidate_error = Some("GATT connection timed out".into()),
+        }
+    }
+    if let (Some(name), Some(error)) = (name_filter, candidate_error) {
+        return Err(anyhow!(
+            "Paired keyboard '{name}' was found, but its GATT service could not be opened: {error}"
+        ));
+    }
+    Ok(None)
 }
 
 async fn peripheral_matches_keyboard(
@@ -1263,6 +1319,42 @@ fn emit_battery(app_handle: &AppHandle, layout_key: &str, level: u8) -> Result<(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "windows")]
+    #[tokio::test]
+    #[ignore = "requires paired hardware and BLE_TEST_LAYOUT pointing to its layout JSON"]
+    async fn paired_windows_keyboard_reopens_without_scanning() {
+        let path =
+            std::env::var("BLE_TEST_LAYOUT").expect("set BLE_TEST_LAYOUT to the layout JSON");
+        let layout: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        let config = &layout["bleLayerSource"];
+        let name = config["deviceName"].as_str().expect("BLE device name");
+        let service = Uuid::parse_str(config["serviceUuid"].as_str().unwrap()).unwrap();
+        let characteristic =
+            Uuid::parse_str(config["characteristicUuid"].as_str().unwrap()).unwrap();
+        for _ in 0..2 {
+            let manager = Manager::new().await.unwrap();
+            let adapter = manager
+                .adapters()
+                .await
+                .unwrap()
+                .into_iter()
+                .next()
+                .unwrap();
+            let keyboard =
+                find_paired_windows_keyboard(&adapter, Some(name), service, characteristic)
+                    .await
+                    .unwrap()
+                    .expect("paired keyboard must be found without advertisements");
+            let handle = KeyboardHandle::Btle(keyboard);
+            read_active_layer(&handle)
+                .await
+                .expect("layer must be readable after reopening");
+            let KeyboardHandle::Btle(keyboard) = handle;
+            keyboard.peripheral.disconnect().await.unwrap();
+        }
+    }
 
     #[test]
     fn maps_att_resource_rejection_to_capacity_status() {

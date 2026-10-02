@@ -88,6 +88,8 @@ pub(crate) struct ObserveAvailabilityRequest {
 pub(crate) struct ConnectRequest {
     pub address: String,
     pub attempt: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timeout_ms: Option<u64>,
     pub on_disconnect: Channel<Notification>,
 }
 
@@ -95,6 +97,8 @@ pub(crate) struct ConnectRequest {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct AttemptRequest {
     pub attempt: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timeout_ms: Option<u64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -103,6 +107,8 @@ pub(crate) struct GattRequest {
     pub attempt: u64,
     pub service_uuid: String,
     pub characteristic_uuid: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timeout_ms: Option<u64>,
 }
 
 #[derive(Serialize)]
@@ -111,5 +117,7 @@ pub(crate) struct SubscribeRequest {
     pub attempt: u64,
     pub service_uuid: String,
     pub characteristic_uuid: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timeout_ms: Option<u64>,
     pub on_notification: Channel<Notification>,
 }

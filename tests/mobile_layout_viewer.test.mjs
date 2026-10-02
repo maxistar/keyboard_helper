@@ -14,6 +14,7 @@ import {
   MOBILE_BUNDLED_LAYOUT_DEFINITIONS,
   MOBILE_BUNDLED_LAYOUT_ORDER,
 } from "../src-mobile/bundled_layout_definitions.js";
+import { calcCanvasGeometry } from "../src/layout_geometry.js";
 import { createMobileLayoutViewerView } from "../src-mobile/layout_viewer.js";
 import {
   createLayoutPresentation,
@@ -38,11 +39,13 @@ class ElementStub {
     this.children = [];
     this.dataset = {};
     this.disabled = false;
+    this.checked = false;
     this.hidden = false;
     this.listeners = new Map();
     this.style = new StyleStub();
     this.textContent = "";
     this.value = "";
+    this.bounds = { width: 0, height: 0 };
   }
   addEventListener(type, listener) {
     if (!this.listeners.has(type)) this.listeners.set(type, []);
@@ -51,27 +54,58 @@ class ElementStub {
   removeEventListener(type, listener) {
     this.listeners.set(type, (this.listeners.get(type) ?? []).filter((item) => item !== listener));
   }
-  dispatch(type) { for (const listener of this.listeners.get(type) ?? []) listener({ target: this }); }
+  dispatch(type, event = {}) { for (const listener of this.listeners.get(type) ?? []) listener({ target: this, ...event }); }
   append(...children) { this.children.push(...children); }
   replaceChildren(...children) { this.children = [...children]; }
   setAttribute(name, value) { this.attributes.set(name, String(value)); }
+  getBoundingClientRect() { return { ...this.bounds }; }
+  setPointerCapture() {}
+  releasePointerCapture() {}
 }
 
-function viewHarness(model = new MobileLayoutViewerModel()) {
+function viewHarness(model = new MobileLayoutViewerModel(), { portrait = false } = {}) {
   const ids = [
-    "viewer-layout", "viewer-layers", "viewer-summary", "viewer-diagnostic",
-    "viewer-scroller", "viewer-keyboard", "viewer-empty",
-    "viewer-mode-browse", "viewer-mode-live", "viewer-stream-status", "viewer-current-layer",
+    "viewer-layout", "viewer-layer-field", "viewer-layer", "viewer-live-layer", "viewer-live-layer-name",
+    "viewer-diagnostic",
+    "viewer-scroller", "viewer-gesture", "viewer-canvas", "viewer-keyboard", "viewer-empty",
+    "viewer-live-switch", "viewer-stream-status",
     "viewer-combo-status", "viewer-telemetry-guidance",
     "viewer-import-layout", "viewer-remove-controls", "viewer-remove-target",
     "viewer-remove-layout", "viewer-layout-status",
   ];
-  const elements = new Map(ids.map((id) => [id, new ElementStub(id.includes("layout") || id.includes("target") ? "select" : "div")]));
+  const elements = new Map(ids.map((id) => [id, new ElementStub(id === "viewer-layout" || id === "viewer-layer" || id.includes("target") ? "select" : "div")]));
   const document = {
     createElement: (tagName) => new ElementStub(tagName),
     getElementById: (id) => elements.get(id) ?? null,
   };
-  return { document, elements, model, view: createMobileLayoutViewerView(document, model) };
+  elements.get("viewer-scroller").bounds = portrait
+    ? { width: 320, height: 640 }
+    : { width: 640, height: 320 };
+  const orientationListeners = new Set();
+  const orientationMedia = {
+    matches: portrait,
+    addEventListener(type, listener) { if (type === "change") orientationListeners.add(listener); },
+    removeEventListener(type, listener) { if (type === "change") orientationListeners.delete(listener); },
+    addListener(listener) { orientationListeners.add(listener); },
+    removeListener(listener) { orientationListeners.delete(listener); },
+  };
+  const appWindow = {
+    matchMedia: () => orientationMedia,
+    requestAnimationFrame(callback) { callback(); return 1; },
+    cancelAnimationFrame() {}, addEventListener() {}, removeEventListener() {},
+  };
+  return {
+    document,
+    elements,
+    model,
+    orientationMedia,
+    changeOrientation(nextPortrait, bounds) {
+      orientationMedia.matches = nextPortrait;
+      elements.get("viewer-scroller").bounds = bounds;
+      for (const listener of orientationListeners) listener({ matches: nextPortrait });
+    },
+    view: createMobileLayoutViewerView(document, model, null, { window: appWindow }),
+  };
 }
 
 test("generated mobile definitions match every canonical bundled layout", async () => {
@@ -101,12 +135,31 @@ test("cold viewer state is immutable, deterministic, and process local", () => {
   assert.ok(Object.isFrozen(first.snapshot().presentation.keys));
 });
 
+test("hydrating viewer state renders no keyboard before restored selection", () => {
+  const model = new MobileLayoutViewerModel({ hydrating: true });
+  assert.equal(model.snapshot().catalogStatus, ViewerCatalogStatus.HYDRATING);
+  assert.equal(model.snapshot().selectedLayoutKey, null);
+  assert.equal(model.snapshot().presentation, null);
+
+  const harness = viewHarness(model);
+  assert.equal(harness.elements.get("viewer-scroller").hidden, true);
+  assert.equal(harness.elements.get("viewer-empty").hidden, false);
+  assert.equal(harness.elements.get("viewer-empty").textContent, "Restoring keyboard layout…");
+  assert.equal(harness.elements.get("viewer-keyboard").children.length, 0);
+
+  model.replaceCatalog(createMobileLayoutCatalog(), "corne");
+  assert.equal(harness.elements.get("viewer-scroller").hidden, false);
+  assert.equal(model.snapshot().selectedLayoutKey, "corne");
+  assert.equal(model.snapshot().presentation.name, MOBILE_BUNDLED_LAYOUT_DEFINITIONS.corne.name);
+  assert.ok(harness.elements.get("viewer-keyboard").children.length > 0);
+});
+
 test("layout and layer actions validate selection and reset layers deterministically", () => {
   const model = new MobileLayoutViewerModel();
   model.selectLayout("corne");
-  model.selectLayer(3);
-  assert.equal(model.snapshot().selectedLayerIndex, 3);
-  const unchanged = model.selectLayer(3);
+  model.selectLayer(2);
+  assert.equal(model.snapshot().selectedLayerIndex, 2);
+  const unchanged = model.selectLayer(2);
   assert.equal(unchanged, model.snapshot());
   model.selectLayout("dactyl");
   assert.equal(model.snapshot().selectedLayerIndex, 0);
@@ -133,7 +186,6 @@ test("catalog isolates invalid definitions, bounds diagnostics, and exposes an e
 
 test("every bundled layer matches shared effective-entry and ordering semantics", () => {
   let sawSpan = false;
-  let sawImage = false;
   let sawTransparentFallback = false;
   for (const key of MOBILE_BUNDLED_LAYOUT_ORDER) {
     const definition = MOBILE_BUNDLED_LAYOUT_DEFINITIONS[key];
@@ -147,33 +199,30 @@ test("every bundled layer matches shared effective-entry and ordering semantics"
         const expectedText = typeof expected.label === "object" ? expected.label.text : expected.label;
         assert.equal(rendered.label, expectedText == null ? "" : String(expectedText));
         sawSpan ||= rendered.widthUnits !== 1 || rendered.heightUnits !== 1;
-        sawImage ||= Boolean(rendered.image);
         sawTransparentFallback ||= layerIndex > 0 && shared.layers[layerIndex]?.[positionIndex] == null && rendered.label !== "";
       });
     }
   }
   assert.equal(sawSpan, true);
-  assert.equal(sawImage, true);
   assert.equal(sawTransparentFallback, true);
 });
 
-test("view preserves layer control focus objects while legends update atomically", () => {
+test("view preserves the layer selector element while legends update atomically", () => {
   const harness = viewHarness();
   assert.equal(harness.elements.get("viewer-layout").children.length, MOBILE_BUNDLED_LAYOUT_ORDER.length);
   const initialKeys = harness.elements.get("viewer-keyboard").children.length;
   assert.ok(initialKeys > 0);
 
   harness.model.selectLayout("corne");
-  const layers = harness.elements.get("viewer-layers").children;
-  const retainedButton = layers[2];
-  retainedButton.dispatch("click");
+  const selector = harness.elements.get("viewer-layer");
+  const retainedOption = selector.children[2];
+  selector.value = "2";
+  selector.dispatch("change");
   assert.equal(harness.model.snapshot().selectedLayerIndex, 2);
-  assert.equal(harness.elements.get("viewer-layers").children[2], retainedButton);
-  assert.equal(retainedButton.attributes.get("aria-pressed"), "true");
-  assert.match(
-    harness.elements.get("viewer-summary").textContent,
-    new RegExp(harness.model.snapshot().presentation.layerName, "i"),
-  );
+  assert.equal(selector.children[2], retainedOption);
+  assert.equal(selector.value, "2");
+  assert.equal(retainedOption.textContent, harness.model.snapshot().presentation.layerName);
+  assert.deepEqual(selector.children.map(({ value }) => value), harness.model.snapshot().presentation.layers.map(({ index }) => String(index)));
 });
 
 test("view redraws every layer when a custom catalog replaces the bundled catalog", () => {
@@ -194,13 +243,14 @@ test("view redraws every layer when a custom catalog replaces the bundled catalo
 
   harness.model.replaceCatalog(catalog, "custom:11111111-1111-4111-8111-111111111111");
 
-  const layers = harness.elements.get("viewer-layers");
-  assert.equal(layers.hidden, false);
+  const layers = harness.elements.get("viewer-layer");
+  assert.equal(harness.elements.get("viewer-layer-field").hidden, false);
   assert.deepEqual(layers.children.map(({ textContent }) => textContent), ["Default", "Function", "Navigation"]);
-  layers.children[1].dispatch("click");
+  layers.value = "1";
+  layers.dispatch("change");
   assert.equal(harness.model.snapshot().selectedLayerIndex, 1);
   assert.equal(layers.children.length, 3);
-  assert.equal(layers.children[1].attributes.get("aria-pressed"), "true");
+  assert.equal(layers.value, "1");
 });
 
 test("view reports empty catalogs without throwing or rendering geometry", () => {
@@ -211,6 +261,73 @@ test("view reports empty catalogs without throwing or rendering geometry", () =>
   assert.equal(harness.elements.get("viewer-keyboard").children.length, 0);
 });
 
+test("view fits the complete keyboard, rotates only the portrait canvas, and restores landscape", () => {
+  const landscape = viewHarness();
+  const portrait = viewHarness(new MobileLayoutViewerModel(), { portrait: true });
+  const landscapeCanvas = landscape.elements.get("viewer-canvas");
+  const portraitCanvas = portrait.elements.get("viewer-canvas");
+
+  assert.equal(landscapeCanvas.dataset.orientation, "landscape");
+  assert.equal(portraitCanvas.dataset.orientation, "portrait");
+  assert.match(landscapeCanvas.style.width, /px$/);
+  assert.match(landscapeCanvas.style.height, /px$/);
+  assert.match(portraitCanvas.style.width, /px$/);
+  assert.match(portraitCanvas.style.height, /px$/);
+  // Counterclockwise rotation lifts the canvas above its box; the shift is the rotated (displayed) height.
+  assert.equal(
+    portrait.elements.get("viewer-keyboard").style.values.get("--viewer-canvas-translate-y"),
+    portraitCanvas.style.height,
+  );
+  assert.equal(portrait.elements.get("viewer-keyboard").style.values.has("--viewer-canvas-translate-x"), false);
+  assert.equal(landscape.elements.get("viewer-layout").value, "qwerty");
+  assert.equal(portrait.elements.get("viewer-layout").value, "qwerty");
+});
+
+test("orientation refits keep selected layers and inline image legends intact", () => {
+  const definition = {
+    name: "Inline board",
+    keySize: { w: 40, h: 40, gap: 4 },
+    keyPositions: [{ row: 0, col: 0 }, { row: 0, col: 1 }],
+    keyLayers: {
+      base: [{ text: "Logo", image: "blob:inline-logo", alt: "Logo" }, ["A", "KeyA"]],
+      symbols: [["1", "Digit1"], ["!", "Digit1"]],
+    },
+  };
+  const model = new MobileLayoutViewerModel({
+    definitions: {},
+    order: [],
+    customRecords: [{ id: "11111111-1111-4111-8111-111111111111", definition }],
+  });
+  const subject = viewHarness(model);
+  subject.model.selectLayer(1);
+  subject.changeOrientation(true, { width: 320, height: 600 });
+  assert.equal(subject.elements.get("viewer-canvas").dataset.orientation, "portrait");
+  assert.equal(subject.model.snapshot().selectedLayerIndex, 1);
+  subject.model.selectLayer(0);
+  assert.equal(subject.elements.get("viewer-keyboard").children[0].children[0].src, "blob:inline-logo");
+  subject.changeOrientation(false, { width: 700, height: 300 });
+  assert.equal(subject.elements.get("viewer-canvas").dataset.orientation, "landscape");
+  assert.equal(subject.model.snapshot().selectedLayoutKey, "custom:11111111-1111-4111-8111-111111111111");
+});
+
+test("pinch inspection zooms and pans the canvas, then orientation restores its fitted baseline", () => {
+  const subject = viewHarness();
+  const stage = subject.elements.get("viewer-scroller");
+  const gesture = subject.elements.get("viewer-gesture");
+  stage.dispatch("pointerdown", { pointerId: 1, clientX: 120, clientY: 120 });
+  stage.dispatch("pointerdown", { pointerId: 2, clientX: 220, clientY: 120 });
+  stage.dispatch("pointermove", { pointerId: 2, clientX: 320, clientY: 120 });
+  assert.equal(gesture.style.values.get("--viewer-gesture-zoom"), "2");
+  stage.dispatch("pointerup", { pointerId: 2 });
+  stage.dispatch("pointermove", { pointerId: 1, clientX: 180, clientY: 150 });
+  assert.notEqual(gesture.style.values.get("--viewer-gesture-pan-x"), "0px");
+  stage.dispatch("pointercancel", { pointerId: 1 });
+  subject.changeOrientation(true, { width: 320, height: 620 });
+  assert.equal(gesture.style.values.get("--viewer-gesture-zoom"), "1");
+  assert.equal(gesture.style.values.get("--viewer-gesture-pan-x"), "0px");
+  assert.equal(gesture.style.values.get("--viewer-gesture-pan-y"), "0px");
+});
+
 test("viewer markup, styles, and modules enforce responsive accessible isolation", async () => {
   const [html, css, modelSource, viewSource] = await Promise.all([
     readFile(path.join(projectRoot, "src-mobile/index.html"), "utf8"),
@@ -219,12 +336,17 @@ test("viewer markup, styles, and modules enforce responsive accessible isolation
     readFile(path.join(projectRoot, "src-mobile/layout_viewer.js"), "utf8"),
   ]);
   assert.match(html, /data-viewer="mobile-layout-viewer"/);
-  assert.match(html, /aria-label="Keyboard layers"/);
-  assert.match(html, /aria-label="Layout presentation mode"/);
-  assert.match(html, /id="viewer-mode-browse"[\s\S]*>Browse</);
-  assert.match(html, /id="viewer-mode-live"[\s\S]*>Live</);
-  assert.match(html, /aria-label="Scrollable physical keyboard layout"/);
-  assert.match(html, /id="viewer-scroller"[\s\S]*tabindex="0"/);
+  assert.match(html, /<select id="viewer-layer" aria-label="Keyboard layer">/);
+  assert.match(html, /<label class="viewer-field-label" for="viewer-layer">Layer<\/label>/);
+  assert.match(html, /id="viewer-live-layer"[^>]*role="status"/);
+  assert.match(html, /<input id="viewer-live-switch" type="checkbox" role="switch"/);
+  assert.match(html, /<span class="viewer-live-label">Live<\/span>/);
+  assert.doesNotMatch(html, /id="viewer-layers"|id="viewer-mode-browse"|id="viewer-mode-live"|aria-label="Keyboard layers"/);
+  assert.doesNotMatch(css, /\.viewer-layer\b|\.viewer-layers|\.viewer-mode-controls|\.viewer-control-bar/);
+  assert.match(html, /aria-label="Fitted physical keyboard layout"/);
+  assert.doesNotMatch(html, /id="viewer-current-layer"|id="viewer-summary"|keyboard-stage-heading/);
+  assert.match(html, /id="viewer-canvas" class="viewer-canvas" data-orientation="landscape"/);
+  assert.match(html, /id="viewer-gesture" class="viewer-gesture"/);
   assert.match(html, /role="status" aria-live="polite"/);
   assert.match(html, /id="viewer-import-layout"[\s\S]*>Import layout</);
   assert.match(html, /id="viewer-remove-controls"[\s\S]*hidden/);
@@ -233,10 +355,93 @@ test("viewer markup, styles, and modules enforce responsive accessible isolation
   assert.match(html, /id="viewer-layout-status"[\s\S]*aria-live="polite"/);
   assert.match(css, /min-height:\s*44px/);
   assert.match(css, /max-width:\s*100%/);
-  assert.match(css, /overflow-x:\s*auto/);
-  assert.doesNotMatch(css, /safe-area-inset/);
+  assert.match(css, /\.viewer-scroller[\s\S]*overflow:\s*hidden/);
+  assert.doesNotMatch(css, /\.keyboard-stage\s*\{[^}]*border:/);
+  assert.doesNotMatch(css, /\.keyboard-stage\s*\{[^}]*padding:/);
+  assert.match(css, /\.viewer-scroller[\s\S]*padding:\s*6px/);
+  assert.match(css, /\.viewer-canvas\[data-orientation="portrait"\][^{]*\{[^}]*translateY\(var\(--viewer-canvas-translate-y[^}]*rotate\(-90deg\)/);
+  assert.doesNotMatch(css, /rotate\(90deg\)/, "portrait is counterclockwise so a clockwise turn keeps the canvas fixed to the device");
+  assert.doesNotMatch(css, /\.viewer-canvas\[data-orientation="landscape"\][^{]*\{[^}]*rotate/, "landscape stays unrotated");
+  assert.match(css, /\.viewer-gesture[\s\S]*--viewer-gesture-zoom/);
+  assert.match(css, /\.viewer-key-legend\s*\{\s*font-size:\s*1\.4em/);
+  assert.match(css, /env\(safe-area-inset-top, 0px\)/);
   assert.match(css, /@media \(max-width: 480px\)/);
   assert.match(css, /@media \(orientation: landscape\) and \(max-height: 520px\)/);
   assert.doesNotMatch(`${modelSource}\n${viewSource}`, /localStorage|sessionStorage|indexedDB|WebSocket|EventSource|fetch\(|XMLHttpRequest|invoke\(|startScan|requestPermission|connectSelected|subscribeNotifications|write\(/);
   assert.doesNotMatch(modelSource, /function (normalizeViewerLayers|normalizeViewerEntry|effectiveViewerEntry|validateViewerDefinition)/);
+});
+
+test("compact and disabled legends keep independent accessible names", () => {
+  const definition = {
+    name: "Legends",
+    keySize: { w: 40, h: 40, gap: 0 },
+    keyPositions: [{ row: 0, col: 0 }, { row: 0, col: 1 }, { row: 0, col: 2 }],
+    keyLayers: {
+      base: [{ text: "⌫", alt: "Backspace", code: "Backspace" }, ["A", "KeyA"], ["B", "KeyB"]],
+      lower: [null, { text: "", alt: "Disabled", code: "" }, null],
+    },
+  };
+  const base = createLayoutPresentation(definition, 0);
+  assert.equal(base.keys[0].label, "⌫");
+  assert.equal(base.keys[0].accessibleLabel, "Backspace");
+  assert.equal(base.keys[1].label, "A");
+  assert.equal(base.keys[1].accessibleLabel, "A");
+
+  const lower = createLayoutPresentation(definition, 1);
+  assert.equal(lower.keys[0].label, "⌫");
+  assert.equal(lower.keys[1].label, "");
+  assert.equal(lower.keys[1].accessibleLabel, "Disabled");
+  assert.equal(lower.keys[2].label, "B");
+});
+
+test("visible text legends use their dedicated presentation class while image legends remain images", () => {
+  const subject = viewHarness();
+  const textKey = subject.elements.get("viewer-keyboard").children[0];
+  assert.equal(textKey.children[0].className, "viewer-key-legend");
+  const imageDefinition = {
+    name: "Image board", keySize: { w: 40, h: 40, gap: 0 }, keyPositions: [{ row: 0, col: 0 }],
+    keyLayers: { base: [{ text: "Logo", image: "blob:inline-logo", alt: "Logo" }] },
+  };
+  const imageSubject = viewHarness(new MobileLayoutViewerModel({
+    definitions: {}, order: [], customRecords: [{ id: "22222222-2222-4222-8222-222222222222", definition: imageDefinition }],
+  }));
+  assert.equal(imageSubject.elements.get("viewer-keyboard").children[0].children[0].className, "viewer-key-image");
+});
+
+test("presentation canvas is the shared bounding box, including rotated keys and a late first column", () => {
+  const definition = {
+    name: "Offset board",
+    keySize: { w: 50, h: 40, gap: 10 },
+    keyPositions: [{ row: 1, col: 2 }, { row: 1, col: 3, angle: 24 }],
+    keyLayers: { base: [["A", "KeyA"], ["B", "KeyB"]] },
+  };
+  const presentation = createLayoutPresentation(definition, 0);
+  const expected = calcCanvasGeometry(definition.keyPositions, definition.keySize);
+  assert.equal(presentation.width, expected.width);
+  assert.equal(presentation.height, expected.height);
+  assert.deepEqual(presentation.origin, { x: expected.originX, y: expected.originY });
+  assert.ok(presentation.origin.x > 0 && presentation.origin.y > 0, "empty leading space is not reserved");
+
+  for (const [key, layout] of Object.entries(MOBILE_BUNDLED_LAYOUT_DEFINITIONS)) {
+    const bundled = createLayoutPresentation(layout, 0);
+    const geometry = calcCanvasGeometry(layout.keyPositions, layout.keySize);
+    assert.equal(bundled.width, geometry.width, `${key} width`);
+    assert.equal(bundled.height, geometry.height, `${key} height`);
+  }
+});
+
+test("view publishes the canvas origin used to position keys", () => {
+  const harness = viewHarness();
+  const keyboard = harness.elements.get("viewer-keyboard");
+  const { origin, width, height } = harness.model.snapshot().presentation;
+  assert.equal(keyboard.style.values.get("--viewer-origin-x"), `${origin.x}px`);
+  assert.equal(keyboard.style.values.get("--viewer-origin-y"), `${origin.y}px`);
+  assert.equal(keyboard.style.width, `${width}px`);
+  assert.equal(keyboard.style.height, `${height}px`);
+});
+
+test("viewer styles position keys from the canvas origin", async () => {
+  const css = await readFile(path.join(projectRoot, "src-mobile/styles.css"), "utf8");
+  assert.match(css, /\.viewer-key\s*\{[^}]*left:\s*calc\([^;]*-\s*var\(--viewer-origin-x, 0px\)\)/);
+  assert.match(css, /\.viewer-key\s*\{[^}]*top:\s*calc\([^;]*-\s*var\(--viewer-origin-y, 0px\)\)/);
 });

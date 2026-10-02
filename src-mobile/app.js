@@ -8,20 +8,23 @@ import { createMobileLayoutViewerView } from "./layout_viewer.js";
 import { MobileLayoutViewerModel } from "./layout_viewer_model.js";
 import { NativeBleAdapter } from "./native_ble_adapter.js";
 import { NativeLayoutAdapter } from "./native_layout_adapter.js";
+import { installSafeAreaFallback } from "./safe_area.js";
 import { MobileTelemetryController } from "./telemetry_session.js";
 import { createMobileKeyboardWorkspace } from "./workspace.js";
 
 const EXTENSION_SERVICE_UUID = "b34a0001-e782-4706-8f9c-6c056c416507";
 const CAPABILITIES_CHARACTERISTIC_UUID = "b34a0003-e782-4706-8f9c-6c056c416507";
 
-const viewerModel = new MobileLayoutViewerModel();
+const viewerModel = new MobileLayoutViewerModel({ hydrating: true });
 const customLayouts = new CustomLayoutController(viewerModel, new NativeLayoutAdapter(), {
   createImageBitmap: globalThis.createImageBitmap?.bind(globalThis),
   requireCompleteDecoding: true,
 });
+const safeArea = installSafeAreaFallback(document);
 const workspace = createMobileKeyboardWorkspace(document);
 window.addEventListener("pagehide", () => {
   customLayouts.dispose();
+  safeArea.dispose();
   workspace.dispose();
 }, { once: true });
 
@@ -51,14 +54,18 @@ try {
   });
   coordinator.initialize().catch(() => overview.reportError());
   customLayouts.initialize().catch((error) => {
-    viewer.reportLayoutStatus(error?.message ?? "Custom layouts could not be loaded.", "error");
+    const message = error?.message ?? "Custom layouts could not be loaded.";
+    customLayouts.restoreBundledFallback(message);
+    viewer.reportLayoutStatus(message, "error");
   });
 } catch (_error) {
   const viewer = createMobileLayoutViewerView(document, viewerModel, null, {
     layoutController: customLayouts,
   });
   customLayouts.initialize().catch((error) => {
-    viewer.reportLayoutStatus(error?.message ?? "Custom layouts could not be loaded.", "error");
+    const message = error?.message ?? "Custom layouts could not be loaded.";
+    customLayouts.restoreBundledFallback(message);
+    viewer.reportLayoutStatus(message, "error");
   });
   const live = document.getElementById("connection-live");
   if (live) {

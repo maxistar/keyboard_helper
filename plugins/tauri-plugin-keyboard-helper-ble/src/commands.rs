@@ -58,11 +58,13 @@ pub(crate) async fn connect<R: Runtime>(
     app: AppHandle<R>,
     address: String,
     attempt: u64,
+    timeout_ms: Option<u64>,
     on_disconnect: Channel<Notification>,
 ) -> Result<()> {
     app.keyboard_helper_ble().connect(ConnectRequest {
         address,
         attempt,
+        timeout_ms,
         on_disconnect,
     })
 }
@@ -71,9 +73,10 @@ pub(crate) async fn connect<R: Runtime>(
 pub(crate) async fn list_services<R: Runtime>(
     app: AppHandle<R>,
     attempt: u64,
+    timeout_ms: Option<u64>,
 ) -> Result<Vec<Service>> {
     app.keyboard_helper_ble()
-        .list_services(AttemptRequest { attempt })
+        .list_services(AttemptRequest { attempt, timeout_ms })
 }
 
 #[command]
@@ -82,11 +85,13 @@ pub(crate) async fn read<R: Runtime>(
     attempt: u64,
     service_uuid: String,
     characteristic_uuid: String,
+    timeout_ms: Option<u64>,
 ) -> Result<Vec<u8>> {
     app.keyboard_helper_ble().read(GattRequest {
         attempt,
         service_uuid,
         characteristic_uuid,
+        timeout_ms,
     })
 }
 
@@ -96,12 +101,14 @@ pub(crate) async fn subscribe<R: Runtime>(
     attempt: u64,
     service_uuid: String,
     characteristic_uuid: String,
+    timeout_ms: Option<u64>,
     on_notification: Channel<Notification>,
 ) -> Result<()> {
     app.keyboard_helper_ble().subscribe(SubscribeRequest {
         attempt,
         service_uuid,
         characteristic_uuid,
+        timeout_ms,
         on_notification,
     })
 }
@@ -112,16 +119,20 @@ pub(crate) async fn unsubscribe<R: Runtime>(
     attempt: u64,
     service_uuid: String,
     characteristic_uuid: String,
+    timeout_ms: Option<u64>,
 ) -> Result<()> {
     app.keyboard_helper_ble().unsubscribe(GattRequest {
         attempt,
         service_uuid,
         characteristic_uuid,
+        timeout_ms,
     })
 }
 
 #[command]
 pub(crate) async fn disconnect<R: Runtime>(app: AppHandle<R>, attempt: u64) -> Result<()> {
-    app.keyboard_helper_ble()
-        .disconnect(AttemptRequest { attempt })
+    app.keyboard_helper_ble().disconnect(AttemptRequest {
+        attempt,
+        timeout_ms: None,
+    })
 }

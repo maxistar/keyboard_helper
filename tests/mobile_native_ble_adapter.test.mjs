@@ -111,3 +111,41 @@ test("native adapter advances its generation after explicit disconnect", async (
     .map(([, args]) => args.attempt);
   assert.deepEqual(attempts, [1, 3]);
 });
+
+test("native adapter reports a late scan error through its callback instead of throwing", async () => {
+  const { tauri, calls } = createTauri();
+  const adapter = new NativeBleAdapter(tauri);
+  const errors = [];
+  await adapter.startScan(() => {}, 5000, (error) => errors.push(error.message));
+  const channel = calls[0][1].onEvent;
+
+  assert.doesNotThrow(() => channel.onmessage({ kind: "error", code: "scan-6", message: "too frequent" }));
+  assert.deepEqual(errors, ["scan-6: too frequent"]);
+
+  const quiet = new NativeBleAdapter(createTauri().tauri);
+  await quiet.startScan(() => {}, 5000);
+  assert.doesNotThrow(() => quiet.scanChannel.onmessage({ kind: "error", code: "scan-3", message: "internal" }));
+});
+
+test("native adapter passes native deadlines only when a positive timeout is given", async () => {
+  const { tauri, calls } = createTauri(new Map([
+    ["plugin:keyboard-helper-ble|list_services", []],
+    ["plugin:keyboard-helper-ble|read", [1]],
+  ]));
+  const adapter = new NativeBleAdapter(tauri);
+  await adapter.connect("AA:BB", () => {}, { timeoutMs: 20000 });
+  await adapter.listServices("AA:BB", { timeoutMs: 10000 });
+  await adapter.read("characteristic", "service", { timeoutMs: 5000 });
+  await adapter.subscribe("characteristic", "service", () => {}, { timeoutMs: 8000 });
+  const byCommand = (name) => calls.find(([command]) => command.endsWith(`|${name}`))[1];
+  assert.equal(byCommand("connect").timeoutMs, 20000);
+  assert.equal(byCommand("list_services").timeoutMs, 10000);
+  assert.equal(byCommand("read").timeoutMs, 5000);
+  assert.equal(byCommand("subscribe").timeoutMs, 8000);
+
+  const plain = createTauri(new Map([["plugin:keyboard-helper-ble|read", [1]]]));
+  const bare = new NativeBleAdapter(plain.tauri);
+  await bare.read("characteristic", "service");
+  await bare.read("characteristic", "service", { timeoutMs: 0 });
+  for (const [, args] of plain.calls) assert.equal(Object.hasOwn(args, "timeoutMs"), false);
+});
