@@ -173,7 +173,8 @@ test("workspace source and CSS encode native-inset viewport, overflow, and reduc
   assert.doesNotMatch(css, /env\(safe-area-inset-/);
   assert.match(css, /\.shell[\s\S]*padding:\s*10px/);
   assert.match(css, /\.keyboard-stage[\s\S]*min-height:\s*0/);
-  assert.match(css, /\.viewer-scroller[\s\S]*overflow:\s*auto/);
+  assert.match(css, /\.viewer-scroller[\s\S]*overflow:\s*hidden/);
+  assert.match(css, /\.workspace-settings-body[\s\S]*overflow-y:\s*auto/);
   assert.match(css, /\.viewer-stream-status[\s\S]*position:\s*absolute/);
   assert.match(html, /id="viewer-stream-status"[\s\S]*aria-live="polite"/);
   assert.match(css, /\.workspace-settings-body[\s\S]*overflow-y:\s*auto/);

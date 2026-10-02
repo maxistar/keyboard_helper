@@ -40,8 +40,12 @@
             <p id="viewer-summary" class="viewer-summary" role="status" aria-live="polite"></p>
           </div>
           <p id="viewer-empty" class="viewer-empty" role="status" hidden>No bundled keyboard layout is available.</p>
-          <div id="viewer-scroller" class="viewer-scroller" role="region" aria-label="Scrollable physical keyboard layout" tabindex="0">
-            <div id="viewer-keyboard" class="viewer-keyboard"></div>
+          <div id="viewer-scroller" class="viewer-scroller" role="region" aria-label="Fitted physical keyboard layout">
+            <div id="viewer-gesture" class="viewer-gesture">
+              <div id="viewer-canvas" class="viewer-canvas" data-orientation="landscape">
+                <div id="viewer-keyboard" class="viewer-keyboard"></div>
+              </div>
+            </div>
           </div>
         </section>
       </div>

@@ -31,13 +31,17 @@ class ElementStub {
     this.style = new StyleStub();
     this.textContent = "";
     this.value = "";
+    this.bounds = { width: 0, height: 0 };
   }
   addEventListener(type, listener) { this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]); }
   removeEventListener(type, listener) { this.listeners.set(type, (this.listeners.get(type) ?? []).filter((item) => item !== listener)); }
-  dispatch(type) { for (const listener of this.listeners.get(type) ?? []) listener({ target: this }); }
+  dispatch(type, event = {}) { for (const listener of this.listeners.get(type) ?? []) listener({ target: this, ...event }); }
   append(...children) { this.children.push(...children); }
   replaceChildren(...children) { this.children = [...children]; }
   setAttribute(name, value) { this.attributes.set(name, String(value)); }
+  getBoundingClientRect() { return { ...this.bounds }; }
+  setPointerCapture() {}
+  releasePointerCapture() {}
 }
 
 class TelemetryModel {
@@ -60,7 +64,7 @@ function live(overrides = {}) {
 function harness() {
   const ids = [
     "viewer-layout", "viewer-layers", "viewer-summary", "viewer-diagnostic",
-    "viewer-scroller", "viewer-keyboard", "viewer-empty", "viewer-mode-browse",
+    "viewer-scroller", "viewer-gesture", "viewer-canvas", "viewer-keyboard", "viewer-empty", "viewer-mode-browse",
     "viewer-mode-live", "viewer-stream-status", "viewer-current-layer", "viewer-combo-status",
     "viewer-telemetry-guidance",
     "viewer-import-layout", "viewer-remove-controls", "viewer-remove-target",
@@ -76,8 +80,29 @@ function harness() {
   browse.selectLayout("corne");
   const telemetry = new TelemetryModel();
   const presentation = new MobileLayoutPresentationController(browse, telemetry);
-  const view = createMobileLayoutViewerView(document, browse, presentation);
-  return { browse, document, elements, presentation, telemetry, view };
+  const orientationListeners = new Set();
+  const orientationMedia = {
+    matches: false,
+    addEventListener(type, listener) { if (type === "change") orientationListeners.add(listener); },
+    removeEventListener(type, listener) { if (type === "change") orientationListeners.delete(listener); },
+    addListener(listener) { orientationListeners.add(listener); },
+    removeListener(listener) { orientationListeners.delete(listener); },
+  };
+  const appWindow = {
+    matchMedia: () => orientationMedia,
+    requestAnimationFrame(callback) { callback(); return 1; },
+    cancelAnimationFrame() {}, addEventListener() {}, removeEventListener() {},
+  };
+  elements.get("viewer-scroller").bounds = { width: 640, height: 300 };
+  const view = createMobileLayoutViewerView(document, browse, presentation, { window: appWindow });
+  return {
+    browse, document, elements, presentation, telemetry, view,
+    changeOrientation(portrait, bounds) {
+      orientationMedia.matches = portrait;
+      elements.get("viewer-scroller").bounds = bounds;
+      for (const listener of orientationListeners) listener({ matches: portrait });
+    },
+  };
 }
 
 test("Browse and Live controls expose stream state and preserve manual navigation", () => {
@@ -136,6 +161,37 @@ test("authoritative layer changes update labels without replacing physical key n
   assert.notEqual(key.children[0].textContent, firstLabel);
 });
 
+test("Live highlighting and mode survive portrait and landscape canvas refits", () => {
+  const subject = harness();
+  subject.telemetry.publish(live({ activeLayer: 2, pressedPositions: [7] }));
+  const key = subject.elements.get("viewer-keyboard").children[7];
+  subject.changeOrientation(true, { width: 320, height: 620 });
+  assert.equal(subject.elements.get("viewer-canvas").dataset.orientation, "portrait");
+  assert.equal(subject.presentation.snapshot().mode, LayoutPresentationMode.LIVE);
+  assert.equal(subject.elements.get("viewer-keyboard").children[7], key);
+  assert.equal(key.dataset.pressed, "true");
+  subject.changeOrientation(false, { width: 680, height: 280 });
+  assert.equal(subject.elements.get("viewer-canvas").dataset.orientation, "landscape");
+  assert.equal(subject.presentation.snapshot().selectedLayerIndex, 2);
+  assert.equal(key.dataset.pressed, "true");
+});
+
+test("Live key and combo presentation survives an active canvas gesture", () => {
+  const subject = harness();
+  const stage = subject.elements.get("viewer-scroller");
+  const gesture = subject.elements.get("viewer-gesture");
+  subject.telemetry.publish(live({ activeLayer: 1, pressedPositions: [7], activeCombos: [{ comboId: 1, positions: [1, 2], layer: 1 }] }));
+  const key = subject.elements.get("viewer-keyboard").children[7];
+  stage.dispatch("pointerdown", { pointerId: 1, clientX: 120, clientY: 100 });
+  stage.dispatch("pointerdown", { pointerId: 2, clientX: 220, clientY: 100 });
+  stage.dispatch("pointermove", { pointerId: 2, clientX: 320, clientY: 100 });
+  assert.equal(gesture.style.values.get("--viewer-gesture-zoom"), "2");
+  subject.telemetry.publish(live({ activeLayer: 1, pressedPositions: [7] }));
+  assert.equal(subject.elements.get("viewer-keyboard").children[7], key);
+  assert.equal(key.dataset.pressed, "true");
+  assert.equal(subject.presentation.snapshot().mode, LayoutPresentationMode.LIVE);
+});
+
 test("unsupported, failed, gap, and unmatched states use bounded actionable product copy", () => {
   const subject = harness();
   subject.telemetry.publish(createTelemetrySnapshot(1, TelemetryStatus.UNAVAILABLE, {
@@ -177,7 +233,8 @@ test("Live UI source preserves accessibility, responsive containment, privacy, a
   assert.doesNotMatch(css, /safe-area-inset/);
   assert.match(css, /@media \(max-width: 480px\)/);
   assert.match(css, /@media \(orientation: landscape\) and \(max-height: 520px\)/);
-  assert.match(css, /overflow-x:\s*auto/);
+  assert.match(css, /\.viewer-scroller[\s\S]*overflow:\s*hidden/);
+  assert.match(css, /\.viewer-canvas\[data-orientation="portrait"\][\s\S]*rotate\(90deg\)/);
   assert.match(css, /viewer-key-state/);
   assert.match(css, /outline:\s*3px dashed/);
   const source = `${view}\n${presentation}\n${telemetry}\n${app}`;
