@@ -63,9 +63,9 @@ function live(overrides = {}) {
 
 function harness() {
   const ids = [
-    "viewer-layout", "viewer-layers", "viewer-summary", "viewer-diagnostic",
+    "viewer-layout", "viewer-layers", "viewer-diagnostic",
     "viewer-scroller", "viewer-gesture", "viewer-canvas", "viewer-keyboard", "viewer-empty", "viewer-mode-browse",
-    "viewer-mode-live", "viewer-stream-status", "viewer-current-layer", "viewer-combo-status",
+    "viewer-mode-live", "viewer-stream-status", "viewer-combo-status",
     "viewer-telemetry-guidance",
     "viewer-import-layout", "viewer-remove-controls", "viewer-remove-target",
     "viewer-remove-layout", "viewer-layout-status",
@@ -116,7 +116,7 @@ test("Browse and Live controls expose stream state and preserve manual navigatio
   assert.equal(liveButton.disabled, false);
   assert.equal(liveButton.attributes.get("aria-pressed"), "true");
   assert.match(subject.elements.get("viewer-stream-status").textContent, /Live telemetry active/);
-  assert.match(subject.elements.get("viewer-current-layer").textContent, /Firmware layer/);
+  assert.equal(subject.elements.get("viewer-layers").children[1].attributes.get("aria-pressed"), "true");
 
   browseButton.dispatch("click");
   assert.equal(subject.presentation.snapshot().mode, LayoutPresentationMode.BROWSE);
@@ -229,11 +229,13 @@ test("Live UI source preserves accessibility, responsive containment, privacy, a
   ]);
   assert.match(html, /aria-label="Layout presentation mode"/);
   assert.match(html, /viewer-stream-status[\s\S]*aria-live="polite"/);
+  assert.doesNotMatch(html, /id="viewer-current-layer"|id="viewer-summary"|keyboard-stage-heading/);
   assert.match(css, /min-height:\s*44px/);
   assert.match(css, /env\(safe-area-inset-top, 0px\)/);
   assert.match(css, /@media \(max-width: 480px\)/);
   assert.match(css, /@media \(orientation: landscape\) and \(max-height: 520px\)/);
   assert.match(css, /\.viewer-scroller[\s\S]*overflow:\s*hidden/);
+  assert.doesNotMatch(css, /\.keyboard-stage\s*\{[^}]*border:/);
   assert.match(css, /\.viewer-canvas\[data-orientation="portrait"\][\s\S]*rotate\(90deg\)/);
   assert.match(css, /viewer-key-state/);
   assert.match(css, /outline:\s*3px dashed/);

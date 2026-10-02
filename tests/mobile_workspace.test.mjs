@@ -168,6 +168,12 @@ test("workspace source and CSS encode edge-to-edge safe-area, overflow, and redu
   ]);
   assert.match(html, /id="workspace-settings"/);
   assert.equal((html.match(/id="workspace-settings"/g) ?? []).length, 1);
+  assert.match(html, /id="workspace-settings-open"[^>]*aria-label="Open settings"[^>]*aria-controls="workspace-settings"[^>]*aria-expanded="false"[\s\S]*<svg[^>]*aria-hidden="true"/);
+  assert.match(html, /id="workspace-settings-close"[^>]*aria-label="Close settings"[\s\S]*<span aria-hidden="true">×<\/span>/);
+  assert.doesNotMatch(html, /id="workspace-settings-open"[^>]*>\s*Settings\s*<\/button>/);
+  assert.doesNotMatch(html, /id="workspace-settings-close"[^>]*>\s*Close\s*<\/button>/);
+  assert.match(css, /\.workspace-settings-open[\s\S]*min-width:\s*44px/);
+  assert.match(css, /\.workspace-settings-close[\s\S]*min-width:\s*44px/);
   assert.match(css, /min-height:\s*100vh;\s*min-height:\s*100dvh;/);
   assert.match(css, /height:\s*100vh;\s*height:\s*100dvh;/);
   assert.match(css, /env\(safe-area-inset-top, 0px\)/);
@@ -176,7 +182,10 @@ test("workspace source and CSS encode edge-to-edge safe-area, overflow, and redu
   assert.match(css, /\.workspace-settings\[data-presentation="sheet"\][\s\S]*var\(--safe-bottom\)/);
   assert.match(css, /\.workspace-settings\[data-presentation="panel"\][\s\S]*var\(--safe-right\)/);
   assert.match(css, /\.keyboard-stage[\s\S]*min-height:\s*0/);
+  assert.doesNotMatch(css, /\.keyboard-stage\s*\{[^}]*border:/);
+  assert.doesNotMatch(css, /\.keyboard-stage\s*\{[^}]*padding:/);
   assert.match(css, /\.viewer-scroller[\s\S]*overflow:\s*hidden/);
+  assert.match(css, /\.viewer-scroller[\s\S]*padding-inline:\s*6px/);
   assert.match(css, /\.workspace-settings-body[\s\S]*overflow-y:\s*auto/);
   assert.match(css, /\.viewer-stream-status[\s\S]*position:\s*absolute/);
   assert.match(html, /id="viewer-stream-status"[\s\S]*aria-live="polite"/);

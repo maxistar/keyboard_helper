@@ -128,7 +128,6 @@ export function createMobileLayoutViewerView(
   const elements = {
     layout: required(document, "viewer-layout"),
     layers: required(document, "viewer-layers"),
-    summary: required(document, "viewer-summary"),
     diagnostic: required(document, "viewer-diagnostic"),
     scroller: required(document, "viewer-scroller"),
     gesture: required(document, "viewer-gesture"),
@@ -138,7 +137,6 @@ export function createMobileLayoutViewerView(
     browseMode: required(document, "viewer-mode-browse"),
     liveMode: required(document, "viewer-mode-live"),
     streamStatus: required(document, "viewer-stream-status"),
-    currentLayer: required(document, "viewer-current-layer"),
     comboStatus: required(document, "viewer-combo-status"),
     guidance: required(document, "viewer-telemetry-guidance"),
     importLayout: required(document, "viewer-import-layout"),
@@ -166,12 +164,20 @@ export function createMobileLayoutViewerView(
 
   function stageBounds() {
     const rect = elements.scroller.getBoundingClientRect?.();
-    const width = Number.isFinite(rect?.width) && rect.width > 0
+    let width = Number.isFinite(rect?.width) && rect.width > 0
       ? rect.width
       : elements.scroller.clientWidth ?? 0;
     const height = Number.isFinite(rect?.height) && rect.height > 0
       ? rect.height
       : elements.scroller.clientHeight ?? 0;
+    const style = typeof appWindow?.getComputedStyle === "function"
+      ? appWindow.getComputedStyle(elements.scroller)
+      : null;
+    const horizontalPadding = [style?.paddingLeft, style?.paddingRight]
+      .map((value) => Number.parseFloat(value))
+      .filter(Number.isFinite)
+      .reduce((total, value) => total + value, 0);
+    width = Math.max(0, width - horizontalPadding);
     return { width, height };
   }
 
@@ -428,9 +434,6 @@ export function createMobileLayoutViewerView(
       lastStreamTitle = streamTitle;
     }
     elements.guidance.textContent = guidance;
-    elements.currentLayer.textContent = resolved.mode === LayoutPresentationMode.LIVE
-      ? resolved.layerAuthoritative ? `Firmware layer: ${resolved.presentation.layerName}` : "Firmware layer unavailable"
-      : `Browsing: ${resolved.presentation?.layerName ?? "no layer"}`;
     elements.comboStatus.textContent = resolved.activeCombos.length
       ? `Active: ${resolved.activeCombos.map(({ label }) => label).join(", ")}`
       : "No active firmware-resolved combo.";
@@ -439,7 +442,6 @@ export function createMobileLayoutViewerView(
     elements.diagnostic.textContent = diagnostics.join(" ");
     elements.diagnostic.hidden = diagnostics.length === 0;
     if (!ready) {
-      elements.summary.textContent = "No bundled keyboard layout is available.";
       currentPresentation = null;
       currentFit = null;
       gestureState = resetCanvasGesture();
@@ -461,7 +463,6 @@ export function createMobileLayoutViewerView(
       button.dataset.selected = String(selected);
       button.disabled = resolved.mode === LayoutPresentationMode.LIVE;
     });
-    elements.summary.textContent = `${resolved.mode === LayoutPresentationMode.LIVE ? "Live" : "Browse"} · ${resolved.presentation.name} · ${resolved.presentation.layerName}`;
     currentPresentation = resolved.presentation;
     elements.keyboard.style.width = `${resolved.presentation.width}px`;
     elements.keyboard.style.height = `${resolved.presentation.height}px`;

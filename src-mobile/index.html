@@ -17,7 +17,11 @@
               <strong id="workspace-connection-state">Getting ready</strong><span>, <span id="workspace-connection-device">No keyboard</span> · <span id="workspace-connection-battery">—</span></span>
             </span>
           </div>
-          <button id="workspace-settings-open" class="workspace-settings-open secondary" type="button" aria-controls="workspace-settings" aria-expanded="false">Settings</button>
+          <button id="workspace-settings-open" class="workspace-settings-open secondary" type="button" aria-label="Open settings" aria-controls="workspace-settings" aria-expanded="false">
+            <svg class="workspace-settings-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M19.43 12.98c.04-.32.07-.65.07-.98s-.02-.66-.07-.98l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.2 7.2 0 0 0-1.69-.98L14.5 2.42A.49.49 0 0 0 14 2h-4a.49.49 0 0 0-.49.42L9.13 5.07c-.61.25-1.18.58-1.69.98l-2.49-1a.49.49 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64l2.11 1.65c-.04.32-.08.65-.08.98s.03.66.08.98l-2.11 1.65a.5.5 0 0 0-.12.64l2 3.46c.12.21.37.3.61.22l2.49-1c.51.4 1.08.73 1.69.98l.38 2.65c.04.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.18-.58 1.69-.98l2.49 1c.23.08.49-.01.61-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.65ZM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5Z" />
+            </svg>
+          </button>
         </header>
 
         <section class="viewer-control-bar" data-viewer="mobile-layout-viewer" aria-labelledby="viewer-title">
@@ -28,17 +32,13 @@
           </div>
           <div class="viewer-controls">
             <label class="visually-hidden" for="viewer-layout">Keyboard layout</label>
-            <select id="viewer-layout" aria-label="Keyboard layout" aria-describedby="viewer-summary"></select>
+            <select id="viewer-layout" aria-label="Keyboard layout"></select>
           </div>
           <p id="viewer-stream-status" class="viewer-stream-status" role="status" aria-live="polite">Browse mode</p>
           <div id="viewer-layers" class="viewer-layers" role="group" aria-label="Keyboard layers"></div>
         </section>
 
-        <section class="keyboard-stage" aria-labelledby="viewer-current-layer">
-          <div class="keyboard-stage-heading">
-            <p id="viewer-current-layer" class="viewer-current-layer">Browsing: Layer 1</p>
-            <p id="viewer-summary" class="viewer-summary" role="status" aria-live="polite"></p>
-          </div>
+        <section class="keyboard-stage">
           <p id="viewer-empty" class="viewer-empty" role="status" hidden>No bundled keyboard layout is available.</p>
           <div id="viewer-scroller" class="viewer-scroller" role="region" aria-label="Fitted physical keyboard layout">
             <div id="viewer-gesture" class="viewer-gesture">
@@ -54,7 +54,7 @@
       <aside id="workspace-settings" class="workspace-settings" aria-labelledby="workspace-settings-title" hidden>
         <header class="workspace-settings-header">
           <div><p class="eyebrow">Keyboard Helper</p><h2 id="workspace-settings-title">Companion settings</h2></div>
-          <button id="workspace-settings-close" class="secondary" type="button" aria-label="Close settings">Close</button>
+          <button id="workspace-settings-close" class="workspace-settings-close secondary" type="button" aria-label="Close settings"><span aria-hidden="true">×</span></button>
         </header>
         <div class="workspace-settings-tabs" role="tablist" aria-label="Settings sections">
           <button id="workspace-section-connection" type="button" role="tab" aria-controls="workspace-panel-connection">Connection</button>

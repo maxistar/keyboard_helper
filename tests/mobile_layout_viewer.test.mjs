@@ -63,9 +63,9 @@ class ElementStub {
 
 function viewHarness(model = new MobileLayoutViewerModel(), { portrait = false } = {}) {
   const ids = [
-    "viewer-layout", "viewer-layers", "viewer-summary", "viewer-diagnostic",
+    "viewer-layout", "viewer-layers", "viewer-diagnostic",
     "viewer-scroller", "viewer-gesture", "viewer-canvas", "viewer-keyboard", "viewer-empty",
-    "viewer-mode-browse", "viewer-mode-live", "viewer-stream-status", "viewer-current-layer",
+    "viewer-mode-browse", "viewer-mode-live", "viewer-stream-status",
     "viewer-combo-status", "viewer-telemetry-guidance",
     "viewer-import-layout", "viewer-remove-controls", "viewer-remove-target",
     "viewer-remove-layout", "viewer-layout-status",
@@ -198,10 +198,7 @@ test("view preserves layer control focus objects while legends update atomically
   assert.equal(harness.model.snapshot().selectedLayerIndex, 2);
   assert.equal(harness.elements.get("viewer-layers").children[2], retainedButton);
   assert.equal(retainedButton.attributes.get("aria-pressed"), "true");
-  assert.match(
-    harness.elements.get("viewer-summary").textContent,
-    new RegExp(harness.model.snapshot().presentation.layerName, "i"),
-  );
+  assert.equal(retainedButton.textContent, harness.model.snapshot().presentation.layerName);
 });
 
 test("view redraws every layer when a custom catalog replaces the bundled catalog", () => {
@@ -314,6 +311,7 @@ test("viewer markup, styles, and modules enforce responsive accessible isolation
   assert.match(html, /id="viewer-mode-browse"[\s\S]*>Browse</);
   assert.match(html, /id="viewer-mode-live"[\s\S]*>Live</);
   assert.match(html, /aria-label="Fitted physical keyboard layout"/);
+  assert.doesNotMatch(html, /id="viewer-current-layer"|id="viewer-summary"|keyboard-stage-heading/);
   assert.match(html, /id="viewer-canvas" class="viewer-canvas" data-orientation="landscape"/);
   assert.match(html, /id="viewer-gesture" class="viewer-gesture"/);
   assert.match(html, /role="status" aria-live="polite"/);
@@ -325,6 +323,9 @@ test("viewer markup, styles, and modules enforce responsive accessible isolation
   assert.match(css, /min-height:\s*44px/);
   assert.match(css, /max-width:\s*100%/);
   assert.match(css, /\.viewer-scroller[\s\S]*overflow:\s*hidden/);
+  assert.doesNotMatch(css, /\.keyboard-stage\s*\{[^}]*border:/);
+  assert.doesNotMatch(css, /\.keyboard-stage\s*\{[^}]*padding:/);
+  assert.match(css, /\.viewer-scroller[\s\S]*padding-inline:\s*6px/);
   assert.match(css, /\.viewer-canvas\[data-orientation="portrait"\][\s\S]*rotate\(90deg\)/);
   assert.match(css, /\.viewer-gesture[\s\S]*--viewer-gesture-zoom/);
   assert.match(css, /\.viewer-key-legend\s*\{\s*font-size:\s*1\.4em/);

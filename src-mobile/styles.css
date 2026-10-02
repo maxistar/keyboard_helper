@@ -67,8 +67,7 @@ body {
 }
 
 .workspace-app-bar,
-.viewer-control-bar,
-.keyboard-stage {
+.viewer-control-bar {
   border: 1px solid var(--border);
   background: var(--surface);
   box-shadow: 0 12px 38px rgb(0 0 0 / 24%);
@@ -86,7 +85,6 @@ body {
 
 .workspace-connection-compact,
 .viewer-mode-controls,
-.keyboard-stage-heading,
 .workspace-settings-header {
   display: flex;
   align-items: center;
@@ -143,6 +141,26 @@ h4 { margin: 0; line-height: 1.15; }
 
 .workspace-connection-copy strong { flex: 0 1 auto; color: #f8fafc; font-size: 0.82rem; }
 .workspace-connection-copy > span { flex: 1 1 auto; min-width: 0; }
+
+.workspace-settings-open,
+.workspace-settings-close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  min-width: 44px;
+  padding: 0;
+}
+
+.workspace-settings-icon {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+.workspace-settings-close {
+  font-size: 1.8rem;
+  line-height: 1;
+}
 
 button,
 select,
@@ -206,9 +224,6 @@ summary:focus-visible,
   color: #f8fafc;
 }
 
-.viewer-stream-status,
-.viewer-current-layer,
-.viewer-summary { margin: 0; }
 .viewer-stream-status {
   position: absolute;
   width: 1px;
@@ -242,29 +257,6 @@ summary:focus-visible,
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  overflow: hidden;
-  padding: 10px;
-  border-color: rgb(94 234 212 / 28%);
-  border-radius: 20px;
-  background: linear-gradient(145deg, rgb(15 23 42 / 94%), rgb(17 35 51 / 88%));
-}
-
-.keyboard-stage-heading {
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 24px;
-  padding: 0 3px 7px;
-  color: #99f6e4;
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
-.viewer-summary {
-  min-width: 0;
-  overflow: hidden;
-  color: #94a3b8;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .viewer-scroller {
@@ -275,7 +267,8 @@ summary:focus-visible,
   min-height: 0;
   max-width: 100%;
   overflow: hidden;
-  padding: 0;
+  /* Keep the fitted keyboard clear of the canvas edge without restoring stage chrome. */
+  padding-inline: 6px;
   border: 1px solid rgb(148 163 184 / 20%);
   border-radius: 14px;
   background:
@@ -512,8 +505,6 @@ dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
   .workspace-content { gap: 6px; }
   .workspace-app-bar { min-height: 48px; padding-block: 2px; }
   .viewer-control-bar { padding-block: 4px; }
-  .keyboard-stage { padding: 6px; border-radius: 14px; }
-  .keyboard-stage-heading { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
