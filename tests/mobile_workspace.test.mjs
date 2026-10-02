@@ -246,7 +246,7 @@ test("workspace source and CSS encode edge-to-edge safe-area, overflow, and redu
   assert.doesNotMatch(css, /\.keyboard-stage\s*\{[^}]*border:/);
   assert.doesNotMatch(css, /\.keyboard-stage\s*\{[^}]*padding:/);
   assert.match(css, /\.viewer-scroller[\s\S]*overflow:\s*hidden/);
-  assert.match(css, /\.viewer-scroller[\s\S]*padding-inline:\s*6px/);
+  assert.match(css, /\.viewer-scroller[\s\S]*padding:\s*6px/);
   assert.match(css, /\.workspace-settings-body[\s\S]*overflow-y:\s*auto/);
   assert.match(css, /\.viewer-stream-status[\s\S]*position:\s*absolute/);
   assert.match(html, /id="viewer-stream-status"[\s\S]*aria-live="polite"/);

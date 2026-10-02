@@ -162,8 +162,8 @@ export function createLayoutPresentation(definition, layerIndex = 0) {
     layerName: layerData.names[layerIndex],
     layers: layerData.names.map((name, index) => ({ index, name, key: layerData.layerKeys[index] })),
     keySize: { w: definition.keySize.w, h: definition.keySize.h, gap },
-    width: maxCol * (definition.keySize.w + gap) + definition.keySize.w,
-    height: maxRow * (definition.keySize.h + gap) + definition.keySize.h,
+    width: maxCol * (definition.keySize.w + gap) - gap,
+    height: maxRow * (definition.keySize.h + gap) - gap,
     keys,
   });
 }

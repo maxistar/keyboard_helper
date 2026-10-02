@@ -168,7 +168,7 @@ export function createMobileLayoutViewerView(
     let width = Number.isFinite(rect?.width) && rect.width > 0
       ? rect.width
       : elements.scroller.clientWidth ?? 0;
-    const height = Number.isFinite(rect?.height) && rect.height > 0
+    let height = Number.isFinite(rect?.height) && rect.height > 0
       ? rect.height
       : elements.scroller.clientHeight ?? 0;
     const style = typeof appWindow?.getComputedStyle === "function"
@@ -178,7 +178,12 @@ export function createMobileLayoutViewerView(
       .map((value) => Number.parseFloat(value))
       .filter(Number.isFinite)
       .reduce((total, value) => total + value, 0);
+    const verticalPadding = [style?.paddingTop, style?.paddingBottom]
+      .map((value) => Number.parseFloat(value))
+      .filter(Number.isFinite)
+      .reduce((total, value) => total + value, 0);
     width = Math.max(0, width - horizontalPadding);
+    height = Math.max(0, height - verticalPadding);
     return { width, height };
   }
 

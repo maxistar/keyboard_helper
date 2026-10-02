@@ -333,7 +333,7 @@ test("viewer markup, styles, and modules enforce responsive accessible isolation
   assert.match(css, /\.viewer-scroller[\s\S]*overflow:\s*hidden/);
   assert.doesNotMatch(css, /\.keyboard-stage\s*\{[^}]*border:/);
   assert.doesNotMatch(css, /\.keyboard-stage\s*\{[^}]*padding:/);
-  assert.match(css, /\.viewer-scroller[\s\S]*padding-inline:\s*6px/);
+  assert.match(css, /\.viewer-scroller[\s\S]*padding:\s*6px/);
   assert.match(css, /\.viewer-canvas\[data-orientation="portrait"\][\s\S]*rotate\(90deg\)/);
   assert.match(css, /\.viewer-gesture[\s\S]*--viewer-gesture-zoom/);
   assert.match(css, /\.viewer-key-legend\s*\{\s*font-size:\s*1\.4em/);

@@ -369,7 +369,7 @@ summary:focus-visible,
   max-width: 100%;
   overflow: hidden;
   /* Keep the fitted keyboard clear of the canvas edge without restoring stage chrome. */
-  padding-inline: 6px;
+  padding: 6px;
   border: 1px solid rgb(148 163 184 / 20%);
   border-radius: 14px;
   background:
