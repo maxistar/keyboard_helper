@@ -11,7 +11,7 @@ const mobileSemanticsPath = path.join(projectRoot, "src-mobile", "layout_semanti
 const canonicalPresentationPath = path.join(projectRoot, "src", "inline_asset_presentation.js");
 const mobilePresentationPath = path.join(projectRoot, "src-mobile", "inline_asset_presentation.generated.js");
 const mobileSharedPath = path.join(projectRoot, "src-mobile", "shared-generated");
-const sharedRuntimeFiles = ["input_events.js", "ble_keyboard_decoder.js"];
+const sharedRuntimeFiles = ["input_events.js", "ble_keyboard_decoder.js", "layout_geometry.js"];
 const definitions = {};
 const imagePaths = new Set();
 

@@ -464,6 +464,8 @@ export function createMobileLayoutViewerView(
     currentPresentation = resolved.presentation;
     elements.keyboard.style.width = `${resolved.presentation.width}px`;
     elements.keyboard.style.height = `${resolved.presentation.height}px`;
+    elements.keyboard.style.setProperty("--viewer-origin-x", `${resolved.presentation.origin.x}px`);
+    elements.keyboard.style.setProperty("--viewer-origin-y", `${resolved.presentation.origin.y}px`);
     elements.keyboard.style.setProperty("--viewer-key-width", `${resolved.presentation.keySize.w}px`);
     elements.keyboard.style.setProperty("--viewer-key-height", `${resolved.presentation.keySize.h}px`);
     elements.keyboard.style.setProperty("--viewer-key-gap", `${resolved.presentation.keySize.gap}px`);

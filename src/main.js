@@ -25,7 +25,13 @@ import { parseLayoutJson } from "./layout_semantics.js";
 import { detectRuntimePlatform, normalizeInputSourceSync } from "./input_source_sync_config.js";
 import { createPlatformInputSourceAdapter } from "./input_source_sync_adapter.js";
 import { createInputSourceLayerReconciler } from "./input_source_layer_reconciler.js";
-import { calcBounds, calcKeyBounds, renderKeyLabel } from "./keyboard_renderer.js";
+import {
+  applyCanvasGeometry,
+  calcKeyBounds,
+  calcOverlayCanvas,
+  COMBO_BORDER_PADDING,
+  renderKeyLabel,
+} from "./keyboard_renderer.js";
 import { createSelfTestOverlayPresentation } from "./self_test/overlay_presentation.js";
 import {
   createSelfTestLayerLeaseCoordinator,
@@ -436,7 +442,8 @@ function renderComboBorders(layout, comboDefinitions) {
     positionIndex.set(`${key.row},${key.col}`, key);
   });
 
-  const padding = 4;
+  const padding = COMBO_BORDER_PADDING;
+  const canvas = calcOverlayCanvas(layout.keys, layout.keySize);
   comboDefinitions.forEach((combo) => {
     const key1 = positionIndex.get(`${combo.key1.row},${combo.key1.col}`);
     const key2 = positionIndex.get(`${combo.key2.row},${combo.key2.col}`);
@@ -452,8 +459,8 @@ function renderComboBorders(layout, comboDefinitions) {
     const border = document.createElement("div");
     border.className = "combo-border";
     border.dataset.comboCode = combo.code;
-    border.style.left = `${left}px`;
-    border.style.top = `${top}px`;
+    border.style.left = `${left - canvas.originX}px`;
+    border.style.top = `${top - canvas.originY}px`;
     border.style.width = `${right - left}px`;
     border.style.height = `${bottom - top}px`;
     layoutRoot.appendChild(border);
@@ -488,12 +495,7 @@ function renderKeyboard(layout) {
   const comboDefinitions = comboDefinitionsByLayout[currentLayoutKey] ?? [];
   renderComboBorders(layout, comboDefinitions);
 
-  const { w, h, gap } = layout.keySize;
-  const { maxCol, maxRow } = calcBounds(layout.keys);
-  const widthPx = maxCol * (w + gap) + w;
-  const heightPx = maxRow * (h + gap) + h;
-  layoutRoot.style.width = `${widthPx}px`;
-  layoutRoot.style.height = `${heightPx}px`;
+  applyCanvasGeometry(layoutRoot, calcOverlayCanvas(layout.keys, layout.keySize));
 
   layout.keys.forEach((k, key) => {
     const el = document.createElement("div");

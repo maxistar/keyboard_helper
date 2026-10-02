@@ -62,6 +62,15 @@ test("mobile surface composes a viewport-first keyboard workspace", async () => 
   assert.doesNotMatch(app, /querySelectorAll\("button"\)/);
 });
 
+test("the packaged keyboard geometry is exactly the canonical shared module", async () => {
+  const [canonical, packaged] = await Promise.all([
+    read("src/layout_geometry.js"),
+    read("src-mobile/shared-generated/layout_geometry.js"),
+  ]);
+  assert.equal(packaged, canonical);
+  assert.doesNotMatch(canonical, /\bdocument\b|\bwindow\b|\bimport\b/, "the shared module stays pure and dependency free");
+});
+
 test("mobile runtime imports remain inside the packaged frontend", async () => {
   const telemetry = await read("src-mobile/telemetry_session.js");
   const canonicalDecoder = await read("src/ble_keyboard_decoder.js");

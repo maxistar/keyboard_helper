@@ -1,10 +1,23 @@
 import { normalizeKeyEntry } from "./layout_catalog.js";
+import { calcCanvasGeometry } from "./layout_geometry.js";
 
-export function calcBounds(keys) {
-  return keys.reduce((bounds, key) => ({
-    maxCol: Math.max(bounds.maxCol, key.col + (key.w ?? 1)),
-    maxRow: Math.max(bounds.maxRow, key.row + (key.h ?? 1)),
-  }), { maxCol: 0, maxRow: 0 });
+// What the overlay draws outside a key cell: a combo border sits COMBO_BORDER_PADDING px beyond
+// its keys and an active combo (or pressed key) adds an ACTIVE_RING px box-shadow. The layout
+// element clips at its box, so the canvas margin is exactly their sum.
+export const COMBO_BORDER_PADDING = 4;
+export const ACTIVE_RING = 2;
+export const OVERLAY_EDGE_MARGIN = COMBO_BORDER_PADDING + ACTIVE_RING;
+
+export function calcOverlayCanvas(keys, keySize) {
+  return calcCanvasGeometry(keys, keySize, { margin: OVERLAY_EDGE_MARGIN });
+}
+
+/** Sizes the layout element to the canvas and publishes the origin keys are positioned from. */
+export function applyCanvasGeometry(root, canvas) {
+  root.style.width = `${canvas.width}px`;
+  root.style.height = `${canvas.height}px`;
+  root.style.setProperty("--origin-x", `${canvas.originX}px`);
+  root.style.setProperty("--origin-y", `${canvas.originY}px`);
 }
 
 export function calcKeyBounds(key, keySize) {
@@ -41,10 +54,7 @@ export function renderKeyLabel(element, entry) {
 
 export function renderKeyboardGeometry(root, layout, { keyClass = "key", document = root.ownerDocument } = {}) {
   root.innerHTML = "";
-  const { w, h, gap = 0 } = layout.keySize;
-  const bounds = calcBounds(layout.keys);
-  root.style.width = `${bounds.maxCol * (w + gap) + w}px`;
-  root.style.height = `${bounds.maxRow * (h + gap) + h}px`;
+  applyCanvasGeometry(root, calcOverlayCanvas(layout.keys, layout.keySize));
   return layout.keys.map((key, index) => {
     const element = document.createElement("div");
     element.className = `${keyClass} ${key.cls || ""}`.trim();

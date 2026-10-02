@@ -14,6 +14,7 @@ import {
   MOBILE_BUNDLED_LAYOUT_DEFINITIONS,
   MOBILE_BUNDLED_LAYOUT_ORDER,
 } from "../src-mobile/bundled_layout_definitions.js";
+import { calcCanvasGeometry } from "../src/layout_geometry.js";
 import { createMobileLayoutViewerView } from "../src-mobile/layout_viewer.js";
 import {
   createLayoutPresentation,
@@ -386,4 +387,42 @@ test("visible text legends use their dedicated presentation class while image le
     definitions: {}, order: [], customRecords: [{ id: "22222222-2222-4222-8222-222222222222", definition: imageDefinition }],
   }));
   assert.equal(imageSubject.elements.get("viewer-keyboard").children[0].children[0].className, "viewer-key-image");
+});
+
+test("presentation canvas is the shared bounding box, including rotated keys and a late first column", () => {
+  const definition = {
+    name: "Offset board",
+    keySize: { w: 50, h: 40, gap: 10 },
+    keyPositions: [{ row: 1, col: 2 }, { row: 1, col: 3, angle: 24 }],
+    keyLayers: { base: [["A", "KeyA"], ["B", "KeyB"]] },
+  };
+  const presentation = createLayoutPresentation(definition, 0);
+  const expected = calcCanvasGeometry(definition.keyPositions, definition.keySize);
+  assert.equal(presentation.width, expected.width);
+  assert.equal(presentation.height, expected.height);
+  assert.deepEqual(presentation.origin, { x: expected.originX, y: expected.originY });
+  assert.ok(presentation.origin.x > 0 && presentation.origin.y > 0, "empty leading space is not reserved");
+
+  for (const [key, layout] of Object.entries(MOBILE_BUNDLED_LAYOUT_DEFINITIONS)) {
+    const bundled = createLayoutPresentation(layout, 0);
+    const geometry = calcCanvasGeometry(layout.keyPositions, layout.keySize);
+    assert.equal(bundled.width, geometry.width, `${key} width`);
+    assert.equal(bundled.height, geometry.height, `${key} height`);
+  }
+});
+
+test("view publishes the canvas origin used to position keys", () => {
+  const harness = viewHarness();
+  const keyboard = harness.elements.get("viewer-keyboard");
+  const { origin, width, height } = harness.model.snapshot().presentation;
+  assert.equal(keyboard.style.values.get("--viewer-origin-x"), `${origin.x}px`);
+  assert.equal(keyboard.style.values.get("--viewer-origin-y"), `${origin.y}px`);
+  assert.equal(keyboard.style.width, `${width}px`);
+  assert.equal(keyboard.style.height, `${height}px`);
+});
+
+test("viewer styles position keys from the canvas origin", async () => {
+  const css = await readFile(path.join(projectRoot, "src-mobile/styles.css"), "utf8");
+  assert.match(css, /\.viewer-key\s*\{[^}]*left:\s*calc\([^;]*-\s*var\(--viewer-origin-x, 0px\)\)/);
+  assert.match(css, /\.viewer-key\s*\{[^}]*top:\s*calc\([^;]*-\s*var\(--viewer-origin-y, 0px\)\)/);
 });
