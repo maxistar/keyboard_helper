@@ -46,12 +46,18 @@ async function treeHash(directory) {
   return hash.digest("hex");
 }
 
-test("durable activity owns the edge-to-edge system-bar and display-cutout contract", async () => {
+test("durable activity owns the edge-to-edge system-bar, gesture, and WebView fallback contract", async () => {
   const source = validateActivitySource(await readFile(activitySource, "utf8"));
   assert.match(source, /package me\.maxistar\.keyboardhelper\.companion/);
+  assert.match(source, /WindowCompat\.setDecorFitsSystemWindows\(window, false\)/);
+  assert.match(source, /window\.statusBarColor = Color\.TRANSPARENT/);
+  assert.match(source, /window\.navigationBarColor = Color\.TRANSPARENT/);
   assert.match(source, /Type\.systemBars\(\) or WindowInsetsCompat\.Type\.displayCutout\(\)/);
-  assert.match(source, /initialTop \+ safeInsets\.top/);
-  assert.match(source, /ViewCompat\.requestApplyInsets\(content\)/);
+  assert.match(source, /WindowInsetsCompat\.Type\.mandatorySystemGestures\(\)/);
+  assert.match(source, /addJavascriptInterface\(SafeInsetsBridge\(\), "KeyboardHelperSafeInsets"\)/);
+  assert.match(source, /window\.__keyboardHelperSafeInsets/);
+  assert.doesNotMatch(source, /setPadding\(/);
+  assert.match(source, /ViewCompat\.requestApplyInsets\(window\.decorView\)/);
 });
 
 test("runtime synchronization is deterministic and installs the stable activity", async (context) => {

@@ -328,7 +328,7 @@ test("viewer markup, styles, and modules enforce responsive accessible isolation
   assert.match(css, /\.viewer-canvas\[data-orientation="portrait"\][\s\S]*rotate\(90deg\)/);
   assert.match(css, /\.viewer-gesture[\s\S]*--viewer-gesture-zoom/);
   assert.match(css, /\.viewer-key-legend\s*\{\s*font-size:\s*1\.4em/);
-  assert.doesNotMatch(css, /safe-area-inset/);
+  assert.match(css, /env\(safe-area-inset-top, 0px\)/);
   assert.match(css, /@media \(max-width: 480px\)/);
   assert.match(css, /@media \(orientation: landscape\) and \(max-height: 520px\)/);
   assert.doesNotMatch(`${modelSource}\n${viewSource}`, /localStorage|sessionStorage|indexedDB|WebSocket|EventSource|fetch\(|XMLHttpRequest|invoke\(|startScan|requestPermission|connectSelected|subscribeNotifications|write\(/);

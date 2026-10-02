@@ -8,6 +8,7 @@ import { createMobileLayoutViewerView } from "./layout_viewer.js";
 import { MobileLayoutViewerModel } from "./layout_viewer_model.js";
 import { NativeBleAdapter } from "./native_ble_adapter.js";
 import { NativeLayoutAdapter } from "./native_layout_adapter.js";
+import { installSafeAreaFallback } from "./safe_area.js";
 import { MobileTelemetryController } from "./telemetry_session.js";
 import { createMobileKeyboardWorkspace } from "./workspace.js";
 
@@ -19,9 +20,11 @@ const customLayouts = new CustomLayoutController(viewerModel, new NativeLayoutAd
   createImageBitmap: globalThis.createImageBitmap?.bind(globalThis),
   requireCompleteDecoding: true,
 });
+const safeArea = installSafeAreaFallback(document);
 const workspace = createMobileKeyboardWorkspace(document);
 window.addEventListener("pagehide", () => {
   customLayouts.dispose();
+  safeArea.dispose();
   workspace.dispose();
 }, { once: true });
 

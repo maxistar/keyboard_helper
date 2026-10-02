@@ -160,7 +160,7 @@ test("actionable lifecycle transitions elevate connection once and passive evide
   assert.equal(subject.workspace.snapshot().open, true, "a new actionable transition is elevated");
 });
 
-test("workspace source and CSS encode native-inset viewport, overflow, and reduced-motion contracts", async () => {
+test("workspace source and CSS encode edge-to-edge safe-area, overflow, and reduced-motion contracts", async () => {
   const [html, css, source] = await Promise.all([
     readFile(path.join(root, "src-mobile/index.html"), "utf8"),
     readFile(path.join(root, "src-mobile/styles.css"), "utf8"),
@@ -170,8 +170,11 @@ test("workspace source and CSS encode native-inset viewport, overflow, and reduc
   assert.equal((html.match(/id="workspace-settings"/g) ?? []).length, 1);
   assert.match(css, /min-height:\s*100vh;\s*min-height:\s*100dvh;/);
   assert.match(css, /height:\s*100vh;\s*height:\s*100dvh;/);
-  assert.doesNotMatch(css, /env\(safe-area-inset-/);
-  assert.match(css, /\.shell[\s\S]*padding:\s*10px/);
+  assert.match(css, /env\(safe-area-inset-top, 0px\)/);
+  assert.match(css, /--android-safe-top/);
+  assert.match(css, /\.shell[\s\S]*var\(--safe-top\)/);
+  assert.match(css, /\.workspace-settings\[data-presentation="sheet"\][\s\S]*var\(--safe-bottom\)/);
+  assert.match(css, /\.workspace-settings\[data-presentation="panel"\][\s\S]*var\(--safe-right\)/);
   assert.match(css, /\.keyboard-stage[\s\S]*min-height:\s*0/);
   assert.match(css, /\.viewer-scroller[\s\S]*overflow:\s*hidden/);
   assert.match(css, /\.workspace-settings-body[\s\S]*overflow-y:\s*auto/);
