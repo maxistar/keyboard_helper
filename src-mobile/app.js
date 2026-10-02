@@ -15,7 +15,7 @@ import { createMobileKeyboardWorkspace } from "./workspace.js";
 const EXTENSION_SERVICE_UUID = "b34a0001-e782-4706-8f9c-6c056c416507";
 const CAPABILITIES_CHARACTERISTIC_UUID = "b34a0003-e782-4706-8f9c-6c056c416507";
 
-const viewerModel = new MobileLayoutViewerModel();
+const viewerModel = new MobileLayoutViewerModel({ hydrating: true });
 const customLayouts = new CustomLayoutController(viewerModel, new NativeLayoutAdapter(), {
   createImageBitmap: globalThis.createImageBitmap?.bind(globalThis),
   requireCompleteDecoding: true,
@@ -54,14 +54,18 @@ try {
   });
   coordinator.initialize().catch(() => overview.reportError());
   customLayouts.initialize().catch((error) => {
-    viewer.reportLayoutStatus(error?.message ?? "Custom layouts could not be loaded.", "error");
+    const message = error?.message ?? "Custom layouts could not be loaded.";
+    customLayouts.restoreBundledFallback(message);
+    viewer.reportLayoutStatus(message, "error");
   });
 } catch (_error) {
   const viewer = createMobileLayoutViewerView(document, viewerModel, null, {
     layoutController: customLayouts,
   });
   customLayouts.initialize().catch((error) => {
-    viewer.reportLayoutStatus(error?.message ?? "Custom layouts could not be loaded.", "error");
+    const message = error?.message ?? "Custom layouts could not be loaded.";
+    customLayouts.restoreBundledFallback(message);
+    viewer.reportLayoutStatus(message, "error");
   });
   const live = document.getElementById("connection-live");
   if (live) {

@@ -149,6 +149,8 @@ export function createMobileLayoutViewerView(
   };
   const layoutController = options.layoutController ?? null;
   const appWindow = options.window ?? globalThis.window;
+  const emptyMessage = elements.empty.textContent || "No bundled keyboard layout is available.";
+  const hydratingMessage = options.hydratingMessage ?? "Restoring keyboard layout…";
   let renderedCatalog = null;
   let renderedLayout = null;
   let renderedKeyboard = null;
@@ -417,12 +419,14 @@ export function createMobileLayoutViewerView(
 
   function render(resolved = presentationController?.snapshot() ?? browsePresentation(model.snapshot())) {
     const browse = model.snapshot();
+    const hydrating = browse.catalogStatus === ViewerCatalogStatus.HYDRATING;
     const ready = browse.catalogStatus === ViewerCatalogStatus.READY && resolved.presentation;
     renderCatalog(browse);
     elements.layout.disabled = !ready;
     elements.layout.value = browse.selectedLayoutKey ?? "";
     elements.removeLayout.disabled = elements.removeControls.hidden;
     elements.importLayout.disabled = !layoutController?.available;
+    elements.empty.textContent = hydrating ? hydratingMessage : emptyMessage;
     elements.empty.hidden = Boolean(ready);
     elements.scroller.hidden = !ready;
     const liveMode = resolved.mode === LayoutPresentationMode.LIVE;

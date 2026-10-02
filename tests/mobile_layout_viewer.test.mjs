@@ -135,6 +135,25 @@ test("cold viewer state is immutable, deterministic, and process local", () => {
   assert.ok(Object.isFrozen(first.snapshot().presentation.keys));
 });
 
+test("hydrating viewer state renders no keyboard before restored selection", () => {
+  const model = new MobileLayoutViewerModel({ hydrating: true });
+  assert.equal(model.snapshot().catalogStatus, ViewerCatalogStatus.HYDRATING);
+  assert.equal(model.snapshot().selectedLayoutKey, null);
+  assert.equal(model.snapshot().presentation, null);
+
+  const harness = viewHarness(model);
+  assert.equal(harness.elements.get("viewer-scroller").hidden, true);
+  assert.equal(harness.elements.get("viewer-empty").hidden, false);
+  assert.equal(harness.elements.get("viewer-empty").textContent, "Restoring keyboard layout…");
+  assert.equal(harness.elements.get("viewer-keyboard").children.length, 0);
+
+  model.replaceCatalog(createMobileLayoutCatalog(), "corne");
+  assert.equal(harness.elements.get("viewer-scroller").hidden, false);
+  assert.equal(model.snapshot().selectedLayoutKey, "corne");
+  assert.equal(model.snapshot().presentation.name, MOBILE_BUNDLED_LAYOUT_DEFINITIONS.corne.name);
+  assert.ok(harness.elements.get("viewer-keyboard").children.length > 0);
+});
+
 test("layout and layer actions validate selection and reset layers deterministically", () => {
   const model = new MobileLayoutViewerModel();
   model.selectLayout("corne");

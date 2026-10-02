@@ -11,7 +11,7 @@ import {
 import { calcCanvasGeometry } from "./shared-generated/layout_geometry.js";
 import { hasOwn } from "./webview_compat.js";
 
-export const ViewerCatalogStatus = Object.freeze({ READY: "ready", EMPTY: "empty" });
+export const ViewerCatalogStatus = Object.freeze({ HYDRATING: "hydrating", READY: "ready", EMPTY: "empty" });
 export const VIEWER_DIAGNOSTIC_LIMIT = 180;
 export const CUSTOM_LAYOUT_KEY_PREFIX = "custom:";
 
@@ -180,9 +180,20 @@ function freezeViewerSnapshot(value) {
 
 export class MobileLayoutViewerModel {
   constructor(options = {}) {
-    this.catalog = createMobileLayoutCatalog(options);
     this.listeners = new Set();
-    this.state = this.buildSnapshot(this.catalog.selectedLayoutKey, 0);
+    if (options.hydrating === true) {
+      this.catalog = deepFreeze({
+        status: ViewerCatalogStatus.HYDRATING,
+        layouts: [],
+        selectedLayoutKey: null,
+        diagnostics: [],
+        definitions: {},
+      });
+      this.state = this.buildSnapshot(null, 0);
+    } else {
+      this.catalog = createMobileLayoutCatalog(options);
+      this.state = this.buildSnapshot(this.catalog.selectedLayoutKey, 0);
+    }
   }
 
   buildSnapshot(layoutKey, layerIndex) {
