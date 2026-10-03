@@ -14,21 +14,32 @@ npm run typecheck
 
 ## Checked scope
 
-The authoritative, reviewable file list is the `files` array in `tsconfig.check.json`. The initial
+The authoritative, reviewable file list is the `files` array in `tsconfig.check.json`. The
 hand-maintained scope owns these contracts:
 
 - `src/input_events.js`: normalized system and BLE event unions;
 - `src/ble_keyboard_decoder.js`: capabilities, frame variants, and decoder outcomes;
 - `src/input_source_sync_config.js`: validated input-source configuration;
 - `src/input_source_layer_reconciler.js`: reconciliation state and layer-write boundary;
-- `src/input_source_controller.js`: system/BLE ownership and callback contracts.
+- `src/input_source_controller.js`: system/BLE ownership and callback contracts;
+- `src/overlay_input_router.js`: overlay key-routing and highlight bridge;
+- `src/overlay_layouts.js`: layout registry composition, layout-source records, and runtime validation boundaries;
+- `src/overlay_presentation.js`: overlay DOM rendering, layer indicator, BLE status, and combo borders;
+- `src/overlay_language_sync.js`: native input-source adapter and reconciliation controller wiring;
+- `src/overlay_ble_runtime.js`: BLE native event listeners, status guards, and frame normalization boundary;
+- `src/overlay_self_test_bridge.js`: self-test source and layer-lease event bridge;
+- `src/overlay_actions.js`: overlay menu actions and desktop command boundary;
+- `src/overlay_app.js`: desktop overlay composition wiring and startup sequencing;
+- `src/main.js`: direct ES module bootstrap.
 
 `type-fixtures/contracts.js` contains compile-only positive and negative contract examples. Shared
 input-event and decoder source copied into `src-mobile/shared-generated/` remains generated from the
 canonical checked modules and must not acquire an independent type schema.
 
-DOM-heavy entry points, Node scripts and runtime tests, large generated layout payloads, and other
-legacy modules are not yet admitted. Their exclusion does not imply that they are type-safe.
+`src/overlay_mode.js` remains intentionally deferred from this overlay batch. It predates the recent
+frontend decomposition, is covered by focused runtime tests, and should be admitted in a future
+mini-mode-specific typing change. Node scripts, runtime tests, large generated layout payloads, and
+other legacy modules are not yet admitted. Their exclusion does not imply that they are type-safe.
 
 ## Coverage ratchet
 

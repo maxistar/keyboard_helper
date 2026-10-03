@@ -16,6 +16,19 @@ test("TypeScript checking is strict, explicit, and no-emit", async () => {
   assert.ok(Array.isArray(config.files));
   assert.ok(config.files.length > 0);
   assert.equal(Object.hasOwn(config, "include"), false);
+  for (const requiredFile of [
+    "src/overlay_input_router.js",
+    "src/overlay_layouts.js",
+    "src/overlay_presentation.js",
+    "src/overlay_language_sync.js",
+    "src/overlay_ble_runtime.js",
+    "src/overlay_self_test_bridge.js",
+    "src/overlay_actions.js",
+    "src/overlay_app.js",
+    "src/main.js",
+  ]) {
+    assert.ok(config.files.includes(requiredFile), `${requiredFile} is typechecked`);
+  }
 
   for (const relativePath of config.files) {
     const source = await readFile(path.join(root, relativePath), "utf8");

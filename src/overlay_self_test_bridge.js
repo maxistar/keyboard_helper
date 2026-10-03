@@ -3,6 +3,20 @@ import {
   matchesOrderedLayerRequest,
 } from "./self_test/layer_lease.js";
 
+/**
+ * @typedef {import("./self_test/layer_lease.js").LayerLeaseRequest} LayerLeaseRequest
+ * @typedef {{ payload?: unknown }} TauriEvent
+ * @typedef {{ event?: { listen?: (eventName: string, handler: (event: TauriEvent) => void) => Promise<unknown>, emitTo?: (label: string, eventName: string, payload: unknown) => Promise<unknown> } }} TauriLike
+ * @typedef {{ update(payload: unknown): void }} SelfTestOverlayPresentation
+ * @typedef {{ tauri: TauriLike | undefined, overlayPresentation: SelfTestOverlayPresentation, getInputSourceSnapshot: () => unknown, getActiveLayoutKey: () => string | null, getObservedLayer: () => number | null, isWritable: () => boolean, getLayerKeys: (layoutKey: string | null) => string[], writeLayer: (layer: number, acceptableLayers?: readonly number[]) => Promise<unknown>, setReconciliationSuspended: (suspended: boolean) => void }} OverlaySelfTestBridgeOptions
+ */
+
+/** @param {unknown} payload */
+function payloadRecord(payload) {
+  return payload && typeof payload === "object" ? /** @type {Record<string, unknown>} */ (payload) : {};
+}
+
+/** @param {OverlaySelfTestBridgeOptions} options */
 export function createOverlaySelfTestBridge({
   tauri,
   overlayPresentation,
@@ -16,6 +30,7 @@ export function createOverlaySelfTestBridge({
 }) {
   let sourceStateSubscribed = false;
 
+  /** @param {unknown} status */
   function publishSourceState(status) {
     if (!sourceStateSubscribed || !tauri?.event?.emitTo) return;
     tauri.event
@@ -23,6 +38,7 @@ export function createOverlaySelfTestBridge({
       .catch(() => { sourceStateSubscribed = false; });
   }
 
+  /** @param {unknown} status */
   function publishLayerLeaseStatus(status) {
     if (!tauri?.event?.emitTo) return;
     tauri.event
@@ -61,25 +77,25 @@ export function createOverlaySelfTestBridge({
 
     tauri.event
       .listen("self-test-layer-lease-request", (event) => {
-        layerLease.acquire(event.payload ?? {});
+        layerLease.acquire(/** @type {LayerLeaseRequest} */ (payloadRecord(event.payload)));
       })
       .catch((err) => console.error("Failed to listen self-test-layer-lease-request:", err));
 
     tauri.event
       .listen("self-test-layer-lease-reassert", (event) => {
-        layerLease.reassert(event.payload?.generation);
+        layerLease.reassert(payloadRecord(event.payload).generation);
       })
       .catch((err) => console.error("Failed to listen self-test-layer-lease-reassert:", err));
 
     tauri.event
       .listen("self-test-layer-lease-release", (event) => {
-        layerLease.release(event.payload?.generation);
+        layerLease.release(payloadRecord(event.payload).generation);
       })
       .catch((err) => console.error("Failed to listen self-test-layer-lease-release:", err));
 
     tauri.event
       .listen("self-test-layer-lease-manual", (event) => {
-        layerLease.invalidateGeneration(event.payload?.generation, "manual-continuation");
+        layerLease.invalidateGeneration(payloadRecord(event.payload).generation, "manual-continuation");
       })
       .catch((err) => console.error("Failed to listen self-test-layer-lease-manual:", err));
   }
@@ -87,8 +103,11 @@ export function createOverlaySelfTestBridge({
   return {
     installEventListeners,
     publishSourceState,
+    /** @param {number | null} layer */
     observeLayer: (layer) => layerLease.observeLayer(layer),
+    /** @param {string} message */
     reportUnavailable: (message) => layerLease.reportUnavailable(message),
+    /** @param {string} reason */
     invalidate: (reason) => layerLease.invalidate(reason),
   };
 }

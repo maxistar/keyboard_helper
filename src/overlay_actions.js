@@ -1,5 +1,38 @@
 import { reloadActiveExternalLayout } from "./app_menu_actions.js";
 
+/**
+ * @typedef {import("./app_config.js").LayoutSource} LayoutSource
+ * @typedef {import("./layout_semantics.js").LayoutDefinition} LayoutDefinition
+ * @typedef {import("./layout_catalog.js").LayoutModel} LayoutModel
+ * @typedef {import("./ble_layer_sync.js").BleLayerSource} BleLayerSource
+ * @typedef {{ core?: { invoke?: (command: string, args?: unknown) => Promise<unknown> }, opener?: { openUrl?: (url: string) => Promise<unknown> } }} TauriHandle
+ * @typedef {{ loadLayoutDefinition(key: string, source: unknown): Promise<{ def: LayoutDefinition | null, error: string | null }>, applyLayoutDefinition(key: string, definition: LayoutDefinition): void }} OverlayLayoutRegistry
+ * @typedef {{ start(layoutKey: string, source?: BleLayerSource | null): Promise<unknown>, reconnect(layoutKey: string): Promise<unknown> }} OverlayBleRuntime
+ * @typedef {{ refresh(): void, reportError(error: string | null): void, setActiveLayout(): void }} MenuStateController
+ * @typedef {{ enterMini(): Promise<unknown> }} OverlayModeController
+ * @typedef {{ invalidate(reason: string): void }} SelfTestBridge
+ * @typedef {{
+ *   window: Window,
+ *   getTauriHandle: () => TauriHandle | null | undefined,
+ *   getCurrentLayoutKey: () => string,
+ *   setCurrentLayoutKey: (key: string) => void,
+ *   setCurrentLayerIndex: (index: number) => void,
+ *   getLayoutSources: () => Record<string, LayoutSource>,
+ *   getLayoutBleSources: () => Record<string, BleLayerSource | null>,
+ *   getLayouts: () => Record<string, LayoutModel>,
+ *   layoutRegistry: OverlayLayoutRegistry,
+ *   syncLayoutState: () => void,
+ *   renderKeyboard: (layout: LayoutModel) => void,
+ *   startLanguageSync: (layoutKey: string) => Promise<unknown>,
+ *   getBleRuntime: () => OverlayBleRuntime | null | undefined,
+ *   getMenuStateController: () => MenuStateController | null | undefined,
+ *   getOverlayModeController: () => OverlayModeController | null | undefined,
+ *   getSelfTestBridge: () => SelfTestBridge | null | undefined,
+ *   showLayoutError: (message: string | null) => void,
+ * }} OverlayActionsOptions
+ */
+
+/** @param {OverlayActionsOptions} options */
 export function createOverlayActions({
   window,
   getTauriHandle,
@@ -19,6 +52,7 @@ export function createOverlayActions({
   getSelfTestBridge,
   showLayoutError,
 }) {
+  /** @param {string} key */
   async function refreshExternalLayout(key) {
     const source = getLayoutSources()[key];
     if (typeof source !== "string") return { ok: true, error: null };
@@ -31,6 +65,7 @@ export function createOverlayActions({
     return { ok: true, error: null };
   }
 
+  /** @param {string} key */
   async function reloadCurrentLayout(key) {
     getSelfTestBridge()?.invalidate("layout-reloaded");
     return reloadActiveExternalLayout({
@@ -57,10 +92,12 @@ export function createOverlayActions({
     });
   }
 
+  /** @param {string} key */
   async function reconnectCurrentBle(key) {
     return getBleRuntime()?.reconnect(key) ?? false;
   }
 
+  /** @param {string} url */
   async function openHelpPage(url) {
     const tauriHandle = getTauriHandle();
     if (tauriHandle) {
@@ -78,6 +115,10 @@ export function createOverlayActions({
     return true;
   }
 
+  /**
+   * @param {string} command
+   * @param {string} message
+   */
   async function invokeDesktop(command, message) {
     const tauriHandle = getTauriHandle();
     if (!tauriHandle?.core?.invoke) throw new Error(message);
@@ -126,6 +167,7 @@ export function createOverlayActions({
     return overlayModeController.enterMini();
   }
 
+  /** @param {string} key */
   async function setLayout(key) {
     if (key !== getCurrentLayoutKey()) getSelfTestBridge()?.invalidate("layout-changed");
     const previousKey = getCurrentLayoutKey();

@@ -1,0 +1,1 @@
+export function routeSystemKeyEvent(event: import("./input_events.js").NormalizedInputEvent, controllers: { hotkeyController?: { handleEvent(event: import("./input_events.js").NormalizedInputEvent): void } | null; inputSourceController?: { handleEvent(event: import("./input_events.js").NormalizedInputEvent): unknown } | null }): void;

@@ -1,5 +1,22 @@
 import { resolveKeyElement } from "./key_highlight.js";
 
+/**
+ * @typedef {import("./key_highlight.js").PressedKeyTracker} PressedKeyTracker
+ * @typedef {{ kind?: string, source?: string, code?: unknown, action?: unknown }} NormalizedInputEvent
+ * @typedef {{ clear(): void, handleEvent(event: NormalizedInputEvent): void }} BleHighlightController
+ * @typedef {{
+ *   document: Document,
+ *   pressedKeyTracker: PressedKeyTracker,
+ *   getBleHighlightController: () => BleHighlightController | null | undefined,
+ *   setComboActive: (code: string, active: boolean) => void,
+ *   clearComboActivations: () => void,
+ *   showKeyEvent: (code: string) => void,
+ * }} OverlayInputRouterOptions
+ */
+
+/**
+ * @param {OverlayInputRouterOptions} options
+ */
 export function createOverlayInputRouter({
   document,
   pressedKeyTracker,
@@ -11,6 +28,10 @@ export function createOverlayInputRouter({
   let shiftHeld = false;
   let altGrHeld = false;
 
+  /**
+   * @param {string} code
+   * @param {"down" | "up" | string} type
+   */
   function handleKey(code, type) {
     const wasShiftHeld = shiftHeld;
     const wasAltGrHeld = altGrHeld;
@@ -51,9 +72,15 @@ export function createOverlayInputRouter({
     altGrHeld = false;
   }
 
+  /**
+   * @param {NormalizedInputEvent} event
+   */
   function handleNormalizedInputEvent(event) {
-    if (event.kind === "key" && event.source === "system") handleKey(event.code, event.action);
-    else if (event.source === "ble") getBleHighlightController()?.handleEvent(event);
+    if (event.kind === "key" && event.source === "system" && typeof event.code === "string" && typeof event.action === "string") {
+      handleKey(event.code, event.action);
+    } else if (event.source === "ble") {
+      getBleHighlightController()?.handleEvent(event);
+    }
   }
 
   return {

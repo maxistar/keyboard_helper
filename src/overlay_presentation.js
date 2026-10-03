@@ -8,6 +8,33 @@ import {
   renderKeyLabel,
 } from "./keyboard_renderer.js";
 
+/**
+ * @typedef {import("./key_highlight.js").PressedKeyTracker} PressedKeyTracker
+ * @typedef {import("./layout_catalog.js").LayoutModel} LayoutModel
+ * @typedef {import("./layout_semantics.js").KeyEntry} KeyEntry
+ * @typedef {import("./keyboard_renderer.js").KeySize} KeySize
+ * @typedef {{ row: number, col: number }} ComboKeyPosition
+ * @typedef {{ key1: ComboKeyPosition, key2: ComboKeyPosition, code: string, id: number | null }} ComboDefinition
+ * @typedef {{ refresh(): void }} SelfTestOverlayPresentation
+ * @typedef {{ highlightingStatus?: unknown, bleKeyboardStatus?: unknown, bleBatteryLevel?: unknown }} BleStatusSnapshot
+ * @typedef {{
+ *   document: Document,
+ *   layoutRoot: HTMLElement,
+ *   pressedKeyTracker: PressedKeyTracker,
+ *   selfTestOverlayPresentation: SelfTestOverlayPresentation,
+ *   getCurrentLayoutKey: () => string,
+ *   getCurrentLayerIndex: () => number,
+ *   setCurrentLayerIndex: (index: number) => void,
+ *   getLayouts: () => Record<string, LayoutModel>,
+ *   getLayoutLayers: () => Record<string, KeyEntry[][]>,
+ *   getLayoutLayerNames: () => Record<string, string[]>,
+ *   getComboDefinitionsByLayout: () => Record<string, ComboDefinition[]>,
+ *   getBleStatus: () => BleStatusSnapshot,
+ *   refreshMiniGeometry?: () => void,
+ * }} OverlayPresentationOptions
+ */
+
+/** @param {OverlayPresentationOptions} options */
 export function createOverlayPresentation({
   document,
   layoutRoot,
@@ -23,17 +50,28 @@ export function createOverlayPresentation({
   getBleStatus,
   refreshMiniGeometry,
 }) {
+  /** @type {Map<string, HTMLElement[]>} */
   let comboBordersByCode = new Map();
+  /** @type {Map<number, HTMLElement>} */
   let comboBordersById = new Map();
+  /** @type {HTMLElement[]} */
   let comboBorderEls = [];
+  /** @type {HTMLElement | null} */
   let layerIndicatorEl = null;
+  /** @type {HTMLElement | null} */
   let hudContainer = null;
+  /** @type {HTMLElement | null} */
   let keyEventIndicatorEl = null;
+  /** @type {number | null} */
   let keyEventHideTimer = null;
+  /** @type {HTMLElement | null} */
   let layoutErrorEl = null;
+  /** @type {number | null} */
   let layoutErrorTimer = null;
+  /** @type {HTMLElement | null} */
   let bleKeyboardStatusEl = null;
 
+  /** @param {KeySize} keySize */
   function applyKeySizes({ w, h, gap }) {
     const root = document.documentElement;
     root.style.setProperty("--key-w", `${w}px`);
@@ -48,6 +86,10 @@ export function createOverlayPresentation({
     comboBorderEls = [];
   }
 
+  /**
+   * @param {LayoutModel} layout
+   * @param {ComboDefinition[]} comboDefinitions
+   */
   function renderComboBorders(layout, comboDefinitions) {
     clearComboBorders();
     if (!comboDefinitions.length) return;
@@ -81,20 +123,30 @@ export function createOverlayPresentation({
       layoutRoot.appendChild(border);
 
       comboBorderEls.push(border);
-      if (!comboBordersByCode.has(combo.code)) {
-        comboBordersByCode.set(combo.code, []);
+      const bordersForCode = comboBordersByCode.get(combo.code);
+      if (bordersForCode) {
+        bordersForCode.push(border);
+      } else {
+        comboBordersByCode.set(combo.code, [border]);
       }
-      comboBordersByCode.get(combo.code).push(border);
       if (combo.id !== null) comboBordersById.set(combo.id, border);
     });
   }
 
+  /**
+   * @param {string} code
+   * @param {boolean} active
+   */
   function setComboActive(code, active) {
     const borders = comboBordersByCode.get(code);
     if (!borders) return;
     borders.forEach((border) => border.classList.toggle("active", active));
   }
 
+  /**
+   * @param {number} comboId
+   * @param {boolean} active
+   */
   function setBleComboActive(comboId, active) {
     const border = comboBordersById.get(comboId);
     if (!border) return false;
@@ -102,10 +154,12 @@ export function createOverlayPresentation({
     return true;
   }
 
+  /** @param {LayoutModel} layout */
   function renderKeyboard(layout) {
     layoutRoot.innerHTML = "";
     pressedKeyTracker.clear();
 
+    if (!layout.keySize) return;
     applyKeySizes(layout.keySize);
     const currentLayoutKey = getCurrentLayoutKey();
     const comboDefinitions = getComboDefinitionsByLayout()[currentLayoutKey] ?? [];
@@ -117,11 +171,11 @@ export function createOverlayPresentation({
       const el = document.createElement("div");
       el.className = `key ${k.cls || ""}`.trim();
       renderKeyLabel(el, k);
-      el.dataset.index = key;
-      el.style.setProperty("--row", k.row);
-      el.style.setProperty("--col", k.col);
-      if (k.w) el.style.setProperty("--w", k.w);
-      if (k.h) el.style.setProperty("--h", k.h);
+      el.dataset.index = String(key);
+      el.style.setProperty("--row", String(k.row));
+      el.style.setProperty("--col", String(k.col));
+      if (k.w) el.style.setProperty("--w", String(k.w));
+      if (k.h) el.style.setProperty("--h", String(k.h));
       if (typeof k.angle === "number") {
         el.style.setProperty("--angle", `${k.angle}deg`);
       }
@@ -151,8 +205,10 @@ export function createOverlayPresentation({
       keyEventIndicatorEl.className = "key-event-indicator";
     }
 
-    if (!hudContainer.contains(keyEventIndicatorEl)) {
-      hudContainer.insertBefore(keyEventIndicatorEl, hudContainer.firstChild);
+    const hud = hudContainer;
+    if (!hud) return;
+    if (!hud.contains(keyEventIndicatorEl)) {
+      hud.insertBefore(keyEventIndicatorEl, hud.firstChild);
     }
   }
 
@@ -164,15 +220,20 @@ export function createOverlayPresentation({
       layoutErrorEl.setAttribute("role", "alert");
       layoutErrorEl.setAttribute("aria-live", "assertive");
     }
-    if (!hudContainer.contains(layoutErrorEl)) {
-      hudContainer.appendChild(layoutErrorEl);
+    const hud = hudContainer;
+    if (!hud) return;
+    if (!hud.contains(layoutErrorEl)) {
+      hud.appendChild(layoutErrorEl);
     }
   }
 
+  /** @param {string} message */
   function showLayoutError(message) {
     ensureLayoutError();
-    layoutErrorEl.textContent = message;
-    layoutErrorEl.classList.add("visible");
+    const errorEl = layoutErrorEl;
+    if (!errorEl) return;
+    errorEl.textContent = message;
+    errorEl.classList.add("visible");
     if (layoutErrorTimer) {
       clearTimeout(layoutErrorTimer);
     }
@@ -185,10 +246,13 @@ export function createOverlayPresentation({
     }, 4000);
   }
 
+  /** @param {string | null | undefined} code */
   function showKeyEvent(code) {
     ensureKeyEventIndicator();
-    keyEventIndicatorEl.textContent = code ?? "";
-    keyEventIndicatorEl.classList.add("visible");
+    const indicator = keyEventIndicatorEl;
+    if (!indicator) return;
+    indicator.textContent = code ?? "";
+    indicator.classList.add("visible");
     if (keyEventHideTimer) {
       clearTimeout(keyEventHideTimer);
     }
@@ -209,8 +273,10 @@ export function createOverlayPresentation({
       layerIndicatorEl.className = "layers-indicator";
     }
 
-    if (!hudContainer.contains(layerIndicatorEl)) {
-      hudContainer.appendChild(layerIndicatorEl);
+    const hud = hudContainer;
+    if (!hud) return;
+    if (!hud.contains(layerIndicatorEl)) {
+      hud.appendChild(layerIndicatorEl);
     }
   }
 
@@ -222,7 +288,9 @@ export function createOverlayPresentation({
       bleKeyboardStatusEl.setAttribute("role", "status");
       bleKeyboardStatusEl.setAttribute("aria-live", "polite");
     }
-    if (!hudContainer.contains(bleKeyboardStatusEl)) hudContainer.appendChild(bleKeyboardStatusEl);
+    const hud = hudContainer;
+    if (!hud) return;
+    if (!hud.contains(bleKeyboardStatusEl)) hud.appendChild(bleKeyboardStatusEl);
     const { highlightingStatus, bleKeyboardStatus, bleBatteryLevel } = getBleStatus();
     const status = formatBleKeyboardStatus(highlightingStatus, bleKeyboardStatus, bleBatteryLevel);
     bleKeyboardStatusEl.textContent = `${status.summary} · ${status.detail} · ${status.battery}`;
@@ -234,13 +302,15 @@ export function createOverlayPresentation({
     const currentLayerIndex = getCurrentLayerIndex();
     const totalLayers = getLayoutLayers()[currentLayoutKey]?.length ?? 1;
     const layerNames = getLayoutLayerNames()[currentLayoutKey] ?? [];
-    layerIndicatorEl.innerHTML = "";
+    const layerIndicator = layerIndicatorEl;
+    if (!layerIndicator) return;
+    layerIndicator.innerHTML = "";
 
     const activeName = layerNames[currentLayerIndex] ?? `Layer ${currentLayerIndex + 1}`;
     const nameEl = document.createElement("span");
     nameEl.className = "layer-name";
     nameEl.textContent = activeName;
-    layerIndicatorEl.appendChild(nameEl);
+    layerIndicator.appendChild(nameEl);
 
     const dotsWrapper = document.createElement("div");
     dotsWrapper.className = "layer-dots";
@@ -251,15 +321,16 @@ export function createOverlayPresentation({
       if (i === currentLayerIndex) {
         dot.classList.add("active");
       }
-      dot.dataset.index = i;
+      dot.dataset.index = String(i);
       dot.title = `Layer ${i + 1}`;
       dot.addEventListener("click", () => applyLayer(i));
       dotsWrapper.appendChild(dot);
     }
 
-    layerIndicatorEl.appendChild(dotsWrapper);
+    layerIndicator.appendChild(dotsWrapper);
   }
 
+  /** @param {number} index */
   function applyLayer(index) {
     const currentLayoutKey = getCurrentLayoutKey();
     const layers = getLayoutLayers()[currentLayoutKey];

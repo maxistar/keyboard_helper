@@ -11,12 +11,36 @@ import { parseLayoutJson } from "./layout_semantics.js";
 import { normalizeInputSourceSync } from "./input_source_sync_config.js";
 import { normalizeBleLayerSource } from "./ble_layer_sync.js";
 
+/**
+ * @typedef {import("./app_config.js").AppConfig} AppConfig
+ * @typedef {import("./app_config.js").LayoutSource} LayoutSource
+ * @typedef {import("./layout_semantics.js").LayoutDefinition} LayoutDefinition
+ * @typedef {import("./layout_semantics.js").KeyPosition} KeyPosition
+ * @typedef {import("./layout_semantics.js").KeyEntry} KeyEntry
+ * @typedef {import("./layout_catalog.js").LayoutModel} LayoutModel
+ * @typedef {import("./ble_layer_sync.js").BleLayerSource} BleLayerSource
+ * @typedef {import("./input_source_sync_config.js").RuntimePlatform} RuntimePlatform
+ * @typedef {{ key1?: KeyPosition, key2?: KeyPosition, code?: unknown, id?: unknown, positions?: unknown }} RawCombo
+ * @typedef {{ key1: KeyPosition, key2: KeyPosition, code: string, id: number | null, positions: number[] | null }} ComboDefinition
+ * @typedef {{ core?: { invoke?: (command: string, args?: unknown) => Promise<unknown> } }} TauriProviderValue
+ * @typedef {{ runtimePlatform?: RuntimePlatform, tauriProvider?: () => TauriProviderValue | undefined }} OverlayLayoutRegistryOptions
+ */
+
+/**
+ * @param {unknown} combo
+ * @param {KeyPosition[]} [keyPositions]
+ * @returns {ComboDefinition | null}
+ */
 function normalizeCombo(combo, keyPositions = []) {
   if (!combo || typeof combo !== "object") return null;
-  const positions = Array.isArray(combo.positions) ? combo.positions : null;
-  const key1 = combo.key1 ?? (Number.isInteger(positions?.[0]) ? keyPositions[positions[0]] : null);
-  const key2 = combo.key2 ?? (Number.isInteger(positions?.[1]) ? keyPositions[positions[1]] : null);
-  const { code } = combo;
+  /** @type {RawCombo} */
+  const rawCombo = combo;
+  const positions = Array.isArray(rawCombo.positions) ? rawCombo.positions : null;
+  const position0 = positions && Number.isInteger(positions[0]) ? Number(positions[0]) : null;
+  const position1 = positions && Number.isInteger(positions[1]) ? Number(positions[1]) : null;
+  const key1 = rawCombo.key1 ?? (position0 !== null ? keyPositions[position0] : null);
+  const key2 = rawCombo.key2 ?? (position1 !== null ? keyPositions[position1] : null);
+  const { code } = rawCombo;
   if (!key1 || !key2 || !code) return null;
   if (typeof key1.row !== "number" || typeof key1.col !== "number") return null;
   if (typeof key2.row !== "number" || typeof key2.col !== "number") return null;
@@ -24,25 +48,44 @@ function normalizeCombo(combo, keyPositions = []) {
     key1,
     key2,
     code: String(code),
-    id: Number.isInteger(combo.id) && combo.id > 0 ? combo.id : null,
-    positions: positions ? [...positions] : null,
+    id: Number.isInteger(rawCombo.id) && Number(rawCombo.id) > 0 ? Number(rawCombo.id) : null,
+    positions: positions ? positions.map(Number) : null,
   };
 }
 
-export function createOverlayLayoutRegistry({ runtimePlatform, tauriProvider = () => window.__TAURI__ } = {}) {
+/**
+ * @param {OverlayLayoutRegistryOptions} [options]
+ */
+export function createOverlayLayoutRegistry({ runtimePlatform, tauriProvider = () => /** @type {typeof globalThis & { __TAURI__?: TauriProviderValue }} */ (globalThis).__TAURI__ } = {}) {
   const layoutAssetOwner = new InlineAssetPresentationOwner();
+  /** @type {Record<string, LayoutDefinition>} */
   let layoutDefinitions = {};
+  /** @type {Record<string, KeyEntry[][]>} */
   let normalizedLayoutLayers = {};
+  /** @type {Record<string, LayoutModel>} */
   let layouts = {};
+  /** @type {Record<string, KeyEntry[][]>} */
   let layoutLayers = {};
+  /** @type {Record<string, string[]>} */
   let layoutLayerNames = {};
+  /** @type {Record<string, string[]>} */
   let layoutLayerKeys = {};
+  /** @type {Record<string, LayoutSource>} */
   let layoutSources = {};
+  /** @type {Record<string, BleLayerSource | null>} */
   let layoutBleSources = {};
+  /** @type {Record<string, unknown>} */
   let layoutInputSourceSync = {};
+  /** @type {Record<string, ComboDefinition[]>} */
   let comboDefinitionsByLayout = {};
+  /** @type {string[]} */
   let layoutLoadErrors = [];
 
+  /**
+   * @param {string} key
+   * @param {LayoutSource | unknown} source
+   * @returns {Promise<{ def: LayoutDefinition | null, error: string | null }>}
+   */
   async function loadLayoutDefinition(key, source) {
     if (source === true) {
       const fileName = BUILTIN_LAYOUT_FILES[key];
@@ -89,7 +132,7 @@ export function createOverlayLayoutRegistry({ runtimePlatform, tauriProvider = (
         if (!resolved.validation.valid) throw new Error(resolved.validation.error);
         return { def: resolved.definition, error: null };
       } catch (err) {
-        const message = err?.message ?? String(err);
+        const message = err instanceof Error ? err.message : String(err);
         const error = `Failed to load external layout for ${key} from ${source}: ${message}`;
         console.warn(error, err);
         return { def: null, error };
@@ -123,14 +166,16 @@ export function createOverlayLayoutRegistry({ runtimePlatform, tauriProvider = (
       if (Array.isArray(def.combos)) {
         comboDefinitionsByLayout[key] = def.combos
           .map((combo) => normalizeCombo(combo, def.keyPositions))
-          .filter(Boolean);
+          .filter((combo) => combo !== null);
       }
     }
 
     layoutLayers = normalizedLayoutLayers;
   }
 
+  /** @param {AppConfig | null | undefined} config */
   async function loadLayoutDefinitions(config) {
+    /** @type {Array<[string, LayoutDefinition]>} */
     const entries = [];
     layoutLoadErrors = [];
     const layoutConfig = config?.layouts;
@@ -169,6 +214,10 @@ export function createOverlayLayoutRegistry({ runtimePlatform, tauriProvider = (
     return Object.keys(layoutDefinitions);
   }
 
+  /**
+   * @param {string} key
+   * @param {LayoutDefinition} definition
+   */
   function applyLayoutDefinition(key, definition) {
     layoutDefinitions = { ...layoutDefinitions, [key]: definition };
     rebuildLayoutData();

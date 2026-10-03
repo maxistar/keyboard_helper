@@ -1,6 +1,19 @@
 import { createPlatformInputSourceAdapter } from "./input_source_sync_adapter.js";
 import { createInputSourceLayerReconciler } from "./input_source_layer_reconciler.js";
 
+/**
+ * @typedef {import("./input_source_sync_config.js").InputSourceSyncConfig} InputSourceSyncConfig
+ * @typedef {import("./input_source_sync_config.js").RuntimePlatform} RuntimePlatform
+ * @typedef {import("./input_source_sync_adapter.js").InputSourceAdapter} InputSourceAdapter
+ * @typedef {import("./input_source_sync_adapter.js").InputSourceDiagnostics} InputSourceDiagnostics
+ * @typedef {{ writeLayer(layer: number, acceptableLayers?: readonly number[]): Promise<unknown> }} BleLayerWriter
+ * @typedef {{ dispose(): void, resume(): void, setSource(sourceId: string | null): void, setLayer(layer: number): void, setBleStatus(state: string, writable: boolean): void, setSuspended(suspended: boolean): void }} InputSourceLayerReconciler
+ * @typedef {{ id: string, label: string, inputSourceId: string, available: boolean }} LanguageOption
+ * @typedef {{ languageVisible: boolean, languageAvailable: boolean, languageOptions: LanguageOption[], currentInputSourceId: string | null, languageStatus: string, languageStatusLabel: string, languageMessage: string | null, languagePendingId: string | null }} LanguageMenuState
+ * @typedef {{ platform?: RuntimePlatform, tauri: unknown, window: Window, document: Document, getCurrentLayoutKey: () => string, getSyncConfig: (layoutKey: string) => InputSourceSyncConfig | null | undefined, getBleLayerSync: () => BleLayerWriter | null | undefined, onMenuUpdate?: (state: LanguageMenuState) => void, onSelfTestLeaseInvalidate?: (reason: string) => void }} OverlayLanguageSyncOptions
+ */
+
+/** @param {string} status */
 function languageStatusLabel(status) {
   if (status === "synced") return "Synced";
   if (["settling", "synchronizing", "waiting-confirmation"].includes(status)) {
@@ -16,6 +29,11 @@ function languageStatusLabel(status) {
   return "Waiting for keyboard";
 }
 
+/**
+ * @param {InputSourceSyncConfig | null | undefined} config
+ * @param {Set<string>} [availableIds]
+ * @returns {LanguageOption[]}
+ */
 function configuredLanguageOptions(config, availableIds = new Set()) {
   return (config?.sources ?? []).map((source) => ({
     id: source.id,
@@ -25,6 +43,10 @@ function configuredLanguageOptions(config, availableIds = new Set()) {
   }));
 }
 
+/**
+ * @param {InputSourceDiagnostics | null | undefined} diagnostics
+ * @returns {string | null}
+ */
 function formatInputSourceDiagnostics(diagnostics) {
   if (diagnostics?.platform === "windows") {
     const installed = diagnostics.installedSourceIds?.join(", ") || "none";
@@ -40,6 +62,7 @@ function formatInputSourceDiagnostics(diagnostics) {
   return groups.length ? `Detected XKB groups: ${groups.join("; ")}` : null;
 }
 
+/** @param {OverlayLanguageSyncOptions} options */
 export function createOverlayLanguageSync({
   platform,
   tauri,
@@ -51,9 +74,13 @@ export function createOverlayLanguageSync({
   onMenuUpdate,
   onSelfTestLeaseInvalidate,
 }) {
+  /** @type {InputSourceAdapter | null} */
   let adapter = null;
+  /** @type {InputSourceLayerReconciler | null} */
   let reconciler = null;
+  /** @type {string | null} */
   let diagnosticsMessage = null;
+  /** @type {LanguageMenuState} */
   let languageMenuState = {
     languageVisible: false,
     languageAvailable: false,
@@ -65,6 +92,7 @@ export function createOverlayLanguageSync({
     languagePendingId: null,
   };
 
+  /** @param {Partial<LanguageMenuState>} patch */
   function updateLanguageMenu(patch) {
     languageMenuState = { ...languageMenuState, ...patch };
     onMenuUpdate?.(languageMenuState);
@@ -93,7 +121,7 @@ export function createOverlayLanguageSync({
       onError: (error) => updateLanguageMenu({
         languageStatus: "error",
         languageStatusLabel: "Synchronization error",
-        languageMessage: error?.message ?? String(error),
+        languageMessage: error instanceof Error ? error.message : String(error),
       }),
     });
     return adapter;
@@ -113,6 +141,7 @@ export function createOverlayLanguageSync({
     });
   }
 
+  /** @param {string} layoutKey */
   async function start(layoutKey) {
     reconciler?.dispose();
     reconciler = null;
@@ -154,7 +183,7 @@ export function createOverlayLanguageSync({
     reconciler = createInputSourceLayerReconciler({
       config: syncConfig,
       settleMs: syncConfig.settleMs,
-      writeLayer: (layer, acceptableLayers) => getBleLayerSync().writeLayer(layer, acceptableLayers),
+      writeLayer: (layer, acceptableLayers) => getBleLayerSync()?.writeLayer(layer, acceptableLayers) ?? Promise.resolve(false),
       onStateChange: (syncState) => updateLanguageMenu({
         languageStatus: syncState.status,
         languageStatusLabel: languageStatusLabel(syncState.status),
@@ -184,6 +213,7 @@ export function createOverlayLanguageSync({
     return started;
   }
 
+  /** @param {string} inputSourceId */
   async function select(inputSourceId) {
     const currentAdapter = ensureAdapter();
     if (!currentAdapter?.supported || languageMenuState.languagePendingId) return false;
@@ -196,7 +226,7 @@ export function createOverlayLanguageSync({
       updateLanguageMenu({
         languageStatus: "error",
         languageStatusLabel: "Synchronization error",
-        languageMessage: error?.message ?? String(error),
+        languageMessage: error instanceof Error ? error.message : String(error),
       });
       return false;
     } finally {
@@ -209,8 +239,14 @@ export function createOverlayLanguageSync({
     installRefreshListeners,
     start,
     select,
+    /** @param {number} layer */
     setLayer: (layer) => reconciler?.setLayer(layer),
+    /**
+     * @param {string} state
+     * @param {boolean} writable
+     */
     setBleStatus: (state, writable) => reconciler?.setBleStatus(state, writable),
+    /** @param {boolean} suspended */
     setSuspended: (suspended) => reconciler?.setSuspended(suspended),
     getState: () => languageMenuState,
   };

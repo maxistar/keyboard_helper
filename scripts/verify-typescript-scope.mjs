@@ -15,6 +15,30 @@ if (!Array.isArray(config.files) || config.files.length === 0) {
   throw new Error("tsconfig.check.json must enumerate a non-empty checked file set.");
 }
 
+const requiredCheckedFiles = [
+  "src/input_events.js",
+  "src/ble_keyboard_decoder.js",
+  "src/input_source_sync_config.js",
+  "src/input_source_layer_reconciler.js",
+  "src/input_source_controller.js",
+  "src/overlay_input_router.js",
+  "src/overlay_layouts.js",
+  "src/overlay_presentation.js",
+  "src/overlay_language_sync.js",
+  "src/overlay_ble_runtime.js",
+  "src/overlay_self_test_bridge.js",
+  "src/overlay_actions.js",
+  "src/overlay_app.js",
+  "src/main.js",
+  "type-fixtures/contracts.js",
+];
+
+for (const requiredFile of requiredCheckedFiles) {
+  if (!config.files.includes(requiredFile)) {
+    throw new Error(`tsconfig.check.json must include ${requiredFile}.`);
+  }
+}
+
 const allowedRoots = ["src/", "src-mobile/", "type-fixtures/"];
 const forbiddenDirective = /@ts-(?:nocheck|ignore)\b/u;
 for (const relativePath of config.files) {
