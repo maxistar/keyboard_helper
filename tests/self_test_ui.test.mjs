@@ -4,7 +4,12 @@ import { readFileSync } from "node:fs";
 
 const html = readFileSync(new URL("../src/self-test.html", import.meta.url), "utf8");
 const script = readFileSync(new URL("../src/self-test.js", import.meta.url), "utf8");
-const overlayScript = readFileSync(new URL("../src/main.js", import.meta.url), "utf8");
+const overlayScript = [
+  readFileSync(new URL("../src/main.js", import.meta.url), "utf8"),
+  readFileSync(new URL("../src/overlay_app.js", import.meta.url), "utf8"),
+  readFileSync(new URL("../src/overlay_ble_runtime.js", import.meta.url), "utf8"),
+  readFileSync(new URL("../src/overlay_self_test_bridge.js", import.meta.url), "utf8"),
+].join("\n");
 const overlayCss = readFileSync(new URL("../src/styles.css", import.meta.url), "utf8");
 const capability = JSON.parse(readFileSync(new URL("../src-tauri/capabilities/self-test.json", import.meta.url), "utf8"));
 

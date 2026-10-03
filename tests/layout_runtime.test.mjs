@@ -225,7 +225,11 @@ test("keys are positioned from the canvas origin and the combo border padding is
   const css = await readFile(new URL("../src/styles.css", import.meta.url), "utf8");
   assert.match(css, /\.key\s*\{[^}]*left:\s*calc\([^;]*-\s*var\(--origin-x, 0px\)\)/);
   assert.match(css, /\.key\s*\{[^}]*top:\s*calc\([^;]*-\s*var\(--origin-y, 0px\)\)/);
-  const main = await readFile(new URL("../src/main.js", import.meta.url), "utf8");
-  assert.doesNotMatch(main, /maxCol \* \(w \+ gap\)/, "the old tail formula is gone");
-  assert.match(main, /padding = COMBO_BORDER_PADDING/);
+  const overlayRuntime = await Promise.all([
+    readFile(new URL("../src/main.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/overlay_app.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/overlay_presentation.js", import.meta.url), "utf8"),
+  ]).then((parts) => parts.join("\n"));
+  assert.doesNotMatch(overlayRuntime, /maxCol \* \(w \+ gap\)/, "the old tail formula is gone");
+  assert.match(overlayRuntime, /padding = COMBO_BORDER_PADDING/);
 });
