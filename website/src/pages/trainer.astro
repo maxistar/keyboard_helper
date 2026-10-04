@@ -1,0 +1,110 @@
+---
+import '../../../src/typing_invaders/game.css';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Play Shift-Space Invaders, a keyboard typing arcade from Keyboard Helper." />
+    <title>Shift-Space Invaders — Keyboard Helper</title>
+  </head>
+  <body class="game-page">
+    <a class="trainer-home-link" href={`${base}/`}>Keyboard Helper</a>
+    <p class="desktop-viewport-notice" role="status">This game is designed for desktop browser windows at least 720 × 560 pixels.</p>
+    <main class="game-shell" aria-labelledby="gameTitle">
+      <header class="game-header">
+        <div class="game-brand">
+          <span class="game-kicker">Keyboard Helper Arcade</span>
+          <h1 id="gameTitle">Shift-Space Invaders</h1>
+        </div>
+        <section class="practice-queue" aria-labelledby="practiceQueueTitle">
+          <div class="practice-queue-heading"><span id="practiceQueueTitle">Practice queue</span><span id="practiceQueueCount">Arcade words</span></div>
+          <ol id="practiceQueue" aria-live="polite"></ol>
+        </section>
+        <dl class="game-hud" aria-label="Current mission status">
+          <div><dt>Score</dt><dd id="scoreValue">000000</dd></div>
+          <div><dt>Wave</dt><dd id="waveValue">01</dd></div>
+          <div><dt>Lives</dt><dd id="livesValue" aria-label="3 lives">◆ ◆ ◆</dd></div>
+          <div><dt>Streak</dt><dd id="streakValue">x1</dd></div>
+        </dl>
+      </header>
+
+      <section id="playfield" class="playfield" aria-label="Shift-Space Invaders playfield">
+        <div class="star-field star-field-far" aria-hidden="true"></div>
+        <div class="star-field star-field-near" aria-hidden="true"></div>
+        <div id="targetLayer" class="target-layer"></div>
+        <div id="effectLayer" class="effect-layer" aria-hidden="true"></div>
+        <div class="defense-line" aria-hidden="true"><span>DEFENSE GRID</span></div>
+        <div class="player-ship" aria-hidden="true">
+          <span class="ship-wing ship-wing-left"></span>
+          <span class="ship-core"></span>
+          <span class="ship-wing ship-wing-right"></span>
+        </div>
+
+        <section id="stateOverlay" class="state-overlay" aria-live="polite">
+          <div class="state-card">
+            <span class="state-kicker" id="stateKicker">Incoming transmission</span>
+            <h2 id="stateTitle">Shift-Space Invaders</h2>
+            <p id="stateDescription">Type the words. Stop the descent.</p>
+            <dl id="resultGrid" class="result-grid" hidden>
+              <div><dt>Final score</dt><dd id="resultScore">0</dd></div>
+              <div><dt>Highest wave</dt><dd id="resultWave">1</dd></div>
+              <div><dt>Targets</dt><dd id="resultTargets">0</dd></div>
+              <div><dt>Accuracy</dt><dd id="resultAccuracy">100%</dd></div>
+              <div><dt>Words/min</dt><dd id="resultWpm">0</dd></div>
+            </dl>
+            <button id="stateAction" class="state-action" type="button">Start mission</button>
+            <p class="state-hint" id="stateHint">Type any visible word. Esc pauses.</p>
+          </div>
+        </section>
+
+        <div id="gameAnnouncement" class="sr-only" aria-live="assertive"></div>
+      </section>
+
+      <footer class="game-footer">
+        <span><kbd>Type</kbd> fire</span>
+        <span><kbd>Esc</kbd> pause</span>
+        <span id="accuracyValue">Accuracy 100%</span>
+        <span id="wpmValue">0 WPM</span>
+      </footer>
+    </main>
+    <style>
+      .trainer-home-link {
+        position: fixed;
+        z-index: 30;
+        top: 4px;
+        left: 8px;
+        padding: 3px 7px;
+        border-radius: 4px;
+        color: #e4e7ef;
+        background: #141929;
+        font: 12px/1.4 "Trebuchet MS", "Segoe UI", sans-serif;
+      }
+      .desktop-viewport-notice {
+        position: fixed;
+        z-index: 30;
+        right: 12px;
+        bottom: 12px;
+        display: none;
+        max-width: min(90vw, 440px);
+        margin: 0;
+        padding: 10px 14px;
+        border: 1px solid #6ef7e8;
+        border-radius: 8px;
+        color: #f5f7ff;
+        background: #090d21;
+        font: 14px/1.4 "Trebuchet MS", "Segoe UI", sans-serif;
+      }
+      @media (max-width: 719px), (max-height: 559px) {
+        .desktop-viewport-notice { display: block; }
+      }
+    </style>
+    <script>
+      import { createBrowserTypingInvaders } from '../../../src/typing_invaders/browser.js';
+      createBrowserTypingInvaders();
+    </script>
+  </body>
+</html>

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const websiteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distRoot = path.join(websiteRoot, "dist");
 const basePath = "/keyboard_helper";
+const trainerPath = `${basePath}/trainer/`;
 
 async function filesWithExtension(directory, extension) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -23,6 +24,29 @@ function outputPathFor(pathname) {
     ? path.join(distRoot, relative, "index.html")
     : path.join(distRoot, relative);
 }
+
+const trainerFile = path.join(distRoot, "trainer/index.html");
+await access(trainerFile);
+const trainerHtml = await readFile(trainerFile, "utf8");
+assert.match(trainerHtml, /<title>Shift-Space Invaders/);
+assert.match(trainerHtml, /desktop-viewport-notice/);
+assert.match(trainerHtml, /720 × 560 pixels/);
+const trainerScript = trainerHtml.match(/src="([^"]+trainer[^\"]+\.js)"/)?.[1];
+const trainerStylesheet = trainerHtml.match(/href="([^"]+trainer[^\"]+\.css)"/)?.[1];
+assert.ok(trainerScript?.startsWith(`${basePath}/`), "trainer script uses the configured base path");
+assert.ok(trainerStylesheet?.startsWith(`${basePath}/`), "trainer stylesheet uses the configured base path");
+const [trainerScriptText, trainerStylesText, landingHtml, sharedLayoutHtml] = await Promise.all([
+  readFile(outputPathFor(trainerScript), "utf8"),
+  readFile(outputPathFor(trainerStylesheet), "utf8"),
+  readFile(path.join(distRoot, "index.html"), "utf8"),
+  readFile(path.join(distRoot, "setup/index.html"), "utf8"),
+]);
+assert.ok(landingHtml.includes(`href="${trainerPath}"`), "landing page links to the trainer route");
+assert.ok(sharedLayoutHtml.includes(`href="${trainerPath}"`), "shared navigation links to the trainer route");
+assert.match(trainerHtml, new RegExp(`href="${basePath}/"`), "trainer route links back to the base path");
+assert.match(trainerStylesText, /min-width:720px/);
+assert.match(trainerStylesText, /min-height:560px/);
+assert.doesNotMatch(trainerScriptText, /__TAURI__|read_config_state|read_typing_analytics/);
 
 for (const sourceFile of await filesWithExtension(distRoot, ".html")) {
   const html = await readFile(sourceFile, "utf8");
