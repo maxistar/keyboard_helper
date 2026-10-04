@@ -7,12 +7,38 @@ export const OVERLAY_MODES = Object.freeze({
   RESTORING_FULL: "restoring-full",
 });
 
+/**
+ * @typedef {typeof OVERLAY_MODES[keyof typeof OVERLAY_MODES]} OverlayMode
+ * @typedef {{ width: number, height: number }} MeasuredContentBounds
+ * @typedef {{ contentWidth: number, contentHeight: number, targetScale: number }} MiniGeometryRequest
+ * @typedef {{ scale?: number, decorations?: boolean, [key: string]: unknown }} MiniGeometryResult
+ * @typedef {(request: MiniGeometryRequest) => Promise<MiniGeometryResult>} MiniGeometryCommand
+ * @typedef {() => Promise<MiniGeometryResult>} RestoreGeometryCommand
+ * @typedef {() => MeasuredContentBounds} MeasureContent
+ * @typedef {(mode: OverlayMode, geometry?: MiniGeometryResult | null) => void} ApplyMode
+ * @typedef {(mode: OverlayMode, geometry?: MiniGeometryResult | null) => void} SetDecorationMode
+ * @typedef {(message: string) => void} ReportError
+ * @typedef {(mode: OverlayMode) => void} ModeChangeHandler
+ * @typedef {{ enterNative: MiniGeometryCommand, updateNative: MiniGeometryCommand, restoreNative: RestoreGeometryCommand, measureContent: MeasureContent, applyMode: ApplyMode, setDecorationMode?: SetDecorationMode, reportError?: ReportError, onChange?: ModeChangeHandler }} OverlayModeControllerOptions
+ * @typedef {{ getMode(): OverlayMode, enterMini(): Promise<boolean>, restoreFull(): Promise<boolean>, refreshMiniGeometry(): Promise<boolean> }} OverlayModeController
+ * @typedef {{ body: HTMLElement, stage: HTMLElement, layout: HTMLElement, restoreButton: HTMLElement }} OverlayModeViewOptions
+ * @typedef {{ measureContent: MeasureContent, applyMode: ApplyMode }} OverlayModeView
+ */
+
+/**
+ * @param {unknown} error
+ * @param {string} fallback
+ */
 function messageFrom(error, fallback) {
-  if (typeof error?.message === "string" && error.message.trim()) return error.message;
+  if (error instanceof Error && error.message.trim()) return error.message;
   if (typeof error === "string" && error.trim()) return error;
   return fallback;
 }
 
+/**
+ * @param {OverlayModeControllerOptions} options
+ * @returns {OverlayModeController}
+ */
 export function createOverlayModeController({
   enterNative,
   updateNative,
@@ -23,8 +49,13 @@ export function createOverlayModeController({
   reportError = () => {},
   onChange = () => {},
 }) {
+  /** @type {OverlayMode} */
   let mode = OVERLAY_MODES.FULL;
 
+  /**
+   * @param {OverlayMode} nextMode
+   * @param {MiniGeometryResult | null} [details]
+   */
   function setMode(nextMode, details = null) {
     mode = nextMode;
     applyMode(nextMode, details);
@@ -103,6 +134,10 @@ export function createOverlayModeController({
   };
 }
 
+/**
+ * @param {OverlayModeViewOptions} options
+ * @returns {OverlayModeView}
+ */
 export function createOverlayModeView({ body, stage, layout, restoreButton }) {
   function measureContent() {
     const width = layout.offsetWidth || Number.parseFloat(layout.style.width) || 1;
@@ -110,6 +145,10 @@ export function createOverlayModeView({ body, stage, layout, restoreButton }) {
     return { width, height };
   }
 
+  /**
+   * @param {OverlayMode} mode
+   * @param {MiniGeometryResult | null} [geometry]
+   */
   function applyMode(mode, geometry = null) {
     body.dataset.overlayMode = mode;
     const miniVisible = mode === OVERLAY_MODES.MINI || mode === OVERLAY_MODES.RESTORING_FULL;

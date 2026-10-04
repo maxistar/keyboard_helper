@@ -28,6 +28,7 @@ const requiredCheckedFiles = [
   "src/overlay_ble_runtime.js",
   "src/overlay_self_test_bridge.js",
   "src/overlay_actions.js",
+  "src/overlay_mode.js",
   "src/overlay_app.js",
   "src/main.js",
   "type-fixtures/contracts.js",

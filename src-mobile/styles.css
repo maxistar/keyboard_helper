@@ -560,6 +560,16 @@ dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
 .connection-evidence dd[data-status="malformed"] { color: #fecdd3; }
 
 .viewer-layout-actions { display: grid; gap: 10px; margin-top: 12px; }
+.display-awake-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  color: #f8fafc;
+  font-weight: 650;
+}
+.display-awake-control input { width: 22px; height: 22px; accent-color: #5eead4; }
+.display-awake-description { margin: 4px 0 0; color: #cbd5e1; line-height: 1.45; }
 .viewer-remove-controls { display: grid; gap: 8px; }
 .viewer-remove-controls label { color: #99f6e4; font-size: 0.85rem; font-weight: 700; }
 .viewer-layout-status,
@@ -571,6 +581,13 @@ dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
 .viewer-combo-status { color: #cbd5e1; line-height: 1.45; }
 .viewer-diagnostic,
 .viewer-empty { border: 1px solid rgb(251 191 36 / 35%); color: #fde68a; background: rgb(120 53 15 / 20%); }
+.viewer-empty[data-state="hydrating"] {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #94a3b8;
+}
 
 .visually-hidden {
   position: absolute !important;

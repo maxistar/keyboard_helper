@@ -17,10 +17,20 @@ class MainActivity : TauriActivity() {
 
   private var safeInsets = SafeInsets()
   private var companionWebView: WebView? = null
+  private var keepScreenAwake = true
+  private var activityForeground = false
 
   private inner class SafeInsetsBridge {
     @JavascriptInterface
     fun snapshot(): String = safeInsets.asJson()
+
+    @JavascriptInterface
+    fun setKeepScreenAwake(enabled: Boolean) {
+      runOnUiThread {
+        keepScreenAwake = enabled
+        applyScreenAwakeState()
+      }
+    }
   }
 
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,10 +62,31 @@ class MainActivity : TauriActivity() {
     ViewCompat.requestApplyInsets(window.decorView)
   }
 
+  override fun onStart() {
+    super.onStart()
+    activityForeground = true
+    applyScreenAwakeState()
+  }
+
+  override fun onStop() {
+    activityForeground = false
+    applyScreenAwakeState()
+    super.onStop()
+  }
+
+  private fun applyScreenAwakeState() {
+    if (activityForeground && keepScreenAwake) {
+      window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    } else {
+      window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+  }
+
   override fun onWebViewCreate(webView: WebView) {
     super.onWebViewCreate(webView)
     companionWebView = webView
     webView.addJavascriptInterface(SafeInsetsBridge(), "KeyboardHelperSafeInsets")
+    applyScreenAwakeState()
     publishSafeInsets()
   }
 

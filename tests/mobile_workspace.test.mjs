@@ -68,8 +68,8 @@ function harness({ panel = false, timers = fakeTimers() } = {}) {
   const ids = [
     "mobile-workspace", "workspace-content", "workspace-settings-open", "workspace-settings",
     "workspace-settings-close", "workspace-settings-backdrop", "workspace-settings-title",
-    "workspace-section-connection", "workspace-section-layout", "workspace-section-diagnostics",
-    "workspace-panel-connection", "workspace-panel-layout", "workspace-panel-diagnostics",
+    "workspace-section-connection", "workspace-section-layout", "workspace-section-display", "workspace-section-diagnostics",
+    "workspace-panel-connection", "workspace-panel-layout", "workspace-panel-display", "workspace-panel-diagnostics",
     "workspace-connection-state", "workspace-connection-device", "workspace-connection-battery",
     "workspace-connection-notice",
   ];
@@ -84,6 +84,7 @@ function harness({ panel = false, timers = fakeTimers() } = {}) {
     elements.get("workspace-settings-close"),
     elements.get("workspace-section-connection"),
     elements.get("workspace-section-layout"),
+    elements.get("workspace-section-display"),
     elements.get("workspace-section-diagnostics"),
   ];
   const media = new MediaStub(panel);
@@ -146,6 +147,17 @@ test("sheet traps focus, closes with Escape, and restores the opener", () => {
   assert.equal(subject.workspace.snapshot().open, false);
   assert.equal(subject.document.activeElement, opener);
   assert.equal(subject.elements.get("workspace-content").inert, false);
+});
+
+test("display settings are a first-class adaptive workspace section", () => {
+  const subject = harness();
+  subject.workspace.open(WorkspaceSection.DISPLAY);
+  assert.equal(subject.workspace.snapshot().section, WorkspaceSection.DISPLAY);
+  assert.equal(subject.elements.get("workspace-section-display").attributes.get("aria-selected"), "true");
+  assert.equal(subject.elements.get("workspace-panel-display").hidden, false);
+  subject.media.set(true);
+  assert.equal(subject.workspace.snapshot().section, WorkspaceSection.DISPLAY);
+  assert.equal(subject.workspace.snapshot().presentation, WorkspacePresentation.PANEL);
 });
 
 test("Android-style history back dismisses settings without losing the active section", () => {

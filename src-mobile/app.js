@@ -11,6 +11,9 @@ import { NativeLayoutAdapter } from "./native_layout_adapter.js";
 import { installSafeAreaFallback } from "./safe_area.js";
 import { MobileTelemetryController } from "./telemetry_session.js";
 import { createMobileKeyboardWorkspace } from "./workspace.js";
+import { createDisplayAwakePreferenceView } from "./display_awake_preference.js";
+
+const displayAwakePreference = createDisplayAwakePreferenceView(document);
 
 const EXTENSION_SERVICE_UUID = "b34a0001-e782-4706-8f9c-6c056c416507";
 const CAPABILITIES_CHARACTERISTIC_UUID = "b34a0003-e782-4706-8f9c-6c056c416507";
@@ -23,6 +26,7 @@ const customLayouts = new CustomLayoutController(viewerModel, new NativeLayoutAd
 const safeArea = installSafeAreaFallback(document);
 const workspace = createMobileKeyboardWorkspace(document);
 window.addEventListener("pagehide", () => {
+  displayAwakePreference.dispose();
   customLayouts.dispose();
   safeArea.dispose();
   workspace.dispose();

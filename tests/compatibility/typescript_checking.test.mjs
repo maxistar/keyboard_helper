@@ -24,6 +24,7 @@ test("TypeScript checking is strict, explicit, and no-emit", async () => {
     "src/overlay_ble_runtime.js",
     "src/overlay_self_test_bridge.js",
     "src/overlay_actions.js",
+    "src/overlay_mode.js",
     "src/overlay_app.js",
     "src/main.js",
   ]) {

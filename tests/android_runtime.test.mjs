@@ -55,6 +55,12 @@ test("durable activity owns the edge-to-edge system-bar, gesture, and WebView fa
   assert.match(source, /Type\.systemBars\(\) or WindowInsetsCompat\.Type\.displayCutout\(\)/);
   assert.match(source, /WindowInsetsCompat\.Type\.mandatorySystemGestures\(\)/);
   assert.match(source, /addJavascriptInterface\(SafeInsetsBridge\(\), "KeyboardHelperSafeInsets"\)/);
+  assert.match(source, /fun setKeepScreenAwake\(enabled: Boolean\)/);
+  assert.match(source, /runOnUiThread/);
+  assert.match(source, /FLAG_KEEP_SCREEN_ON/);
+  assert.match(source, /override fun onStart\(\)/);
+  assert.match(source, /override fun onStop\(\)/);
+  assert.match(source, /if \(activityForeground && keepScreenAwake\)/);
   assert.match(source, /window\.__keyboardHelperSafeInsets/);
   assert.doesNotMatch(source, /setPadding\(/);
   assert.match(source, /ViewCompat\.requestApplyInsets\(window\.decorView\)/);

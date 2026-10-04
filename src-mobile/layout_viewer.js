@@ -427,6 +427,7 @@ export function createMobileLayoutViewerView(
     elements.removeLayout.disabled = elements.removeControls.hidden;
     elements.importLayout.disabled = !layoutController?.available;
     elements.empty.textContent = hydrating ? hydratingMessage : emptyMessage;
+    elements.empty.dataset.state = hydrating ? "hydrating" : "empty";
     elements.empty.hidden = Boolean(ready);
     elements.scroller.hidden = !ready;
     const liveMode = resolved.mode === LayoutPresentationMode.LIVE;

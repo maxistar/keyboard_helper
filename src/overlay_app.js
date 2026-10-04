@@ -250,14 +250,14 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
     const modeView = createOverlayModeView({
       body: document.body,
-      stage: document.getElementById("overlayStage"),
+      stage: /** @type {HTMLElement} */ (document.getElementById("overlayStage")),
       layout: layoutRoot,
-      restoreButton: document.getElementById("restoreFullSize"),
+      restoreButton: /** @type {HTMLElement} */ (document.getElementById("restoreFullSize")),
     });
     overlayModeController = createOverlayModeController({
-      enterNative: (request) => tauri.core.invoke("enter_mini_geometry", { request }),
-      updateNative: (request) => tauri.core.invoke("update_mini_geometry", { request }),
-      restoreNative: () => tauri.core.invoke("restore_full_geometry"),
+      enterNative: async (request) => /** @type {import("./overlay_mode.js").MiniGeometryResult} */ (await tauri.core.invoke("enter_mini_geometry", { request })),
+      updateNative: async (request) => /** @type {import("./overlay_mode.js").MiniGeometryResult} */ (await tauri.core.invoke("update_mini_geometry", { request })),
+      restoreNative: async () => /** @type {import("./overlay_mode.js").MiniGeometryResult} */ (await tauri.core.invoke("restore_full_geometry")),
       measureContent: modeView.measureContent,
       applyMode: modeView.applyMode,
       setDecorationMode: (mode, geometry) => windowModeControls?.setDisplayMode(mode, geometry),

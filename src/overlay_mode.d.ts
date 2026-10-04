@@ -1,4 +1,0 @@
-export type OverlayModeController = { enterMini(): Promise<unknown>; restoreFull(): Promise<unknown>; refreshMiniGeometry(): void };
-export type OverlayModeView = { measureContent(): unknown; applyMode(mode: string, geometry?: unknown): void };
-export function createOverlayModeController(options: { enterNative: (request: unknown) => Promise<unknown>; updateNative: (request: unknown) => Promise<unknown>; restoreNative: () => Promise<unknown>; measureContent: () => unknown; applyMode: (mode: string, geometry?: unknown) => void; setDecorationMode: (mode: string, geometry?: unknown) => void; reportError: (message: string) => void }): OverlayModeController;
-export function createOverlayModeView(options: { body: HTMLElement; stage: HTMLElement | null; layout: HTMLElement; restoreButton: HTMLElement | null }): OverlayModeView;

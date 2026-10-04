@@ -65,6 +65,7 @@
         <div class="workspace-settings-tabs" role="tablist" aria-label="Settings sections">
           <button id="workspace-section-connection" type="button" role="tab" aria-controls="workspace-panel-connection">Connection</button>
           <button id="workspace-section-layout" type="button" role="tab" aria-controls="workspace-panel-layout">Layouts</button>
+          <button id="workspace-section-display" type="button" role="tab" aria-controls="workspace-panel-display">Display</button>
           <button id="workspace-section-diagnostics" type="button" role="tab" aria-controls="workspace-panel-diagnostics">Status</button>
         </div>
         <div class="workspace-settings-body">
@@ -123,6 +124,14 @@
             <p id="viewer-layout-status" class="viewer-layout-status" role="status" aria-live="polite" hidden></p>
           </section>
 
+          <section id="workspace-panel-display" class="settings-panel display-settings" role="tabpanel" aria-labelledby="workspace-section-display" hidden>
+            <h3>Display</h3>
+            <label class="display-awake-control" for="display-awake-toggle">
+              <input id="display-awake-toggle" type="checkbox" role="switch" aria-describedby="display-awake-description" />
+              <span>Keep screen awake</span>
+            </label>
+            <p id="display-awake-description" class="display-awake-description">When enabled, the display stays on only while the companion is open in the foreground.</p>
+          </section>
           <section id="workspace-panel-diagnostics" class="settings-panel diagnostic-settings" role="tabpanel" aria-labelledby="workspace-section-diagnostics" hidden>
             <h3>Live status</h3>
             <p id="viewer-telemetry-guidance" class="viewer-telemetry-guidance">Connect an enhanced keyboard to follow its live state.</p>

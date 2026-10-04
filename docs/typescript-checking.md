@@ -29,6 +29,7 @@ hand-maintained scope owns these contracts:
 - `src/overlay_ble_runtime.js`: BLE native event listeners, status guards, and frame normalization boundary;
 - `src/overlay_self_test_bridge.js`: self-test source and layer-lease event bridge;
 - `src/overlay_actions.js`: overlay menu actions and desktop command boundary;
+- `src/overlay_mode.js`: mini-mode state, native geometry callback, and view presentation boundary;
 - `src/overlay_app.js`: desktop overlay composition wiring and startup sequencing;
 - `src/main.js`: direct ES module bootstrap.
 
@@ -36,10 +37,7 @@ hand-maintained scope owns these contracts:
 input-event and decoder source copied into `src-mobile/shared-generated/` remains generated from the
 canonical checked modules and must not acquire an independent type schema.
 
-`src/overlay_mode.js` remains intentionally deferred from this overlay batch. It predates the recent
-frontend decomposition, is covered by focused runtime tests, and should be admitted in a future
-mini-mode-specific typing change. Node scripts, runtime tests, large generated layout payloads, and
-other legacy modules are not yet admitted. Their exclusion does not imply that they are type-safe.
+Node scripts, runtime tests, large generated layout payloads, and other legacy modules are not yet admitted. Their exclusion does not imply that they are type-safe.
 
 ## Coverage ratchet
 
@@ -57,12 +55,13 @@ other legacy modules are not yet admitted. Their exclusion does not imply that t
 
 ## Next coverage candidate
 
-The mobile BLE lifecycle was assessed for the initial scope. A strict diagnostic inventory reaches
-both `src-mobile/ble_lifecycle.js` and its imported `ble_transport.js`, exposing a broad set of
-untyped reducer events, effects, snapshots, transport operations, listeners, timers, and native BLE
-values. Admitting only the reducer would therefore require either broad boundary declarations or a
-larger coordinated transport typing change. It is intentionally deferred as the next coverage
-candidate so this first gate does not weaken strictness or disguise the dependency boundary.
+The remaining desktop overlay legacy modules most adjacent to the checked composition root are
+`src/menu.js`, `src/app_menu_state.js`, `src/ble_highlight.js`, and `src/typing_analytics.js`.
+Admitting them should happen in focused batches because each has substantial DOM or stateful runtime
+surface. The mobile BLE lifecycle also remains a larger future candidate: a strict diagnostic
+inventory reaches both `src-mobile/ble_lifecycle.js` and its imported `ble_transport.js`, exposing a
+broad set of untyped reducer events, effects, snapshots, transport operations, listeners, timers,
+and native BLE values.
 
 Moving to native `.ts` files, emitted output, or a Vite-style frontend build is a separate future
 architecture decision.

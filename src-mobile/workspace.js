@@ -4,6 +4,7 @@ export const WorkspacePresentation = Object.freeze({ SHEET: "sheet", PANEL: "pan
 export const WorkspaceSection = Object.freeze({
   CONNECTION: "connection",
   LAYOUT: "layout",
+  DISPLAY: "display",
   DIAGNOSTICS: "diagnostics",
 });
 
@@ -47,11 +48,13 @@ export function createMobileKeyboardWorkspace(document, options = {}) {
     sectionButtons: {
       [WorkspaceSection.CONNECTION]: required(document, "workspace-section-connection"),
       [WorkspaceSection.LAYOUT]: required(document, "workspace-section-layout"),
+      [WorkspaceSection.DISPLAY]: required(document, "workspace-section-display"),
       [WorkspaceSection.DIAGNOSTICS]: required(document, "workspace-section-diagnostics"),
     },
     panels: {
       [WorkspaceSection.CONNECTION]: required(document, "workspace-panel-connection"),
       [WorkspaceSection.LAYOUT]: required(document, "workspace-panel-layout"),
+      [WorkspaceSection.DISPLAY]: required(document, "workspace-panel-display"),
       [WorkspaceSection.DIAGNOSTICS]: required(document, "workspace-panel-diagnostics"),
     },
   };
