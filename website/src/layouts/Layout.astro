@@ -2,17 +2,65 @@
 interface Props {
   title: string;
   description?: string;
+  lang?: 'en' | 'ru';
+  route?: string;
 }
-const { title, description = 'A desktop overlay that visualizes split and ergonomic keyboard layouts.' } = Astro.props;
+const {
+  title,
+  description = 'A desktop overlay that visualizes split and ergonomic keyboard layouts.',
+  lang = 'en',
+  route = '/',
+} = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const copy = {
+  en: {
+    titleSuffix: 'Keyboard Helper',
+    logoHref: `${base}/`,
+    navLabel: 'Primary navigation',
+    nav: [
+      ['Home', '/'],
+      ['Desktop setup', '/setup/'],
+      ['Android', '/android/'],
+      ['Play', '/trainer/'],
+      ['FAQ', '/faq/'],
+    ],
+    language: 'Language',
+    footer: 'Keyboard Helper - open source desktop tool and Android companion preview',
+  },
+  ru: {
+    titleSuffix: 'Keyboard Helper',
+    logoHref: `${base}/ru/`,
+    navLabel: 'Основная навигация',
+    nav: [
+      ['Главная', '/'],
+      ['Настройка', '/setup/'],
+      ['Android', '/android/'],
+      ['Игра', '/trainer/'],
+      ['FAQ', '/faq/'],
+    ],
+    language: 'Язык',
+    footer: 'Keyboard Helper - открытый десктопный оверлей и Android Companion',
+  },
+};
+const current = copy[lang];
+const localizedPath = (targetLang, targetRoute = route) => {
+  const normalizedRoute = targetRoute.startsWith('/') ? targetRoute : `/${targetRoute}`;
+  const localizedRoute = targetLang === 'ru'
+    ? `/ru${normalizedRoute === '/' ? '/' : normalizedRoute}`
+    : normalizedRoute;
+  return `${base}${localizedRoute}`;
+};
+const navHref = (path) => localizedPath(lang, path);
 ---
 <!doctype html>
-<html lang="en">
+<html lang={lang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
-    <title>{title} — Keyboard Helper</title>
+    <link rel="alternate" hreflang="en" href={localizedPath('en')} />
+    <link rel="alternate" hreflang="ru" href={localizedPath('ru')} />
+    <title>{title === current.titleSuffix ? title : `${title} - ${current.titleSuffix}`}</title>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-TVX77XQM39"></script>
     <script>
@@ -47,9 +95,13 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       }
       header .logo { font-weight: 700; font-size: 1.1rem; letter-spacing: 0.04em; color: var(--text); text-decoration: none; }
       header .logo:hover { text-decoration: underline; }
-      header nav { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: flex-end; }
-      header nav a { color: var(--text-muted); font-size: 0.9rem; text-decoration: none; }
-      header nav a:hover { color: var(--text); text-decoration: none; }
+      header nav, .language-switcher { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: flex-end; }
+      header nav a, .language-switcher a { color: var(--text-muted); font-size: 0.9rem; text-decoration: none; }
+      header nav a:hover, .language-switcher a:hover { color: var(--text); text-decoration: none; }
+      .header-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 14px 24px; justify-content: flex-end; }
+      .language-switcher { gap: 8px; }
+      .language-switcher span { color: var(--text-muted); font-size: 0.82rem; }
+      .language-switcher a[aria-current="true"] { color: var(--text); font-weight: 700; }
       main { flex: 1; max-width: 860px; margin: 0 auto; padding: 48px 32px; width: 100%; }
       footer {
         border-top: 1px solid var(--border);
@@ -61,8 +113,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       @media (max-width: 560px) {
         header { align-items: stretch; flex-direction: column; gap: 10px; padding: 14px 18px; }
         header .logo { flex: none; }
-        header nav { justify-content: flex-start; width: 100%; }
-        header nav a { min-height: 32px; padding: 6px 0; }
+        .header-actions, header nav, .language-switcher { justify-content: flex-start; width: 100%; }
+        header nav a, .language-switcher a { min-height: 32px; padding: 6px 0; }
         main { padding: 34px 18px; }
         footer { padding-inline: 18px; }
       }
@@ -70,21 +122,24 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   </head>
   <body>
     <header>
-      <a class="logo" href={`${base}/`}>Keyboard Helper</a>
-      <nav aria-label="Primary navigation">
-        <a href={`${base}/`}>Home</a>
-        <a href={`${base}/setup/`}>Desktop setup</a>
-        <a href={`${base}/android/`}>Android</a>
-        <a href={`${base}/trainer/`}>Play</a>
-        <a href={`${base}/faq/`}>FAQ</a>
-        <a href="https://github.com/maxistar/keyboard_helper" target="_blank" rel="noopener">GitHub</a>
-      </nav>
+      <a class="logo" href={current.logoHref}>Keyboard Helper</a>
+      <div class="header-actions">
+        <nav aria-label={current.navLabel}>
+          {current.nav.map(([label, path]) => <a href={navHref(path)}>{label}</a>)}
+          <a href="https://github.com/maxistar/keyboard_helper" target="_blank" rel="noopener">GitHub</a>
+        </nav>
+        <div class="language-switcher" aria-label={current.language}>
+          <span>{current.language}:</span>
+          <a href={localizedPath('en')} aria-current={lang === 'en' ? 'true' : undefined}>EN</a>
+          <a href={localizedPath('ru')} aria-current={lang === 'ru' ? 'true' : undefined}>RU</a>
+        </div>
+      </div>
     </header>
     <main>
       <slot />
     </main>
     <footer>
-      Keyboard Helper — open source desktop tool and Android companion preview
+      {current.footer}
     </footer>
   </body>
 </html>
