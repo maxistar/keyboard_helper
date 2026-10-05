@@ -1,6 +1,4 @@
 ---
-import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import Layout from '../../layouts/Layout.astro';
 import { androidPreview, getAndroidPreviewView, releasesUrl } from '../../data/releases.js';
 
@@ -28,7 +26,7 @@ function screenshotSlots(definitions) {
   return definitions.map((shot) => ({
     ...shot,
     src: `${base}/images/${shot.file}`,
-    available: existsSync(fileURLToPath(new URL(`../../../public/images/${shot.file}`, import.meta.url))),
+    available: true,
   }));
 }
 
