@@ -1,0 +1,135 @@
+---
+import Layout from '../../layouts/Layout.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const ruBase = `${base}/ru`;
+---
+<Layout lang="ru" route="/setup/" title="Настройка" description="Как установить Keyboard Helper, выдать права, выбрать раскладку и настроить desktop-оверлей.">
+  <style>
+    h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
+    .subtitle { color: var(--text-muted); margin-bottom: 34px; font-size: 1rem; line-height: 1.6; }
+    h2 { border-bottom: 1px solid var(--border); font-size: 1.2rem; font-weight: 700; margin: 38px 0 14px; padding-bottom: 8px; }
+    h3 { color: var(--accent); font-size: 1rem; font-weight: 700; margin: 22px 0 8px; }
+    p { color: var(--text-muted); line-height: 1.65; margin-bottom: 12px; }
+    ol, ul { color: var(--text-muted); line-height: 1.7; padding-left: 20px; }
+    li { margin-bottom: 6px; }
+    pre { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; font-size: 0.875rem; margin: 12px 0 18px; overflow-x: auto; padding: 16px 18px; }
+    code { font-family: "Cascadia Code", "Fira Code", "Courier New", monospace; }
+    pre code { color: var(--text); }
+    p code, li code { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; color: var(--accent); font-size: 0.85em; padding: 1px 5px; }
+    .note, .toc { background: rgba(61, 201, 199, 0.08); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; color: var(--text-muted); font-size: 0.9rem; margin: 16px 0; padding: 12px 16px; }
+    .toc ul { columns: 2; list-style: none; padding-left: 0; }
+    .toc li { break-inside: avoid; }
+    .menu-map { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin: 16px 0; }
+    .menu-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+    .menu-card h3 { margin-top: 0; }
+    .tag { color: var(--text); display: inline-block; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 8px; text-transform: uppercase; }
+    @media (max-width: 640px) { .toc ul { columns: 1; } }
+  </style>
+
+  <h1>Настройка Keyboard Helper</h1>
+  <p class="subtitle">Установите приложение, выдайте права на глобальный ввод и выберите раскладки. Всё остальное настраивается из меню оверлея.</p>
+
+  <nav class="toc" aria-label="Разделы настройки">
+    <ul>
+      <li><a href="#download">Скачать</a></li>
+      <li><a href="#first-launch">Первый запуск</a></li>
+      <li><a href="#android-preview">Android Companion</a></li>
+      <li><a href="#app-menu">Меню приложения</a></li>
+      <li><a href="#configuration">Конфигурация</a></li>
+      <li><a href="#mini-mode">Mini Mode</a></li>
+      <li><a href="#self-test">Self-test</a></li>
+      <li><a href="#ble-layer-sync">BLE layer sync</a></li>
+      <li><a href="#macos-language-sync">Язык macOS</a></li>
+      <li><a href="#build-from-source">Сборка из исходников</a></li>
+    </ul>
+  </nav>
+
+  <h2 id="download">1. Скачать</h2>
+  <p>Откройте <a href="https://github.com/maxistar/keyboard_helper/releases" target="_blank" rel="noopener">GitHub Releases</a> и выберите сборку для своей платформы: macOS Apple Silicon, macOS Intel, Windows или Linux.</p>
+  <ol>
+    <li>Для macOS скачайте архив под свой процессор. M-series - <code>macos-apple-silicon</code>, Intel - <code>macos-intel</code>.</li>
+    <li>На macOS скачайте соседний <code>.sha256</code>, откройте <code>.dmg</code> и перенесите <em>Keyboard Helper.app</em> в Applications.</li>
+    <li>На Windows запустите <code>.msi</code>.</li>
+    <li>На Linux распакуйте архив и запустите binary.</li>
+  </ol>
+  <pre><code>shasum -a 256 -c Keyboard-Helper_*.dmg.sha256</code></pre>
+  <div class="note">macOS-сборки сейчас ad-hoc-signed и не notarized. Gatekeeper может заблокировать первый запуск. Это ожидаемо для preview.</div>
+  <div class="note">Если обновляетесь со старой версии, закройте и удалите <em>Keyboard Layout.app</em>. Настройки <code>~/.keyri.json</code> совместимы.</div>
+
+  <h2 id="android-preview">Android Companion</h2>
+  <span class="tag">API 31+ · arm64 preview</span>
+  <p>Android Companion устанавливается отдельно. Он показывает раскладки, состояние подключения и совместимый read-only Live. APK публикуется в GitHub Releases, не в Google Play.</p>
+  <p><a href={`${ruBase}/android/`}><strong>Открыть инструкцию по Android Companion</strong></a></p>
+
+  <h2 id="first-launch">2. Первый запуск</h2>
+  <ol>
+    <li>На macOS попробуйте открыть установленное приложение.</li>
+    <li>Если Gatekeeper блокирует запуск, откройте <strong>System Settings -&gt; Privacy &amp; Security</strong>, найдите блок <strong>Security</strong>, нажмите <strong>Open Anyway</strong> для Keyboard Helper и подтвердите <strong>Open</strong>.</li>
+    <li>Выдайте <strong>Input Monitoring</strong>. Без него приложение не увидит глобальные нажатия.</li>
+    <li>Начните печатать в любом приложении. Оверлей должен показать QWERTY и подсветить клавиши.</li>
+  </ol>
+  <p>Если подсветка пропала после обновления, удалите старые записи Keyboard Helper или Keyboard Layout из <strong>Input Monitoring</strong>, добавьте <code>/Applications/Keyboard Helper.app</code> и перезапустите приложение.</p>
+
+  <h2 id="app-menu">3. Меню приложения</h2>
+  <p>Главные действия находятся в меню справа сверху. На macOS часть команд также доступна в native menu bar.</p>
+  <div class="menu-map">
+    <section class="menu-card"><h3>Keyboard</h3><p>Смена раскладки, перезагрузка внешней раскладки и Keyboard Self-test.</p></section>
+    <section class="menu-card"><h3>Language</h3><p>Появляется на macOS, если активная раскладка содержит metadata для input-source sync.</p></section>
+    <section class="menu-card"><h3>Connection</h3><p>Показывает состояние BLE и кнопку Reconnect BLE для совместимых раскладок.</p></section>
+    <section class="menu-card"><h3>Root actions</h3><p>Mini Mode, Shift-Space Invaders, Settings и Help.</p></section>
+  </div>
+
+  <h2 id="configuration">4. Конфигурация</h2>
+  <p>Откройте <strong>Settings</strong>. Там включаются встроенные раскладки, выбирается стартовая раскладка, записывается show/hide shortcut и добавляется внешний JSON-файл.</p>
+  <div class="note">Если JSON повреждён, Settings не перезапишет его молча. Приложение создаст backup перед подтверждённой заменой.</div>
+  <h3>Файл настроек</h3>
+  <p>Основной файл - <code>~/.keyri.json</code>. Старый <code>~/keyri.json</code> всё ещё читается. Если файла нет, включаются все встроенные раскладки, стартовая - QWERTY.</p>
+  <pre><code>{`{
+  "defaultLayout": "corne",
+  "layouts": {
+    "corne": true,
+    "qwerty": true
+  },
+  "toggleHotkey": "Shift+Meta+K"
+}`}</code></pre>
+  <p>Для своей раскладки обычно проще нажать <strong>Add layout file...</strong> в Settings. За основу можно взять один из JSON-файлов в <code>src/</code>.</p>
+
+  <h2 id="mini-mode">5. Mini Mode</h2>
+  <span class="tag">Desktop app</span>
+  <p>Mini Mode оставляет компактное окно с активным слоем и подсветкой клавиш. Меню и лишний chrome скрываются. Режим временный: новый запуск снова открывает полное окно.</p>
+
+  <h2 id="self-test">6. Keyboard Self-test</h2>
+  <span class="tag">Desktop app</span>
+  <p>Self-test проверяет HID-коды выбранной раскладки и слоя. Вы сами активируете слой на клавиатуре, затем нажимаете подсвеченные позиции.</p>
+  <ul>
+    <li><strong>Passed</strong> - пришёл ожидаемый press-and-release.</li>
+    <li><strong>Unexpected</strong> - пришёл другой код.</li>
+    <li><strong>Skipped</strong> - вы пропустили позицию без подходящего события.</li>
+    <li><strong>Not testable</strong> - позиция пустая, неподдерживаемая или описывает сложное поведение.</li>
+  </ul>
+  <div class="note">Это HID-проверка, а не диагностика матрицы ZMK. Она не проверяет проводку, combos, macros и hold-tap timing.</div>
+
+  <h2 id="ble-layer-sync">7. ZMK BLE layer sync</h2>
+  <span class="tag">BLE-dependent</span>
+  <p>Если раскладка содержит <code>bleLayerSource</code>, Keyboard Helper слушает активный слой совместимой ZMK-клавиатуры и обновляет оверлей по состоянию firmware.</p>
+  <p>После сна клавиатуры, смены Bluetooth-разрешений или правки metadata используйте <strong>Connection &gt; Reconnect BLE</strong>.</p>
+
+  <h2 id="macos-language-sync">8. Синхронизация языка macOS</h2>
+  <span class="tag">macOS + BLE</span>
+  <p>Внешняя раскладка может связать macOS input-source ID с семействами слоёв ZMK. Приложение выбирает точный input source и корректирует стабильное несовпадение базового слоя через writable BLE characteristic.</p>
+  <pre><code>defaults read ~/Library/Preferences/com.apple.HIToolbox.plist AppleEnabledInputSources</code></pre>
+  <div class="note">Функция работает только на macOS и требует совместимую BLE characteristic с encrypted Write with response и Notify.</div>
+
+  <h2 id="typing-invaders">9. Shift-Space Invaders</h2>
+  <span class="tag">Practice mode</span>
+  <p>Игра открывается отдельным окном и использует focused input. Глобальная подсветка оверлея может продолжать работать отдельно.</p>
+
+  <h2 id="build-from-source">10. Сборка из исходников</h2>
+  <p>Нужны <a href="https://nodejs.org" target="_blank" rel="noopener">Node.js LTS</a>, <a href="https://rustup.rs" target="_blank" rel="noopener">Rust toolchain</a> и <a href="https://v2.tauri.app/start/prerequisites/" target="_blank" rel="noopener">Tauri v2 platform deps</a>.</p>
+  <pre><code>git clone https://github.com/maxistar/keyboard_helper.git
+cd keyboard_helper
+npm install
+npm run tauri dev
+npm run tauri build</code></pre>
+  <p>Короткие ответы по частым ошибкам есть в <a href={`${ruBase}/faq/`}>FAQ</a>.</p>
+</Layout>

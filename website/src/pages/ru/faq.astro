@@ -1,0 +1,47 @@
+---
+import Layout from '../../layouts/Layout.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const ruBase = `${base}/ru`;
+---
+<Layout lang="ru" route="/faq/" title="FAQ" description="Короткие ответы по установке, правам, BLE, Android Companion и диагностике Keyboard Helper.">
+  <style>
+    h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
+    .subtitle { color: var(--text-muted); font-size: 1rem; line-height: 1.6; margin-bottom: 36px; }
+    .faq-list { display: grid; gap: 16px; }
+    article { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 22px; }
+    h2 { color: var(--accent); font-size: 1.05rem; margin-bottom: 12px; }
+    p, li { color: var(--text-muted); line-height: 1.65; }
+    p + p { margin-top: 10px; }
+    ol { margin-top: 12px; padding-left: 22px; }
+    li + li { margin-top: 6px; }
+    code { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--accent); font-family: "Cascadia Code", "Fira Code", "Courier New", monospace; font-size: 0.88em; padding: 1px 5px; }
+    .important { border-color: rgba(60, 201, 199, 0.42); box-shadow: inset 3px 0 0 var(--accent); }
+    .tag { color: var(--text); display: inline-block; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 8px; text-transform: uppercase; }
+  </style>
+
+  <h1>Частые вопросы</h1>
+  <p class="subtitle">Коротко: причина, следующее действие и ссылка на полный раздел, если одного шага мало.</p>
+
+  <section class="faq-list" aria-label="Частые вопросы">
+    <article class="important">
+      <span class="tag">macOS · Desktop app</span><h2>Почему на macOS не подсвечиваются нажатия?</h2>
+      <p>Нужен <strong>Input Monitoring</strong>. Accessibility недостаточно. Закройте приложение, удалите старые записи Keyboard Layout или Keyboard Helper в <strong>System Settings &gt; Privacy &amp; Security &gt; Input Monitoring</strong>, добавьте текущий app из <code>/Applications</code>, включите его и перезапустите.</p>
+    </article>
+
+    <article><span class="tag">macOS · Desktop app</span><h2>Почему macOS блокирует скачанное приложение?</h2><p>Preview-сборки ad-hoc-signed и не notarized. Откройте app один раз, затем нажмите <strong>System Settings &gt; Privacy &amp; Security &gt; Open Anyway</strong>. Полный порядок есть в <a href={`${ruBase}/setup/#first-launch`}>первом запуске</a>.</p></article>
+    <article><span class="tag">Desktop app</span><h2>Куда делось окно после закрытия?</h2><p>Закрытие прячет оверлей в system tray. Верните окно из tray menu, горячей клавишей show/hide или запуском executable с <code>--toggle</code>.</p></article>
+    <article><span class="tag">Desktop app</span><h2>Как выбрать другую раскладку или добавить свою?</h2><p>Откройте Settings, включите нужные built-in layouts и используйте <strong>Add layout file...</strong> для внешнего JSON. Примеры есть в <a href={`${ruBase}/setup/#configuration`}>конфигурации desktop</a>.</p></article>
+    <article><span class="tag">Desktop app · BLE-dependent</span><h2>Почему BLE layer sync не подключается?</h2><p>Активной раскладке нужна корректная <code>bleLayerSource</code> metadata, а desktop app - доступ к Bluetooth. Разбудите клавиатуру, проверьте UUID и permission, затем нажмите <strong>Connection &gt; Reconnect BLE</strong>.</p></article>
+
+    <article><span class="tag">Android preview</span><h2>Почему Android отклоняет обновление APK?</h2><p>Обычно причина - разные подписи у локального debug build и подписанного preview. Удалите debug app и установите verified release. Private imports и permission state могут сброситься.</p></article>
+    <article><span class="tag">Android preview · BLE-dependent</span><h2>Почему клавиатуры нет в Android Companion?</h2><p>Скорее всего не выдан Nearby devices, нет Android pairing или свободного ZMK Bluetooth profile. Выдайте permission, спарьте клавиатуру в system Settings, разбудите её и повторите connect.</p></article>
+    <article><span class="tag">Android preview · Enhanced firmware</span><h2>Почему Live пишет waiting или unsupported?</h2><p>Stock firmware не отдаёт Live telemetry. На compatible enhanced firmware нажмите клавишу или смените физический слой. Если waiting остаётся, reconnect. Live read-only и не меняет remote layer.</p></article>
+    <article><span class="tag">Android preview</span><h2>Почему custom layout отклонён или сброшен?</h2><p>JSON или embedded image не прошли проверку, либо stored record стал недоступен. Проверьте version, asset references, bitmap type, base64, размеры, лимиты и duplicate name.</p></article>
+
+    <article><span class="tag">macOS · BLE-dependent</span><h2>Почему Language flyout не появился или disabled?</h2><p>Функция только для macOS. Нужны <code>inputSourceSync.macos</code>, установленные input-source IDs и compatible writable BLE layer characteristic. Недоступный source отключается, а не угадывается.</p></article>
+    <article><span class="tag">Desktop app</span><h2>Как выйти из Mini Mode?</h2><p>Нажмите стрелку <strong>Restore full size</strong> в mini overlay. Режим временный: новый запуск открывает полное окно.</p></article>
+    <article><span class="tag">Desktop app · Diagnostic limit</span><h2>Что проверяет Keyboard Self-test?</h2><p>Self-test проверяет configured HID output для одного слоя в глобальном event stream. Он не определяет физическую клавиатуру, не активирует firmware layers и не диагностирует matrix wiring, combos, macros или hold-tap timing.</p></article>
+    <article><span class="tag">Desktop app · Practice mode</span><h2>Почему Shift-Space Invaders игнорирует часть клавиш?</h2><p>Игра использует focused window input и принимает простые английские буквы. Modifiers, repeats, composition input, releases и неподдерживаемые printable characters игнорируются.</p></article>
+    <article><span class="tag">Desktop + Android</span><h2>Keyboard Helper работает только со split keyboards?</h2><p>Нет. Есть стандартные и эргономичные built-in layouts. Desktop читает внешний JSON. Android копирует валидный JSON в private app storage. Между desktop и Android нет cloud sync.</p></article>
+  </section>
+</Layout>

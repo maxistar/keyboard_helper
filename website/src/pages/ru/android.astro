@@ -1,0 +1,118 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { androidPreview, getAndroidPreviewView } from '../../data/releases.js';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const ruBase = `${base}/ru`;
+const androidRelease = getAndroidPreviewView(androidPreview);
+---
+<Layout lang="ru" route="/android/" title="Android Companion" description="Как установить Android Companion, подключить клавиатуру, открыть раскладки и использовать read-only Live.">
+  <style>
+    h1 { font-size: clamp(2rem, 7vw, 3rem); font-weight: 700; line-height: 1.08; margin: 8px 0 12px; }
+    h2 { border-bottom: 1px solid var(--border); font-size: 1.25rem; margin: 42px 0 15px; padding-bottom: 9px; }
+    h3 { color: var(--accent); font-size: 1rem; margin: 24px 0 9px; }
+    p, li { color: var(--text-muted); line-height: 1.68; }
+    p { margin-bottom: 12px; }
+    ol, ul { padding-left: 22px; }
+    li + li { margin-top: 7px; }
+    code { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; color: var(--accent); font-family: "Cascadia Code", "Fira Code", "Courier New", monospace; font-size: 0.86em; padding: 1px 5px; }
+    .eyebrow, .tag { color: var(--accent); display: inline-block; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    .subtitle { font-size: 1.04rem; max-width: 720px; }
+    .toc, .note, .release-card, .path-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 9px; padding: 18px; }
+    .toc { margin: 28px 0; }
+    .toc ul { display: grid; gap: 8px 24px; grid-template-columns: repeat(2, minmax(0, 1fr)); list-style: none; padding: 0; }
+    .note { border-left: 3px solid var(--accent); margin: 16px 0; }
+    .release-card { border-color: rgba(60, 201, 199, 0.4); margin: 24px 0; }
+    .release-card strong { color: var(--text); }
+    .path-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); margin: 18px 0; }
+    .path-card h3 { margin-top: 0; }
+    .btn { background: var(--accent); border-radius: 8px; color: #081018; display: inline-block; font-weight: 700; margin-top: 8px; padding: 10px 16px; text-decoration: none; }
+    .btn:hover { color: #081018; opacity: 0.86; text-decoration: none; }
+    @media (max-width: 560px) { .toc ul { grid-template-columns: 1fr; } }
+  </style>
+
+  <span class="eyebrow">Foreground Android preview</span>
+  <h1>Keyboard Helper Companion</h1>
+  <p class="subtitle">Приложение для телефона: просмотр раскладок, данные подключения и совместимая read-only Live-телеметрия. Инструкция отделяет опубликованный APK от более новых изменений в репозитории.</p>
+
+  <div class="release-card">
+    <span class="tag">Опубликованный артефакт</span>
+    <p><strong>{androidRelease.status}</strong> Публичная physical-device baseline: Android 12 / API 31+ на arm64-v8a.</p>
+    {androidRelease.published ? <a class="btn" href={androidRelease.releaseUrl} target="_blank" rel="noopener">Открыть релиз {androidRelease.version}</a> : <p>Смотрите GitHub Releases. Не ставьте непроверенный direct APK.</p>}
+  </div>
+
+  <nav class="toc" aria-label="Разделы Android-инструкции">
+    <ul>
+      <li><a href="#installation">Скачать и установить</a></li>
+      <li><a href="#connection">Pair и connect</a></li>
+      <li><a href="#workspace">Browse workspace</a></li>
+      <li><a href="#layouts">Свои раскладки</a></li>
+      <li><a href="#live">Read-only Live</a></li>
+      <li><a href="#compatibility">Совместимость</a></li>
+      <li><a href="#troubleshooting">Диагностика</a></li>
+      <li><a href={`${ruBase}/faq/`}>Короткий FAQ</a></li>
+    </ul>
+  </nav>
+
+  <h2 id="installation">1. Скачать, проверить, установить</h2>
+  <ol>
+    <li>Откройте опубликованный релиз и скачайте <code>Keyboard-Helper-Companion_&lt;version&gt;_android-arm64_preview.apk</code> вместе с соседним <code>.sha256</code>.</li>
+    <li>Сравните SHA-256 APK со значением в sidecar-файле.</li>
+    <li>Откройте APK и разрешите unknown-app install только для приложения, из которого открываете файл.</li>
+    <li>Запустите <strong>Keyboard Helper Companion</strong>. При подключении выдайте <strong>Nearby devices</strong>.</li>
+  </ol>
+  <div class="note">Если Android отклоняет обновление поверх debug APK, подписи разные. Удалите debug app и установите подписанный preview. Приватные imports и permission state могут сброситься.</div>
+
+  <h2 id="connection">2. Pair и connect</h2>
+  <ol>
+    <li>Разбудите клавиатуру и выберите свободный ZMK Bluetooth profile.</li>
+    <li>Сначала спарьте клавиатуру в Android Settings.</li>
+    {androidRelease.adaptiveWorkspace ? <li>Откройте <strong>Settings &gt; Connection</strong>, выберите bonded keyboard и дождитесь connected.</li> : <li>В {androidRelease.version} нажмите <strong>Connect</strong>, выберите bonded keyboard и дождитесь <strong>Connection: connected</strong>.</li>}
+    <li>Battery Service и Device Information появятся только если клавиатура их отдаёт.</li>
+  </ol>
+
+  <h2 id="workspace">3. Browse workspace</h2>
+  <p><strong>Browse</strong> показывает раскладки со stock или enhanced ZMK firmware. Companion работает в foreground: выбранная клавиатура, highlights и Live session не сохраняются как фоновый сервис.</p>
+  {androidRelease.adaptiveWorkspace ? (
+    <div class="path-grid">
+      <section class="path-card"><h3>Keyboard-first stage</h3><p>Основная поверхность - выбранная раскладка. Статус и Browse/Live controls занимают меньше места.</p></section>
+      <section class="path-card"><h3>Connection</h3><p>Выбор устройства и reconnect находятся в <strong>Settings &gt; Connection</strong>.</p></section>
+      <section class="path-card"><h3>Layouts and status</h3><p>Custom definitions - в <strong>Settings &gt; Layouts</strong>, вторичная Live-диагностика - в <strong>Settings &gt; Status</strong>.</p></section>
+    </div>
+  ) : (
+    <div class="note"><strong>Есть в репозитории, но не в {androidRelease.version}.</strong> Новый adaptive workspace переносит device actions в Settings &gt; Connection, custom definitions в Settings &gt; Layouts, а Live diagnostics в Settings &gt; Status.</div>
+  )}
+
+  <h2 id="layouts">4. Свои раскладки</h2>
+  <p>Companion импортирует один JSON-документ Keyboard Helper. После проверки он атомарно копирует definition и inline image bytes в private app storage. Source URI не сохраняется.</p>
+  <ul>
+    <li>Text-only layouts поддерживаются.</li>
+    <li>Раскладки с изображениями используют <code>keyboard-helper-layout</code> version <code>1</code>, таблицу <code>embeddedAssets</code> и ссылки вида <code>asset:&lt;id&gt;</code>.</li>
+    <li>Изображения: PNG, JPEG или WebP без анимации. Лимиты: 128 KiB на картинку, 512 KiB decoded bytes суммарно, 16 assets, 256 x 256 px, 1 MiB на JSON.</li>
+    <li>External paths, remote URLs, data URLs, SVG, битый base64 и неиспользуемые assets отклоняются.</li>
+    <li>Удаление custom layout удаляет его приватные изображения. Desktop и Android не синхронизируют раскладки через облако.</li>
+  </ul>
+
+  <h2 id="live">5. Read-only Live</h2>
+  <p>Stock firmware подходит для Browse и connection overview. <strong>Live</strong> требует совместимое enhanced firmware extension и читает layer, key, combo и diagnostic telemetry. Телефон не пишет remote layer.</p>
+  {androidRelease.adaptiveWorkspace ? <p>Откройте Live из workspace controls. Вторичная диагностика находится в <strong>Settings &gt; Status</strong>.</p> : <p>Используйте Live control в {androidRelease.version}. Путь Settings &gt; Status относится к более новой unpublished workspace.</p>}
+
+  <h2 id="compatibility">6. Граница поддержки</h2>
+  <div class="path-grid">
+    <section class="path-card"><h3>Public preview</h3><p>Физическая BLE-проверка и downloadable preview baseline: Android 12 / API 31+ и arm64-v8a.</p></section>
+    <section class="path-card"><h3>Android 11 evidence</h3><p>Есть deterministic UI/runtime evidence для Browse startup на Android 11 / API 30 с WebView 91. Это не обещание physical BLE support.</p></section>
+    <section class="path-card"><h3>Package minimum</h3><p>Declared minimum SDK может позволять установку ниже baseline, но это не обещает поддержку всех BLE-сценариев.</p></section>
+  </div>
+
+  <h2 id="troubleshooting">7. Диагностика</h2>
+  <h3>Нет Bluetooth, permission или scan пустой</h3>
+  <p>Выдайте Nearby devices, включите Bluetooth, разбудите клавиатуру, проверьте Android pairing и повторите подключение.</p>
+  <h3>PIN, security, capacity или reconnect exhaustion</h3>
+  <p>Удалите pairing в Android, очистите выбранный ZMK Bluetooth profile, перезапустите обе стороны, спарьте заново и подключитесь.</p>
+  <h3>Live waiting, unsupported protocol или sequence gap</h3>
+  <p>Stock firmware честно сообщает, что Live недоступен. На enhanced firmware нажмите клавишу или смените физический слой. Если waiting остаётся, reconnect.</p>
+  <h3>Layout mismatch или invalid stored layout</h3>
+  <p>Выберите раскладку, где есть reported layer. Если JSON отклонён, проверьте version, asset references, bitmap type, base64, dimensions, byte limits и duplicate name.</p>
+
+  <p>Короткие ответы есть в <a href={`${ruBase}/faq/`}>FAQ</a>. Для desktop-оверлея откройте <a href={`${ruBase}/setup/`}>настройку desktop</a>.</p>
+</Layout>

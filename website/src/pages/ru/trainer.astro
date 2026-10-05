@@ -1,21 +1,21 @@
 ---
-import '../../../src/typing_invaders/game.css';
+import '../../../../src/typing_invaders/game.css';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 <!doctype html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Play Shift-Space Invaders, a keyboard typing arcade from Keyboard Helper." />
+    <meta name="description" content="Shift-Space Invaders - тренировка набора из Keyboard Helper." />
     <link rel="alternate" hreflang="en" href={`${base}/trainer/`} />
     <link rel="alternate" hreflang="ru" href={`${base}/ru/trainer/`} />
-    <title>Shift-Space Invaders — Keyboard Helper</title>
+    <title>Shift-Space Invaders - Keyboard Helper</title>
   </head>
   <body class="game-page">
-    <a class="trainer-home-link" href={`${base}/`}>Keyboard Helper</a>
-    <p class="desktop-viewport-notice" role="status">This game is designed for desktop browser windows at least 720 × 560 pixels.</p>
+    <a class="trainer-home-link" href={`${base}/ru/`}>Keyboard Helper</a>
+    <p class="desktop-viewport-notice" role="status">Игра рассчитана на desktop-окно не меньше 720 x 560 пикселей.</p>
     <main class="game-shell" aria-labelledby="gameTitle">
       <header class="game-header">
         <div class="game-brand">
@@ -23,10 +23,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
           <h1 id="gameTitle">Shift-Space Invaders</h1>
         </div>
         <section class="practice-queue" aria-labelledby="practiceQueueTitle">
-          <div class="practice-queue-heading"><span id="practiceQueueTitle">Practice queue</span><span id="practiceQueueCount">Arcade words</span></div>
+          <div class="practice-queue-heading"><span id="practiceQueueTitle">Очередь слов</span><span id="practiceQueueCount">Arcade words</span></div>
           <ol id="practiceQueue" aria-live="polite"></ol>
         </section>
-        <dl class="game-hud" aria-label="Current mission status">
+        <dl class="game-hud" aria-label="Статус миссии">
           <div><dt>Score</dt><dd id="scoreValue">000000</dd></div>
           <div><dt>Wave</dt><dd id="waveValue">01</dd></div>
           <div><dt>Lives</dt><dd id="livesValue" aria-label="3 lives">◆ ◆ ◆</dd></div>
@@ -34,7 +34,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         </dl>
       </header>
 
-      <section id="playfield" class="playfield" aria-label="Shift-Space Invaders playfield">
+      <section id="playfield" class="playfield" aria-label="Игровое поле Shift-Space Invaders">
         <div class="star-field star-field-far" aria-hidden="true"></div>
         <div class="star-field star-field-near" aria-hidden="true"></div>
         <div id="targetLayer" class="target-layer"></div>
@@ -50,7 +50,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
           <div class="state-card">
             <span class="state-kicker" id="stateKicker">Incoming transmission</span>
             <h2 id="stateTitle">Shift-Space Invaders</h2>
-            <p id="stateDescription">Type the words. Stop the descent.</p>
+            <p id="stateDescription">Печатайте слова. Не дайте им спуститься.</p>
             <dl id="resultGrid" class="result-grid" hidden>
               <div><dt>Final score</dt><dd id="resultScore">0</dd></div>
               <div><dt>Highest wave</dt><dd id="resultWave">1</dd></div>
@@ -59,7 +59,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
               <div><dt>Words/min</dt><dd id="resultWpm">0</dd></div>
             </dl>
             <button id="stateAction" class="state-action" type="button">Start mission</button>
-            <p class="state-hint" id="stateHint">Type any visible word. Esc pauses.</p>
+            <p class="state-hint" id="stateHint">Введите любое видимое слово. Esc - пауза.</p>
           </div>
         </section>
 
@@ -105,7 +105,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       }
     </style>
     <script>
-      import { createBrowserTypingInvaders } from '../../../src/typing_invaders/browser.js';
+      import { createBrowserTypingInvaders } from '../../../../src/typing_invaders/browser.js';
       createBrowserTypingInvaders();
     </script>
   </body>

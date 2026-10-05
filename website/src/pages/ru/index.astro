@@ -1,0 +1,138 @@
+---
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import Layout from '../../layouts/Layout.astro';
+import { androidPreview, getAndroidPreviewView, releasesUrl } from '../../data/releases.js';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const ruBase = `${base}/ru`;
+const androidRelease = getAndroidPreviewView(androidPreview);
+
+const desktopScreenshots = [
+  { file: 'overlay-main.png', title: 'Основной оверлей', text: 'Оверлей показывает активную раскладку и подсвечивает нажатые клавиши.' },
+  { file: 'menu-keyboard.png', title: 'Меню приложения', text: 'Раскладки, язык и подключение доступны из одного меню.' },
+  { file: 'settings-window.png', title: 'Настройки', text: 'Встроенные раскладки, стартовая раскладка, внешние файлы и горячая клавиша.' },
+  { file: 'mini-mode.png', title: 'Mini Mode', text: 'Компактный оверлей для работы рядом с другими окнами.' },
+  { file: 'self-test.png', title: 'Self-test', text: 'Проверка HID-кодов по позициям выбранного слоя.' },
+  { file: 'menu-language.png', title: 'Синхронизация языка macOS', text: 'Статус соответствия input source и слоя ZMK.' },
+  { file: 'typing-invaders.png', title: 'Shift-Space Invaders', text: 'Отдельное окно для тренировки набора.' },
+];
+
+const androidScreenshots = [
+  { file: 'android-browse.png', title: 'Browse', text: 'Просмотр выбранной раскладки на телефоне.' },
+  { file: 'android-settings.png', title: 'Adaptive Settings', text: 'Подключение, раскладки и статус в Android Companion.' },
+  { file: 'android-live.png', title: 'Read-only Live', text: 'Чтение слоя и событий клавиатуры без записи в firmware.' },
+];
+
+function screenshotSlots(definitions) {
+  return definitions.map((shot) => ({
+    ...shot,
+    src: `${base}/images/${shot.file}`,
+    available: existsSync(fileURLToPath(new URL(`../../../public/images/${shot.file}`, import.meta.url))),
+  }));
+}
+
+const desktopSlots = screenshotSlots(desktopScreenshots);
+const androidSlots = screenshotSlots(androidScreenshots);
+---
+<Layout lang="ru" route="/" title="Keyboard Helper" description="Оверлей для клавиатур на macOS, Windows и Linux, плюс Android Companion для просмотра раскладок и read-only телеметрии.">
+  <style>
+    .hero { margin-bottom: 52px; }
+    .hero h1 { font-size: clamp(2.15rem, 7vw, 3.7rem); font-weight: 700; line-height: 1.04; margin: 10px 0 18px; max-width: 760px; }
+    .hero p { color: var(--text-muted); font-size: 1.08rem; line-height: 1.65; max-width: 720px; }
+    .eyebrow, .scope, .release-label { color: var(--accent); font-size: 0.76rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    .cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+    .btn { border-radius: 8px; display: inline-block; font-size: 0.93rem; font-weight: 700; padding: 11px 18px; text-decoration: none; }
+    .btn:hover { opacity: 0.86; text-decoration: none; }
+    .btn-primary { background: var(--accent); color: #081018; }
+    .btn-primary:hover { color: #081018; }
+    .btn-outline { background: var(--bg2); border: 1px solid var(--border); color: var(--text); }
+    .btn-outline:hover { color: var(--text); }
+    .section { margin: 54px 0; }
+    .section h2 { font-size: 1.45rem; margin-bottom: 10px; }
+    .section-intro { color: var(--text-muted); line-height: 1.65; margin-bottom: 22px; max-width: 760px; }
+    .product-grid, .feature-grid, .status-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); }
+    .product-card, .feature-card, .status-card, .shot-card, .download, .release-note { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 22px; }
+    .product-card { display: flex; flex-direction: column; min-height: 250px; }
+    .product-card h2 { color: var(--accent); font-size: 1.35rem; margin: 9px 0 10px; }
+    .product-card p, .feature-card p, .status-card p, .shot-card p, .download p, .release-note p { color: var(--text-muted); font-size: 0.92rem; line-height: 1.62; }
+    .product-card .cta { margin-top: auto; padding-top: 18px; }
+    .feature-card h3, .status-card h3, .shot-card h3 { color: var(--accent); font-size: 1rem; margin-bottom: 8px; }
+    .scope { color: var(--text); display: block; margin-top: 13px; }
+    .shot-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+    .shot-image, .shot-placeholder { align-items: center; aspect-ratio: 16 / 10; background: linear-gradient(135deg, rgba(60, 201, 199, 0.16), transparent 42%), var(--key-bg); border: 1px dashed rgba(228, 231, 239, 0.26); border-radius: 8px; color: var(--text); display: flex; justify-content: center; margin-bottom: 14px; min-height: 150px; padding: 18px; text-align: center; }
+    .shot-image { background: #f4f4f4; display: block; object-fit: contain; padding: 0; width: 100%; }
+    .shot-placeholder strong { display: block; margin-bottom: 6px; }
+    .shot-placeholder span { color: var(--text-muted); display: block; font-family: "Cascadia Code", "Fira Code", "Courier New", monospace; font-size: 0.78rem; overflow-wrap: anywhere; }
+    .release-note { border-color: rgba(60, 201, 199, 0.35); }
+    .release-label { display: block; margin-bottom: 8px; }
+    .download h2 { font-size: 1.2rem; margin-bottom: 8px; }
+    @media (max-width: 420px) { .cta { align-items: stretch; flex-direction: column; } .btn { text-align: center; width: 100%; } }
+  </style>
+
+  <section class="hero">
+    <span class="eyebrow">Оверлей для ПК + Android Companion</span>
+    <h1>Смотрите, что делает клавиатура, пока работаете.</h1>
+    <p>Keyboard Helper показывает раскладку поверх рабочих окон, подсвечивает нажатия и может читать активный слой совместимой ZMK-клавиатуры. Android Companion открывает раскладки на телефоне и показывает совместимую read-only телеметрию.</p>
+    <div class="cta"><a class="btn btn-primary" href={`${ruBase}/setup/`}>Настроить ПК</a><a class="btn btn-outline" href={`${ruBase}/trainer/`}>Открыть игру</a><a class="btn btn-outline" href={`${ruBase}/android/`}>Android Companion</a><a class="btn btn-outline" href={`${ruBase}/faq/`}>FAQ</a></div>
+  </section>
+
+  <section class="product-grid" aria-label="Продукты Keyboard Helper">
+    <article class="product-card">
+      <span class="eyebrow">macOS · Windows · Linux</span><h2>Десктопный оверлей</h2>
+      <p>Окно поверх приложений показывает выбранную раскладку, нажатые клавиши, слой совместимой ZMK-клавиатуры, настройки и диагностику.</p>
+      <div class="cta"><a class="btn btn-primary" href={`${ruBase}/setup/`}>Настройка</a><a class="btn btn-outline" href={releasesUrl} target="_blank" rel="noopener">Релизы</a></div>
+    </article>
+    <article class="product-card">
+      <span class="eyebrow">Foreground companion · Android preview</span><h2>Android Companion</h2>
+      <p>Телефон показывает раскладку, состояние подключения и read-only Live для совместимой прошивки. Приложение не переключает удалённый слой клавиатуры.</p>
+      <p><strong>{androidRelease.status}</strong></p>
+      <div class="cta"><a class="btn btn-primary" href={`${ruBase}/android/`}>Инструкция</a>{androidRelease.published && <a class="btn btn-outline" href={androidRelease.releaseUrl} target="_blank" rel="noopener">Открыть {androidRelease.version}</a>}</div>
+    </article>
+  </section>
+
+  <section class="section" aria-labelledby="platform-status">
+    <h2 id="platform-status">Поддержка платформ</h2>
+    <div class="status-grid">
+      <article class="status-card"><h3>Desktop</h3><p>macOS, Windows и Linux: оверлей, диагностика, конфигурация и платформенные интеграции.</p></article>
+      <article class="status-card"><h3>Android preview</h3><p>{androidRelease.status} Публичная BLE-проверка: Android 12 / API 31+ и arm64.</p></article>
+      <article class="status-card"><h3>iOS</h3><p>Сборки для iOS нет. Канала подписи и даты релиза тоже нет.</p></article>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="desktop-features">
+    <h2 id="desktop-features">Что делает desktop-версия</h2><p class="section-intro">Desktop-приложение отвечает за глобальный ввод, локальные настройки и функции, которые требуют доступа к системе.</p>
+    <div class="feature-grid">
+      <article class="feature-card"><h3>Глобальный оверлей</h3><p>Клавиши подсвечиваются в прозрачном окне с выбранной раскладкой и совместимым firmware-слоем.</p><span class="scope">Desktop app</span></article>
+      <article class="feature-card"><h3>Настройка и диагностика</h3><p>Встроенные и JSON-раскладки, права macOS, BLE-подключение и guided self-test.</p><span class="scope">Desktop app</span></article>
+      <article class="feature-card"><h3>Рабочие режимы</h3><p>Mini Mode, синхронизация языка macOS для совместимых раскладок и Shift-Space Invaders.</p><span class="scope">Зависит от платформы</span></article>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="android-outcomes">
+    <h2 id="android-outcomes">Что делает Android Companion</h2><p class="section-intro">Browse работает со stock firmware. Live требует совместимое read-only расширение Keyboard Helper в прошивке.</p>
+    <div class="feature-grid">
+      <article class="feature-card"><h3>Просмотр раскладок</h3><p>Бандлованные и проверенные пользовательские раскладки доступны на телефоне.</p><span class="scope">Stock или enhanced ZMK</span></article>
+      <article class="feature-card"><h3>Данные подключения</h3><p>Права, pairing, connection, battery и device information показываются только если устройство их отдаёт.</p><span class="scope">API 31+ physical baseline</span></article>
+      <article class="feature-card"><h3>Read-only Live</h3><p>Слой, клавиши, combo и диагностика читаются с клавиатуры. Записи в remote layer нет.</p><span class="scope">Enhanced firmware</span></article>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="desktop-tour">
+    <h2 id="desktop-tour">Desktop в скриншотах</h2><p class="section-intro">Скриншоты показывают текущий интерфейс. Если файл удалён, сайт оставит доступную заглушку.</p>
+    <div class="shot-grid">
+      {desktopSlots.map((shot) => <article class="shot-card">{shot.available ? <img class="shot-image" src={shot.src} alt={shot.text} loading="lazy" /> : <div class="shot-placeholder" role="img" aria-label={shot.text}><div><strong>{shot.title}</strong><span>public/images/{shot.file}</span></div></div>}<h3>{shot.title}</h3><p>{shot.text}</p></article>)}
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="android-tour">
+    <h2 id="android-tour">Android workspace</h2>
+    {androidRelease.adaptiveWorkspace ? (
+      <><p class="section-intro">Эти скриншоты соответствуют preview-релизу {androidRelease.version}.</p><div class="shot-grid">{androidSlots.map((shot) => <article class="shot-card">{shot.available ? <img class="shot-image" src={shot.src} alt={shot.text} loading="lazy" /> : <div class="shot-placeholder" role="img" aria-label={shot.text}><div><strong>{shot.title}</strong><span>public/images/{shot.file}</span></div></div>}<h3>{shot.title}</h3><p>{shot.text}</p></article>)}</div></>
+    ) : (
+      <div class="release-note"><span class="release-label">Есть в репозитории, но не в {androidRelease.version ?? 'опубликованном APK'}</span><p>Новый адаптивный Browse/Live workspace и Settings появятся на сайте после подписанного релиза с этой версией интерфейса.</p></div>
+    )}
+  </section>
+
+  <section class="download"><h2>С чего начать</h2><p>Выберите инструкцию для своей платформы. В каждой отдельно указаны права, ограничения и поддерживаемые сценарии.</p><div class="cta"><a class="btn btn-primary" href={`${ruBase}/setup/`}>Настройка desktop</a><a class="btn btn-outline" href={`${ruBase}/android/`}>Инструкция Android</a></div></section>
+</Layout>
