@@ -1,7 +1,10 @@
 ---
 import '../../../src/typing_invaders/game.css';
+import '../styles/trainer-layout-gallery.css';
+import { BUILTIN_LAYOUTS } from '../../../src/app_config.js';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const builtinLayouts = Object.entries(BUILTIN_LAYOUTS);
 ---
 <!doctype html>
 <html lang="en">
@@ -73,6 +76,31 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         <span id="wpmValue">0 WPM</span>
       </footer>
     </main>
+    <section class="layout-gallery" aria-labelledby="layout-gallery-title">
+      <header class="layout-gallery-header">
+        <p class="layout-gallery-kicker">Keyboard Helper</p>
+        <h2 id="layout-gallery-title">Built-in keyboard layouts</h2>
+        <p>These are the keyboard layouts included with the app. Each preview shows its default layer.</p>
+      </header>
+      <div class="layout-gallery-grid">
+        {builtinLayouts.map(([key, layout]) => (
+          <article class="layout-gallery-card" aria-labelledby={`layout-title-${key}`}>
+            <h3 id={`layout-title-${key}`}>{layout.name}</h3>
+            <div class="layout-preview-stage">
+              <div class="layout-preview-canvas">
+                <keyboard-layout-viewer
+                  class="layout-preview"
+                  data-layout-key={key}
+                  data-viewer="mobile"
+                  role="img"
+                  aria-label={`${layout.name} keyboard layout preview`}
+                ></keyboard-layout-viewer>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
     <style>
       .trainer-home-link {
         position: fixed;
@@ -105,7 +133,9 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       }
     </style>
     <script>
+      import { mountTrainerLayoutGallery } from '../scripts/trainer-layout-gallery.js';
       import { createBrowserTypingInvaders } from '../../../src/typing_invaders/browser.js';
+      mountTrainerLayoutGallery();
       createBrowserTypingInvaders();
     </script>
   </body>
