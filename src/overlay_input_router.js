@@ -11,6 +11,9 @@ import { resolveKeyElement } from "./key_highlight.js";
  *   setComboActive: (code: string, active: boolean) => void,
  *   clearComboActivations: () => void,
  *   showKeyEvent: (code: string) => void,
+ *   resolvePosition?: ((code: string, wasShiftHeld: boolean, wasAltGrHeld: boolean) => number | null) | null,
+ *   setPositionPressed?: ((position: number, active: boolean) => boolean) | null,
+ *   clearPressed?: (() => void) | null,
  * }} OverlayInputRouterOptions
  */
 
@@ -24,6 +27,9 @@ export function createOverlayInputRouter({
   setComboActive,
   clearComboActivations,
   showKeyEvent,
+  resolvePosition = null,
+  setPositionPressed = null,
+  clearPressed = null,
 }) {
   let shiftHeld = false;
   let altGrHeld = false;
@@ -48,24 +54,32 @@ export function createOverlayInputRouter({
 
     console.log(`Key ${code} ${type}`);
     if (type === "down") {
-      const el = resolveKeyElement(document, code, wasShiftHeld, wasAltGrHeld);
-      if (!el) return;
+      const target = resolvePosition
+        ? resolvePosition(code, wasShiftHeld, wasAltGrHeld)
+        : resolveKeyElement(document, code, wasShiftHeld, wasAltGrHeld);
+      if (target === null || target === undefined) return;
       showKeyEvent(code);
-      el.classList.add("pressed");
-      pressedKeyTracker.remember(code, el);
+      if (setPositionPressed && typeof target === "number") setPositionPressed(target, true);
+      else if (typeof target !== "number") target.classList.add("pressed");
+      pressedKeyTracker.remember(code, target);
     } else if (type === "up") {
-      const el = pressedKeyTracker.release(
+      const fallback = resolvePosition
+        ? resolvePosition(code, wasShiftHeld, wasAltGrHeld)
+        : resolveKeyElement(document, code, wasShiftHeld, wasAltGrHeld);
+      const target = pressedKeyTracker.release(
         code,
-        resolveKeyElement(document, code, wasShiftHeld, wasAltGrHeld),
+        fallback,
       );
-      if (!el) return;
-      el.classList.remove("pressed");
+      if (target === null || target === undefined) return;
+      if (setPositionPressed && typeof target === "number") setPositionPressed(target, false);
+      else if (typeof target !== "number") target.classList.remove("pressed");
     }
   }
 
   function clearHighlightState() {
     getBleHighlightController()?.clear();
-    document.querySelectorAll(".key.pressed").forEach((element) => element.classList.remove("pressed"));
+    if (clearPressed) clearPressed();
+    else document.querySelectorAll(".key.pressed").forEach((element) => element.classList.remove("pressed"));
     clearComboActivations();
     pressedKeyTracker.clear();
     shiftHeld = false;

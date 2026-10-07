@@ -26,22 +26,22 @@ export function resolveKeyElement(root, code, wasShiftHeld, wasAltGrHeld) {
 }
 
 export function createPressedKeyTracker() {
-  const pressedElements = new Map();
+  const pressedValues = new Map();
 
   return {
-    remember(code, element) {
-      if (!code || !element) return;
-      pressedElements.set(code, element);
+    remember(code, value) {
+      if (!code || value === null || value === undefined) return;
+      pressedValues.set(code, value);
     },
 
-    release(code, fallbackElement = null) {
-      const element = pressedElements.get(code) ?? fallbackElement ?? null;
-      pressedElements.delete(code);
-      return element;
+    release(code, fallbackValue = null) {
+      const value = pressedValues.get(code) ?? fallbackValue ?? null;
+      pressedValues.delete(code);
+      return value;
     },
 
     clear() {
-      pressedElements.clear();
+      pressedValues.clear();
     },
   };
 }

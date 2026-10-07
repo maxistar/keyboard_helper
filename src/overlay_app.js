@@ -22,6 +22,7 @@ import { createOverlayLanguageSync } from "./overlay_language_sync.js";
 import { createOverlayBleRuntime } from "./overlay_ble_runtime.js";
 import { createOverlaySelfTestBridge } from "./overlay_self_test_bridge.js";
 import { createOverlayActions } from "./overlay_actions.js";
+import "./keyboard_viewer.js";
 
 /**
  * @typedef {import("./app_config.js").AppConfig} AppConfig
@@ -95,7 +96,7 @@ async function loadLayoutDefinitions(config) {
 
 window.addEventListener("pagehide", () => layoutRegistry.dispose(), { once: true });
 
-const layoutRoot = /** @type {HTMLElement} */ (document.getElementById("layoutRoot"));
+const layoutRoot = /** @type {import("./keyboard_viewer.js").KeyboardLayoutViewerElement} */ (document.getElementById("layoutRoot"));
 const selfTestOverlayPresentation = createSelfTestOverlayPresentation({ root: layoutRoot });
 let currentLayerIndex = 0;
 /** @type {MenuControls} */
@@ -167,6 +168,9 @@ const inputRouter = createOverlayInputRouter({
   setComboActive,
   clearComboActivations: () => overlayPresentation.clearComboActivations(),
   showKeyEvent,
+  resolvePosition: (code, wasShiftHeld, wasAltGrHeld) => layoutRoot.resolveKeyPosition(code, wasShiftHeld, wasAltGrHeld),
+  setPositionPressed: (position, active) => layoutRoot.setPositionPressed(position, active),
+  clearPressed: () => layoutRoot.clearPressed(),
 });
 /** @param {import("./overlay_input_router.js").NormalizedInputEvent} event */
 const handleNormalizedInputEvent = (event) => inputRouter.handleNormalizedInputEvent(event);
@@ -298,11 +302,11 @@ window.addEventListener("DOMContentLoaded", async () => {
     },
   });
   bleHighlightController = createBleHighlightController({
-    resolvePosition: (position) => document.querySelector(`.key[data-index="${position}"]`),
+    resolvePosition: (position) => layoutRoot.hasPosition(position) ? position : null,
+    setPositionPressed: (position, active) => layoutRoot.setPositionPressed(position, active),
+    getPositionLabel: (position) => layoutRoot.keyLabelAt(position),
     setComboActive: setBleComboActive,
-    showPositionLabel: (element, event) => showKeyEvent(
-      element.textContent?.trim() || `Position ${event.position}`,
-    ),
+    showPositionLabel: (label, event) => showKeyEvent(String(label || `Position ${event.position}`)),
     reportDiagnostic: ({ code, event }) => showLayoutError(
       code === "unmatched-combo"
         ? `BLE combo ${event.comboId} is not present in the loaded layout.`

@@ -1,6 +1,6 @@
 export type PressedKeyTracker = {
-  remember(code: string, element: Element): void;
-  release(code: string, fallback: Element | null): Element | null;
+  remember(code: string, target: Element | number): void;
+  release(code: string, fallback: Element | number | null): Element | number | null;
   clear(): void;
 };
 
