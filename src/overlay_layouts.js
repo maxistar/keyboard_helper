@@ -95,7 +95,7 @@ export function createOverlayLayoutRegistry({ runtimePlatform, tauriProvider = (
         return { def: null, error };
       }
       try {
-        const resp = await fetch(fileName);
+        const resp = await fetch(fileName, { cache: "no-store" });
         if (!resp.ok) {
           const error = `Failed to load ${fileName}: ${resp.status}`;
           console.warn(error);

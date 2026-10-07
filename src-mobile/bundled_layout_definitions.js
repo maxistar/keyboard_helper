@@ -5341,34 +5341,38 @@ export const MOBILE_BUNDLED_LAYOUT_DEFINITIONS = Object.freeze({
         "col": 14
       },
       {
-        "row": 3.7,
+        "row": 3.2,
         "col": 4,
         "cls": "action"
       },
       {
-        "row": 3.7,
+        "row": 3.2,
         "col": 5,
-        "cls": "action"
+        "cls": "action",
+        "angle": 5
       },
       {
-        "row": 3.2,
+        "row": 2.9,
         "col": 6,
         "h": 1.5,
-        "cls": "action"
+        "cls": "action",
+        "angle": 10
+      },
+      {
+        "row": 2.9,
+        "col": 8,
+        "h": 1.5,
+        "cls": "action",
+        "angle": -10
       },
       {
         "row": 3.2,
-        "col": 8,
-        "h": 1.5,
-        "cls": "action"
-      },
-      {
-        "row": 3.7,
         "col": 9,
-        "cls": "action"
+        "cls": "action",
+        "angle": -5
       },
       {
-        "row": 3.7,
+        "row": 3.2,
         "col": 10,
         "cls": "action"
       }

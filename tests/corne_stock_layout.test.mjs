@@ -8,6 +8,9 @@ import {
   normalizeLayerData,
 } from "../src/layout_catalog.js";
 import { validateLayoutDefinition } from "../src/layout_semantics.js";
+import { calcCanvasGeometry } from "../src/layout_geometry.js";
+import { MOBILE_BUNDLED_LAYOUT_DEFINITIONS } from "../src-mobile/bundled_layout_definitions.js";
+import { createLayoutPresentation } from "../src-mobile/layout_viewer_model.js";
 
 const layoutUrl = new URL("../src/layout_corne.json", import.meta.url);
 const definition = JSON.parse(await readFile(layoutUrl, "utf8"));
@@ -34,13 +37,73 @@ test("bundled Corne preserves official 42-key stagger and transform ordering", (
   ]);
   assert.deepEqual(definition.keyPositions[35], { row: 2.3, col: 14 });
   assert.deepEqual(definition.keyPositions.slice(36), [
-    { row: 3.7, col: 4, cls: "action" },
-    { row: 3.7, col: 5, cls: "action" },
-    { row: 3.2, col: 6, h: 1.5, cls: "action" },
-    { row: 3.2, col: 8, h: 1.5, cls: "action" },
-    { row: 3.7, col: 9, cls: "action" },
-    { row: 3.7, col: 10, cls: "action" },
+    { row: 3.2, col: 4, cls: "action" },
+    { row: 3.2, col: 5, cls: "action", angle: 5 },
+    { row: 2.9, col: 6, h: 1.5, cls: "action", angle: 10 },
+    { row: 2.9, col: 8, h: 1.5, cls: "action", angle: -10 },
+    { row: 3.2, col: 9, cls: "action", angle: -5 },
+    { row: 3.2, col: 10, cls: "action" },
   ]);
+});
+
+function keyBottom(position, keySize) {
+  const heightUnits = position.h ?? 1;
+  return position.row * (keySize.h + keySize.gap)
+    + keySize.h * heightUnits
+    + keySize.gap * (heightUnits - 1);
+}
+
+test("bundled Corne thumb geometry matches the reviewed Corney physical cluster", () => {
+  assert.equal(definition.keyPositions[36].row, 3.2);
+  assert.equal(definition.keyPositions[37].row, 3.2);
+  assert.equal(definition.keyPositions[38].row, 2.9);
+  assert.equal(definition.keyPositions[39].row, 2.9);
+  assert.equal(definition.keyPositions[40].row, 3.2);
+  assert.equal(definition.keyPositions[41].row, 3.2);
+  assert.equal(definition.keyPositions[38].h, 1.5);
+  assert.equal(definition.keyPositions[39].h, 1.5);
+  assert.equal(definition.keyPositions[38].col, 6);
+  assert.equal(definition.keyPositions[39].col, 8);
+  assert.deepEqual(definition.keyPositions.slice(37, 41).map(({ angle }) => angle), [5, 10, -10, -5]);
+
+  assert.equal(keyBottom(definition.keyPositions[38], definition.keySize), 232);
+  assert.equal(keyBottom(definition.keyPositions[39], definition.keySize), 232);
+});
+
+function assertKeysContained(definition, geometry) {
+  const { keySize } = definition;
+  for (const [index, position] of definition.keyPositions.entries()) {
+    const widthUnits = position.w ?? 1;
+    const heightUnits = position.h ?? 1;
+    const left = position.col * (keySize.w + keySize.gap) - geometry.originX;
+    const top = position.row * (keySize.h + keySize.gap) - geometry.originY;
+    const width = keySize.w * widthUnits + keySize.gap * (widthUnits - 1);
+    const height = keySize.h * heightUnits + keySize.gap * (heightUnits - 1);
+    assert.ok(left >= -1e-6, `key ${index} is clipped on the left`);
+    assert.ok(top >= -1e-6, `key ${index} is clipped on the top`);
+    assert.ok(left + width <= geometry.width + 1e-6, `key ${index} is clipped on the right`);
+    assert.ok(top + height <= geometry.height + 1e-6, `key ${index} is clipped on the bottom`);
+  }
+}
+
+test("stock Corne inner thumbs fit the shared desktop and mobile canvases", () => {
+  const desktopGeometry = calcCanvasGeometry(definition.keyPositions, definition.keySize);
+  assertKeysContained(definition, desktopGeometry);
+
+  const generated = MOBILE_BUNDLED_LAYOUT_DEFINITIONS.corne;
+  const mobilePresentation = createLayoutPresentation(generated, 0);
+  assert.equal(mobilePresentation.width, desktopGeometry.width);
+  assert.equal(mobilePresentation.height, desktopGeometry.height);
+  assert.deepEqual(mobilePresentation.origin, {
+    x: desktopGeometry.originX,
+    y: desktopGeometry.originY,
+  });
+  assertKeysContained(generated, {
+    originX: mobilePresentation.origin.x,
+    originY: mobilePresentation.origin.y,
+    width: mobilePresentation.width,
+    height: mobilePresentation.height,
+  });
 });
 
 test("bundled Corne exposes the three stock ZMK layers in firmware order", () => {

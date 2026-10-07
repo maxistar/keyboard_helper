@@ -47,12 +47,12 @@
     { "row": 2.3, "col": 13 },
     { "row": 2.3, "col": 14 },
 
-    { "row": 3.7, "col": 4, "cls": "action" },
-    { "row": 3.7, "col": 5, "cls": "action" },
-    { "row": 3.2, "col": 6, "h": 1.5, "cls": "action" },
-    { "row": 3.2, "col": 8, "h": 1.5, "cls": "action" },
-    { "row": 3.7, "col": 9, "cls": "action" },
-    { "row": 3.7, "col": 10, "cls": "action" }
+    { "row": 3.2, "col": 4, "cls": "action" },
+    { "row": 3.2, "col": 5, "cls": "action", "angle": 5 },
+    { "row": 2.9, "col": 6, "h": 1.5, "cls": "action", "angle": 10 },
+    { "row": 2.9, "col": 8, "h": 1.5, "cls": "action", "angle": -10 },
+    { "row": 3.2, "col": 9, "cls": "action", "angle": -5 },
+    { "row": 3.2, "col": 10, "cls": "action" }
   ],
   "keyLayers": {
     "default": [
