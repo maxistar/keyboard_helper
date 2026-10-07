@@ -54,10 +54,13 @@ test("dedicated Android route, legacy setup bridge, and primary navigation are b
   ]);
 
   await access(path.join(root, "website/src/pages/android.astro"));
+  assert.ok(layout.includes("const base = import.meta.env.BASE_URL.replace(/\\/$/, '');"));
+  assert.match(layout, /const navHref = \(path\) => localizedPath\(lang, path\)/);
   for (const href of ["/", "/setup/", "/android/", "/faq/"]) {
-    assert.ok(layout.includes(`href={\`${"${base}"}${href}\`}`), `navigation ${href}`);
+    assert.match(layout, new RegExp(`\\['[^']+', '${href.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}']`), `navigation ${href}`);
   }
-  assert.match(layout, /aria-label="Primary navigation"/);
+  assert.match(layout, /navLabel: 'Primary navigation'/);
+  assert.match(layout, /<nav aria-label=\{current\.navLabel\}>/);
   assert.match(index, /href={`\$\{base\}\/android\/`}/);
   assert.match(setup, /id="android-preview"/);
   assert.match(setup, /href={`\$\{base\}\/android\/`}/);

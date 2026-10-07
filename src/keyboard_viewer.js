@@ -75,7 +75,7 @@ function renderLabel(document, element, key, mobile = false) {
     const img = document.createElement("img");
     img.src = image;
     img.alt = String(accessibleLabel ?? labelObject?.text ?? "");
-    img.className = "key-icon viewer-key-image";
+    img.className = mobile ? "viewer-key-image" : "key-icon";
     if (typeof element.appendChild === "function") element.appendChild(img);
     else element.append?.(img);
   } else {
@@ -121,10 +121,13 @@ export function renderKeyboardLayoutInto(root, presentation, state = {}, { mobil
   root.style.setProperty("--viewer-origin-y", `${originY}px`);
   const pressed = new Set(state.pressedPositions ?? []);
   const combos = new Set(state.comboPositions ?? []);
-  const fragment = document.createDocumentFragment?.() ?? null;
+  const existingKeys = Array.from(root.children ?? []);
+  const canReuse = existingKeys.length === keys.length && existingKeys.every((element, position) =>
+    element.dataset?.index === String(position));
+  const fragment = canReuse ? null : document.createDocumentFragment?.() ?? null;
   const renderedKeys = [];
   keys.forEach((key, position) => {
-    const element = document.createElement("div");
+    const element = canReuse ? existingKeys[position] : document.createElement("div");
     const isPressed = pressed.has(position);
     const inCombo = combos.has(position);
     element.className = `${keyClass} ${key.kind ?? key.cls ?? ""}${isPressed ? " pressed" : ""}${inCombo ? " combo-key" : ""}`.trim();
@@ -160,8 +163,10 @@ export function renderKeyboardLayoutInto(root, presentation, state = {}, { mobil
     renderedKeys.push(element);
     if (fragment) fragment.appendChild(element);
   });
-  if (fragment) root.replaceChildren(fragment);
-  else root.replaceChildren(...renderedKeys);
+  if (!canReuse) {
+    if (fragment) root.replaceChildren(fragment);
+    else root.replaceChildren(...renderedKeys);
+  }
   return renderedKeys;
 }
 
@@ -242,13 +247,15 @@ function defineElement() {
       }));
       this.setLayer(layerIndex, { authoritative });
       if (variant === "select" && container.localName === "select") {
-        container.replaceChildren();
-        for (const layer of entries) {
-          const option = this.ownerDocument.createElement("option");
+        const existing = Array.from(container.children ?? []);
+        const canReuse = existing.length === entries.length;
+        if (!canReuse) container.replaceChildren();
+        entries.forEach((layer, index) => {
+          const option = canReuse ? existing[index] : this.ownerDocument.createElement("option");
           option.value = String(layer.index);
           option.textContent = layer.name;
-          container.appendChild(option);
-        }
+          if (!canReuse) container.appendChild(option);
+        });
         container.value = String(layerIndex);
         container.disabled = authoritative || entries.length < 2;
         if (!this.layerControls.has(container)) {
@@ -395,8 +402,7 @@ function defineElement() {
     }
 
     handlePointerEnd(event, cancelled) {
-      let found = null;
-      found = this.activePointers.get(event.pointerId) ?? null;
+      const found = this.activePointers.get(event.pointerId) ?? null;
       if (found === null) return;
       this.activePointers.delete(event.pointerId);
       this.applyState();

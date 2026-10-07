@@ -361,15 +361,18 @@ export function createMobileLayoutViewerView(
 
   function renderFallbackLayerControl(container, layers, layerIndex, authoritative) {
     if ((container.localName ?? container.tagName?.toLowerCase()) === "select") {
-      container.replaceChildren();
-      for (const layer of layers ?? []) {
-        const option = document.createElement("option");
+      const entries = layers ?? [];
+      const existing = Array.from(container.children ?? []);
+      const canReuse = existing.length === entries.length;
+      if (!canReuse) container.replaceChildren();
+      entries.forEach((layer, index) => {
+        const option = canReuse ? existing[index] : document.createElement("option");
         option.value = String(layer.index);
         option.textContent = layer.name;
-        container.append(option);
-      }
+        if (!canReuse) container.append(option);
+      });
       container.value = String(layerIndex);
-      container.disabled = authoritative || (layers?.length ?? 0) < 2;
+      container.disabled = authoritative || entries.length < 2;
     } else {
       container.textContent = layers?.find(({ index }) => index === layerIndex)?.name ?? "";
     }
