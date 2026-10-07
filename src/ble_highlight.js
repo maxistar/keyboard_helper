@@ -1,5 +1,7 @@
 export function createBleHighlightController({
   resolvePosition,
+  setPositionPressed = null,
+  getPositionLabel = null,
   setComboActive,
   showPositionLabel = () => {},
   reportDiagnostic = () => {},
@@ -8,19 +10,21 @@ export function createBleHighlightController({
   const activeCombos = new Set();
 
   function handleKey(event) {
-    const element = event.action === "up"
+    const target = event.action === "up"
       ? pressedPositions.get(event.position) ?? resolvePosition(event.position, event.layer)
       : resolvePosition(event.position, event.layer);
-    if (!element) {
+    if (target === null || target === undefined) {
       reportDiagnostic({ code: "unmatched-position", event });
       return false;
     }
     if (event.action === "down") {
-      element.classList.add("pressed");
-      pressedPositions.set(event.position, element);
-      showPositionLabel(element, event);
+      if (setPositionPressed) setPositionPressed(/** @type {number} */ (target), true);
+      else if (typeof target !== "number") target.classList.add("pressed");
+      pressedPositions.set(event.position, target);
+      showPositionLabel(getPositionLabel ? getPositionLabel(target) : target, event);
     } else {
-      element.classList.remove("pressed");
+      if (setPositionPressed) setPositionPressed(/** @type {number} */ (target), false);
+      else if (typeof target !== "number") target.classList.remove("pressed");
       pressedPositions.delete(event.position);
     }
     return true;
@@ -45,7 +49,8 @@ export function createBleHighlightController({
   }
 
   function clear() {
-    pressedPositions.forEach((element) => element.classList.remove("pressed"));
+    if (setPositionPressed) pressedPositions.forEach((position) => setPositionPressed(/** @type {number} */ (position), false));
+    else pressedPositions.forEach((element) => { if (typeof element !== "number") element.classList.remove("pressed"); });
     activeCombos.forEach((comboId) => setComboActive(comboId, false));
     pressedPositions.clear();
     activeCombos.clear();

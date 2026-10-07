@@ -1,4 +1,6 @@
 import { MobileLayoutViewerModel, ViewerCatalogStatus } from "./layout_viewer_model.js";
+import "./shared-generated/keyboard_viewer.js";
+import { renderKeyboardLayoutInto } from "./shared-generated/keyboard_viewer.js";
 import { LayoutPresentationMode } from "./layout_live_presentation.js";
 import { fitKeyboardCanvas, KeyboardCanvasOrientation } from "./keyboard_canvas_fit.js";
 import {
@@ -11,53 +13,6 @@ import {
 function required(document, id) {
   const element = document.getElementById(id);
   if (!element) throw new Error(`Mobile layout viewer is missing #${id}.`);
-  return element;
-}
-
-function renderKeyContent(document, element, key, pressed, combo) {
-  const children = [];
-  if (key.image) {
-    const image = document.createElement("img");
-    image.className = "viewer-key-image";
-    image.src = key.image;
-    image.alt = "";
-    children.push(image);
-  } else {
-    const label = document.createElement("span");
-    label.className = "viewer-key-legend";
-    label.textContent = key.label;
-    children.push(label);
-  }
-  if (pressed || combo) {
-    const state = document.createElement("span");
-    state.className = "viewer-key-state";
-    state.textContent = pressed ? "DOWN" : "COMBO";
-    children.push(state);
-  }
-  element.replaceChildren(...children);
-}
-
-function updateKey(document, element, key, pressedPositions, comboPositions) {
-  const pressed = pressedPositions.has(key.index);
-  const combo = comboPositions.has(key.index);
-  element.className = `viewer-key ${key.kind}`.trim();
-  element.dataset.position = String(key.index);
-  element.dataset.pressed = String(pressed);
-  element.dataset.combo = String(combo);
-  element.setAttribute("aria-label", `${key.accessibleLabel}${pressed ? ", pressed" : combo ? ", active combo" : ""}`);
-  element.setAttribute("aria-pressed", String(pressed || combo));
-  element.style.setProperty("--viewer-row", key.row);
-  element.style.setProperty("--viewer-col", key.col);
-  element.style.setProperty("--viewer-width", key.widthUnits);
-  element.style.setProperty("--viewer-height", key.heightUnits);
-  element.style.setProperty("--viewer-angle", `${key.angle}deg`);
-  renderKeyContent(document, element, key, pressed, combo);
-}
-
-function renderKey(document, key, pressedPositions, comboPositions) {
-  const element = document.createElement("div");
-  element.setAttribute("role", "img");
-  updateKey(document, element, key, pressedPositions, comboPositions);
   return element;
 }
 
@@ -135,7 +90,7 @@ export function createMobileLayoutViewerView(
     scroller: required(document, "viewer-scroller"),
     gesture: required(document, "viewer-gesture"),
     canvas: required(document, "viewer-canvas"),
-    keyboard: required(document, "viewer-keyboard"),
+    keyboard: /** @type {import("./shared-generated/keyboard_viewer.js").KeyboardLayoutViewerElement} */ (required(document, "viewer-keyboard")),
     empty: required(document, "viewer-empty"),
     liveSwitch: required(document, "viewer-live-switch"),
     streamStatus: required(document, "viewer-stream-status"),
@@ -152,9 +107,6 @@ export function createMobileLayoutViewerView(
   const emptyMessage = elements.empty.textContent || "No bundled keyboard layout is available.";
   const hydratingMessage = options.hydratingMessage ?? "Restoring keyboard layout…";
   let renderedCatalog = null;
-  let renderedLayout = null;
-  let renderedKeyboard = null;
-  let keyElements = [];
   let lastStreamTitle = null;
   let currentPresentation = null;
   let currentFit = null;
@@ -391,29 +343,35 @@ export function createMobileLayoutViewerView(
       : customKeys.includes(snapshot.selectedLayoutKey) ? snapshot.selectedLayoutKey : customKeys[0] ?? "";
   }
 
-  function renderLayers(browse) {
-    const signature = `${browse.selectedLayoutKey}:${browse.presentation?.layers.map(({ name }) => name).join("|") ?? ""}`;
-    if (renderedLayout === signature) return;
-    renderedLayout = signature;
-    elements.layer.replaceChildren();
-    for (const layer of browse.presentation?.layers ?? []) {
-      const option = document.createElement("option");
-      option.value = String(layer.index);
-      option.textContent = layer.name;
-      elements.layer.append(option);
+  function renderKeyboard(snapshot) {
+    elements.keyboard.dataset.viewer = "mobile";
+    const state = {
+      layerIndex: snapshot.selectedLayerIndex,
+      layerAuthoritative: snapshot.layerAuthoritative,
+      pressedPositions: snapshot.pressedPositions,
+      comboPositions: snapshot.comboPositions,
+      interactive: false,
+    };
+    if (typeof elements.keyboard.setPresentation === "function") {
+      elements.keyboard.setPresentation(snapshot.presentation, state);
+    } else {
+      renderKeyboardLayoutInto(elements.keyboard, snapshot.presentation, state, { mobile: true, document });
     }
   }
 
-  function renderKeyboard(snapshot) {
-    const pressed = new Set(snapshot.pressedPositions);
-    const combos = new Set(snapshot.comboPositions);
-    const signature = `${snapshot.selectedLayoutKey}:${snapshot.presentation.keys.length}`;
-    if (signature !== renderedKeyboard) {
-      renderedKeyboard = signature;
-      keyElements = snapshot.presentation.keys.map((key) => renderKey(document, key, pressed, combos));
-      elements.keyboard.replaceChildren(...keyElements);
+  function renderFallbackLayerControl(container, layers, layerIndex, authoritative) {
+    if ((container.localName ?? container.tagName?.toLowerCase()) === "select") {
+      container.replaceChildren();
+      for (const layer of layers ?? []) {
+        const option = document.createElement("option");
+        option.value = String(layer.index);
+        option.textContent = layer.name;
+        container.append(option);
+      }
+      container.value = String(layerIndex);
+      container.disabled = authoritative || (layers?.length ?? 0) < 2;
     } else {
-      snapshot.presentation.keys.forEach((key, index) => updateKey(document, keyElements[index], key, pressed, combos));
+      container.textContent = layers?.find(({ index }) => index === layerIndex)?.name ?? "";
     }
   }
 
@@ -458,14 +416,16 @@ export function createMobileLayoutViewerView(
       elements.canvas.style.width = "";
       elements.canvas.style.height = "";
       elements.keyboard.replaceChildren();
-      renderedKeyboard = null;
-      keyElements = [];
       return;
     }
 
-    renderLayers(browse);
-    elements.layer.value = String(resolved.selectedLayerIndex);
-    elements.liveLayerName.textContent = resolved.presentation.layerName ?? "";
+    if (typeof elements.keyboard.renderLayerControl === "function") {
+      elements.keyboard.renderLayerControl(elements.layer, resolved.presentation.layers, resolved.selectedLayerIndex, { authoritative: liveMode });
+      elements.keyboard.renderLayerControl(elements.liveLayerName, resolved.presentation.layers, resolved.selectedLayerIndex, { authoritative: true });
+    } else {
+      renderFallbackLayerControl(elements.layer, resolved.presentation.layers, resolved.selectedLayerIndex, liveMode);
+      renderFallbackLayerControl(elements.liveLayerName, resolved.presentation.layers, resolved.selectedLayerIndex, true);
+    }
     currentPresentation = resolved.presentation;
     elements.keyboard.style.width = `${resolved.presentation.width}px`;
     elements.keyboard.style.height = `${resolved.presentation.height}px`;
@@ -527,14 +487,24 @@ export function createMobileLayoutViewerView(
       render();
     }
   };
-  const onLayerChange = () => model.selectLayer(Number(elements.layer.value));
+  const onLayerRequest = (event) => {
+    const layerIndex = /** @type {CustomEvent<{ layerIndex?: number }>} */ (event).detail?.layerIndex;
+    if (typeof layerIndex === "number" && Number.isInteger(layerIndex)) model.selectLayer(layerIndex);
+  };
+  const onLayerChange = () => {
+    if (typeof elements.keyboard.requestLayer !== "function") model.selectLayer(Number(elements.layer.value));
+  };
   const onLiveSwitch = () => presentationController?.selectMode(
     elements.liveSwitch.checked ? LayoutPresentationMode.LIVE : LayoutPresentationMode.BROWSE,
   );
   elements.layout.addEventListener("change", onLayoutChange);
   elements.importLayout.addEventListener("click", onImportLayout);
   elements.removeLayout.addEventListener("click", onRemoveLayout);
-  elements.layer.addEventListener("change", onLayerChange);
+  if (typeof elements.keyboard.requestLayer === "function") {
+    elements.keyboard.addEventListener("keyboard-layer-request", onLayerRequest);
+  } else {
+    elements.layer.addEventListener("change", onLayerChange);
+  }
   elements.liveSwitch.addEventListener("change", onLiveSwitch);
   const unsubscribe = presentationController
     ? presentationController.subscribe(render)
@@ -558,7 +528,11 @@ export function createMobileLayoutViewerView(
       elements.layout.removeEventListener?.("change", onLayoutChange);
       elements.importLayout.removeEventListener?.("click", onImportLayout);
       elements.removeLayout.removeEventListener?.("click", onRemoveLayout);
-      elements.layer.removeEventListener?.("change", onLayerChange);
+      if (typeof elements.keyboard.requestLayer === "function") {
+        elements.keyboard.removeEventListener?.("keyboard-layer-request", onLayerRequest);
+      } else {
+        elements.layer.removeEventListener?.("change", onLayerChange);
+      }
       elements.liveSwitch.removeEventListener?.("change", onLiveSwitch);
     },
     reportLayoutStatus,

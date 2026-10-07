@@ -52,6 +52,10 @@ export function createSelfTestOverlayPresentation({ root, body = root?.ownerDocu
 
   function render() {
     body?.classList?.toggle("self-test-active", Boolean(current.active));
+    if (typeof root?.setKeyMarkers === "function") {
+      root.setKeyMarkers(current.active ? current.states : {});
+      return;
+    }
     for (const element of keys()) {
       clearElement(element);
       if (!current.active) continue;

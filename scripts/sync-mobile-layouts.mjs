@@ -11,7 +11,7 @@ const mobileSemanticsPath = path.join(projectRoot, "src-mobile", "layout_semanti
 const canonicalPresentationPath = path.join(projectRoot, "src", "inline_asset_presentation.js");
 const mobilePresentationPath = path.join(projectRoot, "src-mobile", "inline_asset_presentation.generated.js");
 const mobileSharedPath = path.join(projectRoot, "src-mobile", "shared-generated");
-const sharedRuntimeFiles = ["input_events.js", "ble_keyboard_decoder.js", "layout_geometry.js"];
+const sharedRuntimeFiles = ["input_events.js", "ble_keyboard_decoder.js", "layout_geometry.js", "keyboard_viewer.js"];
 const definitions = {};
 const imagePaths = new Set();
 
@@ -51,6 +51,7 @@ await mkdir(mobileSharedPath, { recursive: true });
 for (const filename of sharedRuntimeFiles) {
   await copyFile(path.join(projectRoot, "src", filename), path.join(mobileSharedPath, filename));
 }
+await copyFile(path.join(projectRoot, "src", "keyboard_viewer.d.ts"), path.join(mobileSharedPath, "keyboard_viewer.d.ts"));
 for (const relativePath of imagePaths) {
   const destination = path.join(projectRoot, "src-mobile", relativePath);
   await mkdir(path.dirname(destination), { recursive: true });

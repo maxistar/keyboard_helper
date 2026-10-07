@@ -1,12 +1,12 @@
 import { formatBleKeyboardStatus } from "./ble_status.js";
 import { normalizeKeyEntry } from "./layout_catalog.js";
 import {
-  applyCanvasGeometry,
   calcKeyBounds,
   calcOverlayCanvas,
   COMBO_BORDER_PADDING,
   renderKeyLabel,
 } from "./keyboard_renderer.js";
+import { renderKeyboardLayoutInto } from "./keyboard_viewer.js";
 
 /**
  * @typedef {import("./key_highlight.js").PressedKeyTracker} PressedKeyTracker
@@ -19,7 +19,7 @@ import {
  * @typedef {{ highlightingStatus?: unknown, bleKeyboardStatus?: unknown, bleBatteryLevel?: unknown }} BleStatusSnapshot
  * @typedef {{
  *   document: Document,
- *   layoutRoot: HTMLElement,
+ *   layoutRoot: import("./keyboard_viewer.js").KeyboardLayoutViewerElement,
  *   pressedKeyTracker: PressedKeyTracker,
  *   selfTestOverlayPresentation: SelfTestOverlayPresentation,
  *   getCurrentLayoutKey: () => string,
@@ -95,19 +95,19 @@ export function createOverlayPresentation({
     if (!comboDefinitions.length) return;
 
     const positionIndex = new Map();
-    layout.keys.forEach((key) => {
-      positionIndex.set(`${key.row},${key.col}`, key);
+    layout.keys.forEach((key, index) => {
+      positionIndex.set(`${key.row},${key.col}`, { key, index });
     });
 
     const padding = COMBO_BORDER_PADDING;
     const canvas = calcOverlayCanvas(layout.keys, layout.keySize);
     comboDefinitions.forEach((combo) => {
-      const key1 = positionIndex.get(`${combo.key1.row},${combo.key1.col}`);
-      const key2 = positionIndex.get(`${combo.key2.row},${combo.key2.col}`);
-      if (!key1 || !key2) return;
+      const item1 = positionIndex.get(`${combo.key1.row},${combo.key1.col}`);
+      const item2 = positionIndex.get(`${combo.key2.row},${combo.key2.col}`);
+      if (!item1 || !item2) return;
 
-      const bounds1 = calcKeyBounds(key1, layout.keySize);
-      const bounds2 = calcKeyBounds(key2, layout.keySize);
+      const bounds1 = calcKeyBounds(item1.key, layout.keySize);
+      const bounds2 = calcKeyBounds(item2.key, layout.keySize);
       const left = Math.min(bounds1.left, bounds2.left) - padding;
       const top = Math.min(bounds1.top, bounds2.top) - padding;
       const right = Math.max(bounds1.left + bounds1.width, bounds2.left + bounds2.width) + padding;
@@ -116,6 +116,7 @@ export function createOverlayPresentation({
       const border = document.createElement("div");
       border.className = "combo-border";
       border.dataset.comboCode = combo.code;
+      border.dataset.positions = `${item1.index},${item2.index}`;
       border.style.left = `${left - canvas.originX}px`;
       border.style.top = `${top - canvas.originY}px`;
       border.style.width = `${right - left}px`;
@@ -141,6 +142,7 @@ export function createOverlayPresentation({
     const borders = comboBordersByCode.get(code);
     if (!borders) return;
     borders.forEach((border) => border.classList.toggle("active", active));
+    refreshComboPositions();
   }
 
   /**
@@ -151,36 +153,43 @@ export function createOverlayPresentation({
     const border = comboBordersById.get(comboId);
     if (!border) return false;
     border.classList.toggle("active", active);
+    refreshComboPositions();
     return true;
+  }
+
+  function refreshComboPositions() {
+    const positions = new Set();
+    for (const border of comboBorderEls) {
+      if (!border.classList.contains("active")) continue;
+      for (const position of (border.dataset.positions ?? "").split(",")) {
+        const index = Number(position);
+        if (Number.isInteger(index)) positions.add(index);
+      }
+    }
+    layoutRoot.setComboPositions?.([...positions]);
   }
 
   /** @param {LayoutModel} layout */
   function renderKeyboard(layout) {
-    layoutRoot.innerHTML = "";
+    layoutRoot.replaceChildren();
     pressedKeyTracker.clear();
 
     if (!layout.keySize) return;
     applyKeySizes(layout.keySize);
     const currentLayoutKey = getCurrentLayoutKey();
     const comboDefinitions = getComboDefinitionsByLayout()[currentLayoutKey] ?? [];
+    layoutRoot.dataset.viewer = "desktop";
+    const viewerLayout = {
+      ...layout,
+      keySize: /** @type {KeySize} */ (layout.keySize),
+      layers: (getLayoutLayerNames()[currentLayoutKey] ?? []).map((name, index) => ({ index, name })),
+    };
+    if (typeof layoutRoot.setPresentation === "function") {
+      layoutRoot.setPresentation(viewerLayout, { layerIndex: getCurrentLayerIndex() });
+    } else {
+      renderKeyboardLayoutInto(layoutRoot, viewerLayout, { layerIndex: getCurrentLayerIndex() }, { document });
+    }
     renderComboBorders(layout, comboDefinitions);
-
-    applyCanvasGeometry(layoutRoot, calcOverlayCanvas(layout.keys, layout.keySize));
-
-    layout.keys.forEach((k, key) => {
-      const el = document.createElement("div");
-      el.className = `key ${k.cls || ""}`.trim();
-      renderKeyLabel(el, k);
-      el.dataset.index = String(key);
-      el.style.setProperty("--row", String(k.row));
-      el.style.setProperty("--col", String(k.col));
-      if (k.w) el.style.setProperty("--w", String(k.w));
-      if (k.h) el.style.setProperty("--h", String(k.h));
-      if (typeof k.angle === "number") {
-        el.style.setProperty("--angle", `${k.angle}deg`);
-      }
-      layoutRoot.appendChild(el);
-    });
 
     renderLayerIndicator();
     selfTestOverlayPresentation.refresh();
@@ -304,30 +313,29 @@ export function createOverlayPresentation({
     const layerNames = getLayoutLayerNames()[currentLayoutKey] ?? [];
     const layerIndicator = layerIndicatorEl;
     if (!layerIndicator) return;
-    layerIndicator.innerHTML = "";
-
-    const activeName = layerNames[currentLayerIndex] ?? `Layer ${currentLayerIndex + 1}`;
-    const nameEl = document.createElement("span");
-    nameEl.className = "layer-name";
-    nameEl.textContent = activeName;
-    layerIndicator.appendChild(nameEl);
-
-    const dotsWrapper = document.createElement("div");
-    dotsWrapper.className = "layer-dots";
-
-    for (let i = 0; i < totalLayers; i++) {
-      const dot = document.createElement("span");
-      dot.className = "layer-dot";
-      if (i === currentLayerIndex) {
-        dot.classList.add("active");
+    const layers = layerNames.length
+      ? layerNames.map((name, index) => ({ index, name }))
+      : Array.from({ length: totalLayers }, (_, index) => ({ index, name: `Layer ${index + 1}` }));
+    if (typeof layoutRoot.renderLayerControl === "function") {
+      layoutRoot.renderLayerControl(layerIndicator, layers, currentLayerIndex, { variant: "dots" });
+    } else {
+      layerIndicator.replaceChildren();
+      const name = document.createElement("span");
+      name.className = "layer-name";
+      name.textContent = layers[currentLayerIndex]?.name ?? `Layer ${currentLayerIndex + 1}`;
+      layerIndicator.appendChild(name);
+      const dots = document.createElement("div");
+      dots.className = "layer-dots";
+      for (const layer of layers) {
+        const dot = document.createElement("span");
+        dot.className = `layer-dot${layer.index === currentLayerIndex ? " active" : ""}`;
+        dot.dataset.index = String(layer.index);
+        dot.title = layer.name;
+        dot.addEventListener("click", () => applyLayer(layer.index));
+        dots.appendChild(dot);
       }
-      dot.dataset.index = String(i);
-      dot.title = `Layer ${i + 1}`;
-      dot.addEventListener("click", () => applyLayer(i));
-      dotsWrapper.appendChild(dot);
+      layerIndicator.appendChild(dots);
     }
-
-    layerIndicator.appendChild(dotsWrapper);
   }
 
   /** @param {number} index */
@@ -344,20 +352,31 @@ export function createOverlayPresentation({
     layout.keys.forEach((k, keyIndex) => {
       const targetKey = targetLayer[keyIndex] ?? baseLayer[keyIndex];
       if (!targetKey) return;
-      const el = document.querySelector(`.key[data-index="${keyIndex}"]`);
-      if (!el) return;
+      if (typeof layoutRoot.hasPosition === "function" && !layoutRoot.hasPosition(keyIndex)) return;
       const normalized = normalizeKeyEntry(targetKey);
       const baseNormalized = normalizeKeyEntry(baseLayer[keyIndex]);
       const code = normalized.code ?? baseNormalized.code;
-      renderKeyLabel(el, { label: normalized.label, code });
+      if (typeof layoutRoot.setKeyLabel === "function") {
+        layoutRoot.setKeyLabel(keyIndex, { label: normalized.label, code });
+      } else {
+        const element = document.querySelector(`.key[data-index="${keyIndex}"]`);
+        if (element) renderKeyLabel(element, { label: normalized.label, code });
+      }
     });
 
     setCurrentLayerIndex(safeIndex);
+    layoutRoot.setLayer?.(safeIndex);
     renderLayerIndicator();
   }
 
+  layoutRoot.addEventListener?.("keyboard-layer-request", (event) => {
+    const layerIndex = /** @type {CustomEvent<{ layerIndex?: number }>} */ (event).detail?.layerIndex;
+    if (typeof layerIndex === "number" && Number.isInteger(layerIndex)) applyLayer(layerIndex);
+  });
+
   function clearComboActivations() {
     comboBorderEls.forEach((element) => element.classList.remove("active"));
+    layoutRoot.setComboPositions?.([]);
   }
 
   return {
